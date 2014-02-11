@@ -1756,47 +1756,75 @@ def createSkeletonFromModule(moduleAttrsDict, characterName):
 
     # If the module is not part of a mirrored pair, or if it is, but was created on the + side of its creation plane.
     else:
+        # If the module type is JointNode.
         if moduleAttrsDict['node_type'] == 'JointNode':
+        
+            # If the JointNode module has one node.
             if moduleAttrsDict['num_nodes'] == 1:
+            
+                # Get the name of the joint to be created from the module node.
                 name = 'MRT_character'+characterName+'__'+moduleAttrsDict['userSpecName']+'_root_node_transform'
-                #rotOrder = {0:'xyz', 1:'yzx', 2:'zxy', 3:'zyx', 4:'yxz', 5:'xzy'}[moduleAttrsDict['node_rotationOrder_values'][0][1]]
-                jointName = cmds.joint(name=name, position=moduleAttrsDict['node_world_translation_values'][0][1], orientation=moduleAttrsDict['node_world_orientation_values'][0][1], radius=moduleAttrsDict['globalScale']*moduleAttrsDict['node_handle_sizes'][0][1]*0.16)
+                # Create the joint.
+                jointName = cmds.joint(name=name, position=moduleAttrsDict['node_world_translation_values'][0][1],
+                                       orientation=moduleAttrsDict['node_world_orientation_values'][0][1],
+                                       radius=moduleAttrsDict['globalScale']*moduleAttrsDict['node_handle_sizes'][0][1]*0.16)
+                # Set the joint attributes.
                 cmds.addAttr(jointName, dataType='string', longName='inheritedNodeType')
                 cmds.setAttr(jointName+'.inheritedNodeType', 'JointNode', type='string', lock=True)
                 cmds.setAttr(jointName+'.rotateOrder', moduleAttrsDict['node_rotationOrder_values'][0][1])
                 joints.append(jointName)
                 cmds.setAttr(jointName+'.overrideEnabled', 1)
                 cmds.setAttr(jointName+'.overrideColor', moduleAttrsDict['handle_colour'])    
-
+            
+            # If the JointNode module has more than one node, go over each module node and create a joint hierarchy.
             if moduleAttrsDict['num_nodes'] > 1:
-                i = 0
-                for position in moduleAttrsDict['node_world_translation_values']:
-                    #rotOrder = {0:'xyz', 1:'yzx', 2:'zxy', 3:'zyx', 4:'yxz', 5:'xzy'}[rotationOrder[1]]
+                
+                for i, position in enumerate(moduleAttrsDict['node_world_translation_values']):
+                
+                    # Get the name of the joint to be created from the module node.
                     name = 'MRT_character'+characterName+'__'+moduleAttrsDict['userSpecName']+'_'+position[0]
-                    jointName = cmds.joint(name=name, position=position[1], radius=moduleAttrsDict['globalScale']*moduleAttrsDict['node_handle_sizes'][i][1]*0.16)
+                    
+                    # Create the joint for the module node.
+                    jointName = cmds.joint(name=name, position=position[1],
+                                       radius=moduleAttrsDict['globalScale']*moduleAttrsDict['node_handle_sizes'][i][1]*0.16)
+                                       
+                    # Set the joint attributes.
                     cmds.addAttr(jointName, dataType='string', longName='inheritedNodeType')
                     cmds.setAttr(jointName+'.inheritedNodeType', 'JointNode', type='string', lock=True)
                     cmds.setAttr(jointName+'.overrideEnabled', 1)
                     cmds.setAttr(jointName+'.overrideColor', moduleAttrsDict['handle_colour'])                
                     joints.append(jointName)
-                    i += 1
+                
+                # Orient the joint rotation axes. First orient the root joint with children to align the aim axis.
+                
+                # Get the up axis.
                 s_axis = {'XY':'zup', 'YZ':'xup', 'XZ':'yup'}[moduleAttrsDict['creation_plane'][-2:]]
+                
+                # Select the root joint in the joint hierarchy.
                 cmds.select(joints[0], replace=True)
-                cmds.joint(edit=True, orientJoint=moduleAttrsDict['node_axes'].lower(), secondaryAxisOrient=s_axis, zeroScaleOrient=True, children=True)
+                
+                # Perform joint orientation, this is done to align the aim axis down the joint hierarchy.
+                cmds.joint(edit=True, orientJoint=moduleAttrsDict['node_axes'].lower(), secondaryAxisOrient=s_axis,
+                                                                                         zeroScaleOrient=True, children=True)
                 cmds.select(clear=True)
+                
+                # Unparent the child joints for further orientation.
                 for joint in joints[1:]:
                     cmds.parent(joint, absolute=True, world=True)
-
+                
+                # Orient the joints using the orientation data.
                 for (joint, orientation) in zip(joints, moduleAttrsDict['node_world_orientation_values']):
                     cmds.joint(joint, edit=True, orientation=orientation[1])
 
-                i = 0
-                for joint in joints[1:]:
+                # Reparent the child joints.
+                for i, joint in enumerate(joints[1:]):
                     cmds.parent(joint, joints[i], absolute=True)
-                    i += 1
+                
+                # Reset the orientation for last joint.
                 cmds.setAttr(joints[-1]+'.jointOrient', 0, 0, 0, type='double3')
                 cmds.select(clear=True)
-
+                
+                # Set the joint rotation orders.
                 for joint, rotOrder in zip(joints, moduleAttrsDict['node_rotationOrder_values']):
                     cmds.setAttr(joint+'.rotateOrder', rotOrder[1])
 
