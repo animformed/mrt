@@ -2059,24 +2059,49 @@ def createProxyForSkeletonFromModule(characterJointSet, moduleAttrsDict, charact
     "returnModuleAttrsFromScene". It uses the existing module proxy geometry, if it exists.
     """
     distanceScaleInitMultNodes = []
+    
+    # Get the joint set, which in this case is the last joint set added to the 'characterJointSet' data list.
+    # See 'processCharacterFromScene' in mrt_UI.
+    # Then it looks into the joint set data, and lets the joint list from the second (1) index.
+    # See 'setupParentingForRawCharacterParts' above for details on 'characterJointSet'.
     jointSet = characterJointSet[-1][1]
+    
+    # Create the group to contain the joint proxy geometry.
     proxyGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__'+moduleAttrsDict['userSpecName']+'_proxyGeoGrp')
+    
+    # If the module contains a single node (which in this case is always a JointNode module).
     if moduleAttrsDict['num_nodes'] == 1:
+    
+        # If module proxy geometry exists. In this case, it will only contain elbow proxy geometry.
         if cmds.objExists(moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_elbow_geo_preTransform'):
-            elbow_proxy = cmds.duplicate(moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_elbow_geo_preTransform', returnRootsOnly=True, renameChildren=True, name='MRT_character'+characterName+'__'+moduleAttrsDict['userSpecName']+'_root_node_transform_proxy_elbow_geo_preTransform')[0]
-            cmds.parentConstraint(jointSet[0], elbow_proxy, maintainOffset=True, name=jointSet[0]+'_root_node_transform_proxy_elbow_geo_preTransform_parentConstraint')
-            cmds.scaleConstraint(jointSet[0], elbow_proxy, maintainOffset=True, name=jointSet[0]+'_root_node_transform_proxy_elbow_geo_preTransform_scaleConstraint')
+            # Duplicate the module proxy geometry, and name it.
+            elbow_proxy = cmds.duplicate(moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_elbow_geo_preTransform', \
+            returnRootsOnly=True, renameChildren=True, name='MRT_character%s__%s_root_node_transform_proxy_elbow_geo_preTransform' \
+                                                        % (characterName, moduleAttrsDict['userSpecName']))[0]
+            # Constrain the duplicated proxy geometry to the root joint (there's only one joint)
+            cmds.parentConstraint(jointSet[0], elbow_proxy, maintainOffset=True,  \
+                                        name=jointSet[0]+'_root_node_transform_proxy_elbow_geo_preTransform_parentConstraint')
+            cmds.scaleConstraint(jointSet[0], elbow_proxy, maintainOffset=True,  \
+                                        name=jointSet[0]+'_root_node_transform_proxy_elbow_geo_preTransform_scaleConstraint')
+            # Parent the proxy geometry to the proxy group for the joint set.
             cmds.parent(elbow_proxy, proxyGrp)
+
+    # If the module contains more than one node (can be a JointNode, SplineNode or a HingeNode module).
     if moduleAttrsDict['num_nodes'] > 1:
+    
         index = 0
+        
         for (i, joint) in zip(range(moduleAttrsDict['num_nodes']), jointSet):
+        
             if index == 0:
+            
                 if cmds.objExists(moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_elbow_geo_preTransform'):
                     elbow_proxy = cmds.duplicate(moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_elbow_geo_preTransform', returnRootsOnly=True, renameChildren=True, name='MRT_character'+characterName+'__'+moduleAttrsDict['userSpecName']+'_root_node_transform_proxy_elbow_geo_preTransform')[0]
                     cmds.makeIdentity(elbow_proxy, scale=True, apply=True)
                     cmds.parentConstraint(joint, elbow_proxy, maintainOffset=True, name=joint+'_root_node_transform_proxy_elbow_geo_preTransform_parentConstraint')
                     cmds.scaleConstraint(joint, elbow_proxy, maintainOffset=True, name=joint+'_root_node_transform_proxy_elbow_geo_preTransform_scaleConstraint')
                     cmds.parent(elbow_proxy, proxyGrp)
+                
                 if cmds.objExists(moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_bone_geo_preTransform'):
                     bone_proxy = cmds.duplicate(moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_bone_geo_preTransform', returnRootsOnly=True, renameChildren=True, name='MRT_character'+characterName+'__'+moduleAttrsDict['userSpecName']+'_root_node_transform_proxy_bone_geo_preTransform')[0]
                     cmds.makeIdentity(bone_proxy, scale=True, apply=True)
