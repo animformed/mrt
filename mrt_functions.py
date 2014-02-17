@@ -20,181 +20,11 @@ import os, math, sys, re, glob, shutil
 __MRT_utility_tempScriptJob_list = [] # Could've used optionVar for this, best option is melGlobals.
                                       # But this is just me.
 
-def cleanup_MRT_actions(jobNum=None):
-    """
-    Cleans up any temporary .py or .pyc during runtime.
-    """
-    path = cmds.internalVar(userScriptDir=True) + 'MRT/'
-
-    # Clean up 'mrt_controlRig.py'. This file is an aggregate of 'mrt_controlRig_src.py' 
-    # and all under the directory MRT/userControlClasses.
-    if os.path.exists(path+'mrt_controlRig.py'):
-        os.remove(path+'mrt_controlRig.py')
-    if os.path.exists(path+'mrt_controlRig.pyc'):
-        os.remove(path+'mrt_controlRig.pyc')
-
-    # If a scriptJob is passed in, kill it as well.
-    if jobNum:
-        cmds.scriptJob(kill=jobNum) 
-
-def find_userSetupFileStatus():
-    """
-    Checks if a 'userSetup' file exists under the user script directory.
-    If found, return its full path name with its extension.
-    If only 'mel' or 'py' is found, return it. If both, return 'mel'.
-    """
-    scriptDir = cmds.internalVar(userScriptDir=True)
-    userSetupFiles = glob.glob(scriptDir + 'userSetup.*')
-
-    valid_userSetupFiles = []
-
-    if len(userSetupFiles) > 0:
-
-        for file in userSetupFiles:
-
-            filename = re.split(r'\/|\\', file)[-1]    # Get the file name in the path
-
-            filenameExtension = filename.rpartition('.')[2]
-            filenameExtension = filenameExtension.lower()
-
-            if len(filenameExtension) == 2 and filenameExtension == 'py':
-                valid_userSetupFiles.append(file)
-
-            if len(filenameExtension) == 3 and filenameExtension == 'mel':
-                valid_userSetupFiles.append(file)
-
-    if len(valid_userSetupFiles):
-
-        if len(valid_userSetupFiles) == 1:
-
-            if valid_userSetupFiles[0].endswith('mel'):
-                return os.path.join(scriptDir, 'userSetup.mel')
-
-            if valid_userSetupFiles[0].endswith('py'):
-                return os.path.join(scriptDir, 'userSetup.py')
-
-        if len(valid_userSetupFiles) > 1:
-            return os.path.join(scriptDir, 'userSetup.mel')
-
-    return scriptDir
-
-def returnEnvPluginPathStatus():
-    """
-    Checks and returns the plugin path for the 'MAYA_PLUG_IN_PATH' string value in the maya.env file. 
-    Can be modified to work with os.getenv('MAYA_PLUG_IN_PATH') as well.
-    """
-    envPath = str(cmds.internalVar(userScriptDir=True)).rpartition('scripts/')[0] + 'Maya.env'
-    envSettings = open(envPath)
-
-    plugPaths = ''
-
-    for line in envSettings:
-
-        if re.search('MAYA_PLUG_IN_PATH[ ]*=[ ]*', line) and re.split('[ ]*MAYA_PLUG_IN_PATH', line.strip())[0] != '//':
-
-            paths = re.split('MAYA_PLUG_IN_PATH[ ]*=[ ]*', line.strip())[-1]
-
-            if paths:
-                plugPaths = paths
-
-            break;
-    else:
-        plugPaths = None
-
-    return plugPaths
-
-def returnHierarchyTreeListStringForCustomControlRigging(rootJoint, prefix='', prettyPrint=True):
-    """
-    Returns a string value depicting the hierarchy tree list of all joints from a given root joint. 
-    For more description, see the comments for "CustomLegControl" class in "mrt_controlRig_src.py".
-
-    Returns string with following layout for a valid root joint with prettyPrint set to True:
-
-    Each child joint is indented with a tab space.
-
-    <HingeNode>_root_node_transform
-        <HingeNode>_node_1_transform
-            <HingeNode>_end_node_transform
-                <JointNode>_root_node_transform
-                <JointNode>_root_node_transform
-                    <JointNode>_end_node_transform
-    """
-    if prettyPrint:
-        newLine = '\n'
-        tabLine = '\t'
-    else:
-        newLine = '\\n'
-        tabLine = '\\t'
-
-    # Stores the string attributes for the passed-in joint name
-    jh_string = '%s<%s>%s%s'%(prefix, cmds.getAttr(rootJoint+'.inheritedNodeType'), \
-                re.split('(_root_node_transform|_end_node_transform|_node_\d+_transform)', rootJoint)[1], newLine)
-
-    # Check the joint for multiple children. If they have further descendents, search recursively and collect 
-    # their joint name attributes if the passed-in joint has only a single child joint.
-
-    children = cmds.listRelatives(rootJoint, children=True, type='joint')
-
-    while children:
-
-        prefix = prefix + tabLine
-
-        if len(children) == 1:
-
-            # Append the child joint name attributes.
-            jh_string += '%s<%s>%s%s'%(prefix, cmds.getAttr(children[0]+'.inheritedNodeType'), \
-                re.split('(_root_node_transform|_end_node_transform|_node_\d+_transform)', children[0])[1], newLine)
-
-            children = cmds.listRelatives(children[0], children=True, type='joint') 
-
-        else:
-
-            children_list = []
-            allC_count_dict = {}
-
-            for child in children:
-
-                allChildren = cmds.listRelatives(child, allDescendents=True, type='joint') or []
-
-                if allC_count_dict.get(len(allChildren)):
-                    allC_count_dict[len(allChildren)].append(child)
-                else:
-                    allC_count_dict[len(allChildren)] = [child]
-
-            if len(allC_count_dict):
-
-                for item in sorted(allC_count_dict):
-                    children_list.extend(allC_count_dict[item])
-
-            if len(children_list):
-
-                for child in children_list:
-                    jh_string += returnHierarchyTreeListStringForCustomControlRigging(child, prefix, prettyPrint=prettyPrint)
-
-                break
-
-    return jh_string
-
-
-def returnRootForCharacterHierarchy(joint):
-    """
-    Returns the string name of the root joint of a joint hierarchy in a character for a given joint name, 
-    which is part of the hierarchy.
-    """
-    rootJoint = ''
-
-    # The cmds version returned occasional errors stating incorrect boolean value with parent flag, if
-    # this function was used in a scriptJob event call. Not sure why.
-    # parentJoint = cmds.listRelatives(joint, parent=True, type='joint')  <-- What's wrong with you??
-
-    parentJoint = mel.eval('listRelatives -parent -type joint '+joint)
-
-    if parentJoint and parentJoint[0].endswith('_transform'):
-        rootJoint = returnRootForCharacterHierarchy(parentJoint[0])
-    else:
-        rootJoint = joint
-
-    return rootJoint
+# -------------------------------------------------------------------------------------------------------------
+#
+#   STARTUP FUNCTIONS
+#
+# -------------------------------------------------------------------------------------------------------------
 
 def prep_MRTMayaStartupActions():
     """
@@ -326,6 +156,33 @@ def prep_MRTMayaStartupActions():
 
     return userSetupStatus, mayaEnvStatus
 
+
+def returnEnvPluginPathStatus():
+    """
+    Checks and returns the plugin path for the 'MAYA_PLUG_IN_PATH' string value in the maya.env file. 
+    Can be modified to work with os.getenv('MAYA_PLUG_IN_PATH') as well.
+    """
+    envPath = str(cmds.internalVar(userScriptDir=True)).rpartition('scripts/')[0] + 'Maya.env'
+    envSettings = open(envPath)
+
+    plugPaths = ''
+
+    for line in envSettings:
+
+        if re.search('MAYA_PLUG_IN_PATH[ ]*=[ ]*', line) and re.split('[ ]*MAYA_PLUG_IN_PATH', line.strip())[0] != '//':
+
+            paths = re.split('MAYA_PLUG_IN_PATH[ ]*=[ ]*', line.strip())[-1]
+
+            if paths:
+                plugPaths = paths
+
+            break;
+    else:
+        plugPaths = None
+
+    return plugPaths
+
+
 def prep_MRTcontrolRig_source():
     """
     Executed at startup to combine the .py sources under "userControlClasses" with "mrt_controlRig_src.py"
@@ -383,6 +240,72 @@ def prep_MRTcontrolRig_source():
     f_file.close()
 
 
+def find_userSetupFileStatus():
+    """
+    Checks if a 'userSetup' file exists under the user script directory.
+    If found, return its full path name with its extension.
+    If only 'mel' or 'py' is found, return it. If both, return 'mel'.
+    """
+    scriptDir = cmds.internalVar(userScriptDir=True)
+    userSetupFiles = glob.glob(scriptDir + 'userSetup.*')
+
+    valid_userSetupFiles = []
+
+    if len(userSetupFiles) > 0:
+
+        for file in userSetupFiles:
+
+            filename = re.split(r'\/|\\', file)[-1]    # Get the file name in the path
+
+            filenameExtension = filename.rpartition('.')[2]
+            filenameExtension = filenameExtension.lower()
+
+            if len(filenameExtension) == 2 and filenameExtension == 'py':
+                valid_userSetupFiles.append(file)
+
+            if len(filenameExtension) == 3 and filenameExtension == 'mel':
+                valid_userSetupFiles.append(file)
+
+    if len(valid_userSetupFiles):
+
+        if len(valid_userSetupFiles) == 1:
+
+            if valid_userSetupFiles[0].endswith('mel'):
+                return os.path.join(scriptDir, 'userSetup.mel')
+
+            if valid_userSetupFiles[0].endswith('py'):
+                return os.path.join(scriptDir, 'userSetup.py')
+
+        if len(valid_userSetupFiles) > 1:
+            return os.path.join(scriptDir, 'userSetup.mel')
+
+    return scriptDir
+
+
+# -------------------------------------------------------------------------------------------------------------
+#
+#   UTILITY FUNCTIONS
+#
+# -------------------------------------------------------------------------------------------------------------
+
+def cleanup_MRT_actions(jobNum=None):
+    """
+    Cleans up any temporary .py or .pyc during startup or scene use.
+    Modify as necessary.
+    """
+    path = cmds.internalVar(userScriptDir=True) + 'MRT/'
+
+    # Clean up 'mrt_controlRig.py'. This file is an aggregate of 'mrt_controlRig_src.py' 
+    # and all under the directory MRT/userControlClasses.
+    if os.path.exists(path+'mrt_controlRig.py'):
+        os.remove(path+'mrt_controlRig.py')
+    if os.path.exists(path+'mrt_controlRig.pyc'):
+        os.remove(path+'mrt_controlRig.pyc')
+
+    # If a scriptJob is passed in, kill it as well.
+    if jobNum:
+        cmds.scriptJob(kill=jobNum)
+
 
 def stripMRTNamespace(moduleName):
     """
@@ -395,6 +318,7 @@ def stripMRTNamespace(moduleName):
         return namespaceInfo[0], namespaceInfo[2]
 
     return None
+
 
 def returnMRT_Namespaces(names):
     """
@@ -410,6 +334,7 @@ def returnMRT_Namespaces(names):
         return MRT_namespaces
 
     return None
+
 
 def findHighestNumSuffix(baseName, names):
     """
@@ -427,6 +352,7 @@ def findHighestNumSuffix(baseName, names):
                 highestValue = numSuffix
 
     return highestValue
+
 
 def findHighestCommonTextScrollListNameSuffix(baseName, names):
     """
@@ -447,7 +373,8 @@ def findHighestCommonTextScrollListNameSuffix(baseName, names):
             if numSuffix > highestValue:
                 highestValue = numSuffix
     
-    return highestValue        
+    return highestValue
+
 
 def returnModuleUserSpecNames(namespaces):
     """
@@ -466,6 +393,7 @@ def returnModuleUserSpecNames(namespaces):
 
     return strippedNamespaces, userSpecifiedNames
 
+
 def returnVectorMagnitude(transform_start, transform_end):
     """
     Calculates and returns the magnitude for the input vector, with the arguments for
@@ -475,6 +403,7 @@ def returnVectorMagnitude(transform_start, transform_end):
     transform_vector_magnitude = math.sqrt(reduce(lambda x,y: x+y, [component**2 for component in transform_vector]))
 
     return transform_vector_magnitude
+
 
 def returnCrossProductDirection(transform1_start, transform1_end, transform2_start, transform2_end, normalize=False):
     """
@@ -513,6 +442,7 @@ def returnCrossProductDirection(transform1_start, transform1_end, transform2_sta
 
     return theta_sine, cross_product_vector, cross_product_vector_magnitude
 
+
 def returnDotProductDirection(transform1_start, transform1_end, transform2_start, transform2_end, normalize=False):
     """
     Calculates and returns the dot-product direction for two input vectors. It has arguments for,
@@ -545,6 +475,7 @@ def returnDotProductDirection(transform1_start, transform1_end, transform2_start
 
     return direction_cosine, transform1_transform2_dot_magnitude
 
+
 def returnOffsetPositionBetweenTwoVectors(startVector, endVector, parameter=0):
     """
     Calculates and returns a new position with respect to two input vector positions, based on the parameter value.
@@ -561,6 +492,241 @@ def returnOffsetPositionBetweenTwoVectors(startVector, endVector, parameter=0):
     off_vec = map(lambda x,y:x+(y*parameter), startVector, direction_vec)
 
     return off_vec
+
+
+def returnModuleTypeFromNamespace(namespace):
+    """
+    Return the type of a module from it namespace.
+    Eg., "MRT_HingeNode__module1:" will return "HingeNode" 
+    """
+    firstPart = namespace.partition('__')[0]
+    moduleType = firstPart.partition('_')[2]
+
+    return moduleType
+
+
+def loadXhandleShapePlugin():
+    """
+    Checks and loads the xHandleShape plugin. It finds the correct plugin from the built versions for the 
+    current session of maya and os if supported and makes a copy to the plug-in search path.
+
+    It returns a bool if it successfully loads the plugin.
+
+    To be modified for future updates and add mac support ?
+    """
+    maya_ver = returnMayaVersion()
+
+    if maya_ver > 2014:
+        cmds.warning('MRT is not supported on this version of Maya. Aborting.')
+        return False
+    if maya_ver < 2011:
+        cmds.warning('MRT is not supported on this version of Maya. Aborting.')
+        return False
+
+    pluginBasePath = cmds.internalVar(userScriptDir=True) + 'MRT/plugin/'
+
+    # Find the correct plugin built version.
+    if os.name == 'nt':
+        plugin_source_path = pluginBasePath + '/builds/windows/mrt_xhandleShape_m%sx64.mll'%(maya_ver)
+        plugin_dest_path = pluginBasePath + 'mrt_xhandleShape.mll'
+
+    elif os.name == 'posix':
+        plugin_source_path = pluginBasePath + '/builds/linux/mrt_xhandleShape_m%sx64.so'%(maya_ver)
+        plugin_dest_path = pluginBasePath + 'mrt_xhandleShape.so'
+
+    else:
+        cmds.warning('MRT is not supported on \"'+os.name+'\" platform. Aborting.')
+        return False
+
+    # Copy to plugin path and then load it.
+    try:
+        if not cmds.pluginInfo(plugin_dest_path, query=True, loaded=True):
+            shutil.copy2(plugin_source_path, plugin_dest_path)
+
+    except IOError:
+        cmds.warning('Error: MRT cannot write to plugin path. Aborting.')
+        return False
+
+    finally:
+        cmds.loadPlugin(plugin_dest_path, quiet=True)
+
+    return True
+
+
+def selection_sort_by_length(list_sequence):
+    """
+    Sorts a given sequence list (list of lists) by their length. In place sort.
+    """
+    for i in xrange(0, len(list_sequence)):
+        min_index = i
+        for j in xrange(i+1, len(list_sequence)):
+            if len(list_sequence[min_index]) > len(list_sequence[j]):
+                min_index = j
+        list_sequence[i] = list_sequence[min_index]
+        list_sequence[min_index] = list_sequence[i]
+
+
+def runDeferredFunction_wrapper(function):
+    """
+    Execute a given function during CPU idle time.
+    """
+    # DEPRECATED #
+    # global _eval__Function
+    # _eval__Function = function
+    # global _eval__Return
+    # cmds.evalDeferred("mrt_sceneUtils._eval__Return = mrt_sceneUtils._eval__Function()", lowestPriority=True)
+    import maya.utils
+    maya.utils.executeDeferred(function)
+
+
+def returnValidSelectionFlagForModuleTransformObjects(selection):
+    """
+    Checks a selection for a valid module object created by MRT.
+    """
+    matchObjects = [re.compile('^MRT_\D+__\w+:module_transform$'),
+                    re.compile('^MRT_\D+__\w+:root_node_transform$'),
+                    re.compile('^MRT_\D+__\w+:end_node_transform$'),
+                    re.compile('^MRT_\D+__\w+:node_\d+_transform$'),
+                    re.compile('^MRT_\D+__\w+:spline_\d+_adjustCurve_transform$'),
+                    re.compile('^MRT_\D+__\w+:splineStartHandleTransform$'),
+                    re.compile('^MRT_\D+__\w+:splineEndHandleTransform$'),
+                    re.compile('^MRT_\D+__\w+:root_node_transform_control$'),
+                    re.compile('^MRT_\D+__\w+:end_node_transform_control$'),
+                    re.compile('^MRT_\D+__\w+:node_1_transform_control$'),
+                    re.compile('^MRT_\D+__\w+:single_orientation_representation_transform$'),
+                    re.compile('^MRT_\D+__\w+:[_0-9a-z]*transform_orientation_representation_transform$')]
+
+    for matchObject in matchObjects:
+
+        matchResult = matchObject.match(selection)
+
+        if matchResult:
+            return True
+
+    return False
+
+
+def concatenateCommonNamesFromHierarchyData(data, commonNames=[]):
+    """
+    This function works upon the hierarchy data returned by traverseParentModules() or traverseChildrenModules().
+    It collects all object names uniquely in a mutable sequence (list) passed-in as an argument. 
+    """
+    if type(data) == dict:
+        for item in data:
+            if not item in commonNames:
+                commonNames += [item]
+            if isinstance(data[item], dict):
+                commonNames = concatenateCommonNamesFromHierarchyData(data[item], commonNames)
+
+    if type(data) == list:
+        for item in data:
+            if isinstance(item, list):
+                commonNames = concatenateCommonNamesFromHierarchyData(item, commonNames)
+            else:
+                if not item in commonNames:
+                    commonNames += [item]
+    return commonNames
+
+
+# -------------------------------------------------------------------------------------------------------------
+#
+#   SCENE FUNCTIONS
+#
+# -------------------------------------------------------------------------------------------------------------
+
+def returnHierarchyTreeListStringForCustomControlRigging(rootJoint, prefix='', prettyPrint=True):
+    """
+    Returns a string value depicting the hierarchy tree list of all joints from a given root joint. 
+    For more description, see the comments for "CustomLegControl" class in "mrt_controlRig_src.py".
+
+    Returns string with following layout for a valid root joint with prettyPrint set to True:
+
+    Each child joint is indented with a tab space.
+
+    <HingeNode>_root_node_transform
+        <HingeNode>_node_1_transform
+            <HingeNode>_end_node_transform
+                <JointNode>_root_node_transform
+                <JointNode>_root_node_transform
+                    <JointNode>_end_node_transform
+    """
+    if prettyPrint:
+        newLine = '\n'
+        tabLine = '\t'
+    else:
+        newLine = '\\n'
+        tabLine = '\\t'
+
+    # Stores the string attributes for the passed-in joint name
+    jh_string = '%s<%s>%s%s'%(prefix, cmds.getAttr(rootJoint+'.inheritedNodeType'), \
+                re.split('(_root_node_transform|_end_node_transform|_node_\d+_transform)', rootJoint)[1], newLine)
+
+    # Check the joint for multiple children. If they have further descendents, search recursively and collect 
+    # their joint name attributes if the passed-in joint has only a single child joint.
+
+    children = cmds.listRelatives(rootJoint, children=True, type='joint')
+
+    while children:
+
+        prefix = prefix + tabLine
+
+        if len(children) == 1:
+
+            # Append the child joint name attributes.
+            jh_string += '%s<%s>%s%s'%(prefix, cmds.getAttr(children[0]+'.inheritedNodeType'), \
+                re.split('(_root_node_transform|_end_node_transform|_node_\d+_transform)', children[0])[1], newLine)
+
+            children = cmds.listRelatives(children[0], children=True, type='joint') 
+
+        else:
+
+            children_list = []
+            allC_count_dict = {}
+
+            for child in children:
+
+                allChildren = cmds.listRelatives(child, allDescendents=True, type='joint') or []
+
+                if allC_count_dict.get(len(allChildren)):
+                    allC_count_dict[len(allChildren)].append(child)
+                else:
+                    allC_count_dict[len(allChildren)] = [child]
+
+            if len(allC_count_dict):
+
+                for item in sorted(allC_count_dict):
+                    children_list.extend(allC_count_dict[item])
+
+            if len(children_list):
+
+                for child in children_list:
+                    jh_string += returnHierarchyTreeListStringForCustomControlRigging(child, prefix, prettyPrint=prettyPrint)
+
+                break
+
+    return jh_string
+
+
+def returnRootForCharacterHierarchy(joint):
+    """
+    Returns the string name of the root joint of a joint hierarchy in a character for a given joint name, 
+    which is part of the hierarchy.
+    """
+    rootJoint = ''
+
+    # The cmds version returned occasional errors stating incorrect boolean value with parent flag, if
+    # this function was used in a scriptJob event call. Not sure why.
+    # parentJoint = cmds.listRelatives(joint, parent=True, type='joint')  <-- What's wrong with you??
+
+    parentJoint = mel.eval('listRelatives -parent -type joint '+joint)
+
+    if parentJoint and parentJoint[0].endswith('_transform'):
+        rootJoint = returnRootForCharacterHierarchy(parentJoint[0])
+    else:
+        rootJoint = joint
+
+    return rootJoint
+
 
 def returnAxesInfoForFootTransform(transform, foot_vec_dict):
     """
@@ -630,74 +796,6 @@ def returnAxesInfoForFootTransform(transform, foot_vec_dict):
 
     return axes_info
 
-def returnModuleTypeFromNamespace(namespace):
-    """
-    Return the type of a module from it namespace.
-    Eg., "MRT_HingeNode__module1:" will return "HingeNode" 
-    """
-    firstPart = namespace.partition('__')[0]
-    moduleType = firstPart.partition('_')[2]
-
-    return moduleType
-
-def loadXhandleShapePlugin():
-    """
-    Checks and loads the xHandleShape plugin. It finds the correct plugin from the built versions for the 
-    current session of maya and os if supported and makes a copy to the plug-in search path.
-
-    It returns a bool if it successfully loads the plugin.
-
-    To be modified for future updates and add mac support ?
-    """
-    maya_ver = returnMayaVersion()
-
-    if maya_ver > 2014:
-        cmds.warning('MRT is not supported on this version of Maya. Aborting.')
-        return False
-    if maya_ver < 2011:
-        cmds.warning('MRT is not supported on this version of Maya. Aborting.')
-        return False
-
-    pluginBasePath = cmds.internalVar(userScriptDir=True) + 'MRT/plugin/'
-
-    # Find the correct plugin built version.
-    if os.name == 'nt':
-        plugin_source_path = pluginBasePath + '/builds/windows/mrt_xhandleShape_m%sx64.mll'%(maya_ver)
-        plugin_dest_path = pluginBasePath + 'mrt_xhandleShape.mll'
-
-    elif os.name == 'posix':
-        plugin_source_path = pluginBasePath + '/builds/linux/mrt_xhandleShape_m%sx64.so'%(maya_ver)
-        plugin_dest_path = pluginBasePath + 'mrt_xhandleShape.so'
-
-    else:
-        cmds.warning('MRT is not supported on \"'+os.name+'\" platform. Aborting.')
-        return False
-
-    # Copy to plugin path and then load it.
-    try:
-        if not cmds.pluginInfo(plugin_dest_path, query=True, loaded=True):
-            shutil.copy2(plugin_source_path, plugin_dest_path)
-
-    except IOError:
-        cmds.warning('Error: MRT cannot write to plugin path. Aborting.')
-        return False
-
-    finally:
-        cmds.loadPlugin(plugin_dest_path, quiet=True)
-
-    return True
-
-def selection_sort_by_length(list_sequence):
-    """
-    Sorts a given sequence list (list of lists) by their length. In place sort.
-    """
-    for i in xrange(0, len(list_sequence)):
-        min_index = i
-        for j in xrange(i+1, len(list_sequence)):
-            if len(list_sequence[min_index]) > len(list_sequence[j]):
-                min_index = j
-        list_sequence[i] = list_sequence[min_index]
-        list_sequence[min_index] = list_sequence[i]
 
 def performOnIdle():
     """
@@ -706,12 +804,14 @@ def performOnIdle():
     """
     cmds.select(clear=True)
 
+
 def moveSelectionOnIdle(selection, translation_values):
     """
     Useful for selection and moving after a successful DG update by maya.
     """
     cmds.select(selection, replace=True)
     cmds.move(*translation_values, relative=True, worldSpace=True)
+
 
 def traverseParentModules(module_namespace):
     """
@@ -738,6 +838,7 @@ def traverseParentModules(module_namespace):
             traversed_modules += traverseParentModules(moduleParentNamespace)[0]
 
     return traversed_modules, traverse_length
+
 
 def traverseChildrenModules(module_namespace, allChildren=False):
     """
@@ -793,6 +894,7 @@ def traverseChildrenModules(module_namespace, allChildren=False):
     if not len(childrenModules):
         return None
 
+
 def traverseConstrainedParentHierarchiesForSkeleton(rootJoint):
     """
     Return a list of all parents (connected using constraints) from a given root joint for 
@@ -821,6 +923,7 @@ def traverseConstrainedParentHierarchiesForSkeleton(rootJoint):
 
     return allParentRootJoints
 
+
 def checkForJointDuplication():
     """
     Checks if a character joint has been manually duplicated in the scene.
@@ -845,6 +948,7 @@ def checkForJointDuplication():
                 break
 
     return check
+
 
 def returnConstraintWeightIndexForTransform(transform, constraintNode, matchAttr=False):
     """
@@ -892,26 +996,6 @@ def returnConstraintWeightIndexForTransform(transform, constraintNode, matchAttr
     else:
         return None
 
-def concatenateCommonNamesFromHierarchyData(data, commonNames=[]):
-    """
-    This function works upon the hierarchy data returned by traverseParentModules() or traverseChildrenModules().
-    It collects all object names uniquely in a mutable sequence (list) passed-in as an argument. 
-    """
-    if type(data) == dict:
-        for item in data:
-            if not item in commonNames:
-                commonNames += [item]
-            if isinstance(data[item], dict):
-                commonNames = concatenateCommonNamesFromHierarchyData(data[item], commonNames)
-
-    if type(data) == list:
-        for item in data:
-            if isinstance(item, list):
-                commonNames = concatenateCommonNamesFromHierarchyData(item, commonNames)
-            else:
-                if not item in commonNames:
-                    commonNames += [item]
-    return commonNames
 
 def returnMayaVersion():
     """
@@ -1012,6 +1096,7 @@ def addNodesToContainer(inputContainer, inputNodes, includeHierarchyBelow=False,
     except Exception:
         return False
 
+
 def setRotationOrderForFootUtilTransform(transform, axesInfo):
     """
     Calculate and set the rotate order for a given transform in a reverse IK leg/foot configuration.
@@ -1027,6 +1112,7 @@ def setRotationOrderForFootUtilTransform(transform, axesInfo):
 
     # Set rotation order
     cmds.setAttr(transform+'.rotateOrder', rotateOrder)
+
 
 def updateNodeList(nodes):
     """
@@ -1044,6 +1130,7 @@ def updateNodeList(nodes):
     cmds.select(clear=True)
     cmds.setToolTo('selectSuperContext')    
 
+
 def updateAllTransforms():
     """
     Updates all transforms created by MRT.
@@ -1058,6 +1145,7 @@ def updateAllTransforms():
 
     cmds.select(clear=True)
     cmds.setToolTo('selectSuperContext')   
+
 
 def updateContainerNodes(container):
     """
@@ -1091,307 +1179,6 @@ def cleanSceneState():      # This definition is to be modified as necessary.
         else:
             cmds.delete(extra_nodes)
 
-def runDeferredFunction_wrapper(function):
-    """
-    Execute a given function during CPU idle time.
-    """
-    # DEPRECATED #
-    # global _eval__Function
-    # _eval__Function = function
-    # global _eval__Return
-    # cmds.evalDeferred("mrt_sceneUtils._eval__Return = mrt_sceneUtils._eval__Function()", lowestPriority=True)
-    import maya.utils
-    maya.utils.executeDeferred(function)
-
-def moduleUtilitySwitchScriptJob():      # This definition is to be modified as necessary.
-    """
-    Included as MRT startup function in userSetup file. Runs a scriptJob to trigger 
-    runtime procedures during maya events.
-    """
-    jobNumber = cmds.scriptJob(event=['SelectionChanged', moduleUtilitySwitchFunctions], protected=True)
-    return jobNumber
-
-def deleteMirrorMoveConnections():
-    """
-    Kills all scriptJobs required for mirror move operations for modules,
-    removes container for mirror nodes.
-    """
-    # Toggle undo state
-    cmds.undoInfo(stateWithoutFlush=False)
-
-    # Kill all mirror utility scriptJobs. 
-    global __MRT_utility_tempScriptJob_list
-
-    if len(__MRT_utility_tempScriptJob_list) > 0:
-
-        for job in __MRT_utility_tempScriptJob_list:
-            if cmds.scriptJob(exists=job):
-                cmds.scriptJob(kill=job)
-
-        __MRT_utility_tempScriptJob_list = []
-
-    # Delete mirror nodes
-    if cmds.objExists('MRT_mirrorMove__Container'):
-        cmds.delete('MRT_mirrorMove__Container')
-
-    cmds.undoInfo(stateWithoutFlush=True)
-
-def moduleUtilitySwitchFunctions():      # This definition is to be modified as necessary.
-    """
-    Runtime function called by scriptJob to assist in module operations.
-    """
-    # Disable mirror operations
-    deleteMirrorMoveConnections()
-
-    # Toggle undo state
-    cmds.undoInfo(stateWithoutFlush=False)
-
-    # Get the current namespace, and set to root namespace
-    currentNamespace = mel.eval('namespaceInfo -currentNamespace')
-    cmds.namespace(setNamespace=':')
-
-    # Get the current selection for modules, if any.
-    selection = mel.eval("ls -sl -type dagNode")   # The cmds version returned minor bugs, when executed via a scriptJob. 
-                                                   # Sometimes, it wouldn't take the boolean argument for 'selection'.
-    selectedModuleNamespaces = []
-    selectedMirrorModules = []
-    selectedMirrorModuleNamespaces = []
-
-    # If one of the modules in a mirrored module pairs are selected, select their mirrored pair as well.
-    if selection:
-        selection.reverse()
-
-        for sel in selection:
-
-            # Get the namespace of the selection, if a module is selected.
-            namespaceInfo = stripMRTNamespace(sel)
-            if namespaceInfo != None:
-                selectedModuleNamespaces.append(namespaceInfo[0])
-
-                # Select it mirrored module pair, if it exists (If the selected module is part of mirrored module pair)
-                if cmds.attributeQuery('mirrorModuleNamespace', node=namespaceInfo[0]+':moduleGrp', exists=True):
-                    selectedMirrorModules.append(sel)
-                    selectedMirrorModuleNamespaces.append(namespaceInfo[0])
-
-    # If valid modules are selected, perform operations on them as well.
-    if len(selectedModuleNamespaces):
-
-        # Based on the type of the selected module, do as follows
-        lastSelectionNamespace = selectedModuleNamespaces[0]
-        moduleType = returnModuleTypeFromNamespace(lastSelectionNamespace)
-
-        # If a spline module node is selected
-        if moduleType == 'SplineNode':
-
-            # Smooth the display for the spline module curve
-            cmds.displaySmoothness(lastSelectionNamespace+':splineNode_curve', pointsWire=32)
-
-            # Execute a single-run scriptJob for changing the orientation type handles for its nodes 
-            cmds.scriptJob(attributeChange=[lastSelectionNamespace+':splineStartHandleTransform.Node_Orientation_Type', \
-                                        partial(changeSplineJointOrientationType, lastSelectionNamespace)], runOnce=True)
-
-            # If the spline module has proxy geometry, execute a single-run scriptJob for modifying the proxy draw style
-            # by using the attribute on the module transform
-            if cmds.objExists(lastSelectionNamespace+':proxyGeometryGrp'):
-
-                cmds.scriptJob(attributeChange=[lastSelectionNamespace+':splineStartHandleTransform.proxy_geometry_draw', \
-                                        partial(changeSplineProxyGeometryDrawStyle, lastSelectionNamespace)], runOnce=True)
-
-
-        # If a joint or hinge module node is selected
-        if moduleType == 'JointNode' or moduleType == 'HingeNode':
-            if cmds.objExists(lastSelectionNamespace+':proxyGeometryGrp'):
-                cmds.scriptJob(attributeChange=[lastSelectionNamespace+':module_transform.proxy_geometry_draw', \
-                                            partial(changeProxyGeometryDrawStyle, lastSelectionNamespace)], runOnce=True)
-
-    if len(selectedMirrorModules):
-        setupMirrorMoveConnections(selectedMirrorModules, selectedMirrorModuleNamespaces)
-
-    # Set to the original namespace
-    cmds.namespace(setNamespace=currentNamespace)
-    cmds.undoInfo(stateWithoutFlush=True)
-
-def changeSplineJointOrientationType(moduleNamespace):
-    """
-    Executed by scriptJob to modify the spline node orientation type by modifying the "Node_Orientation_Type"
-    attribute on the spline module start transform.
-    """
-    selection = mel.eval('ls -sl -type dagNode')
-
-    cmds.lockNode(moduleNamespace+':module_container', lock=False, lockUnpublished=False)
-
-    # If the node orientation type is set to 'World' 
-    if cmds.getAttr(moduleNamespace+':splineStartHandleTransform.Node_Orientation_Type') == 0:
-
-        cmds.setAttr(moduleNamespace+':splineStartHandleTransform.Axis_Rotate', 0, keyable=False)
-        node_transform_Grp = moduleNamespace+':moduleJointsGrp'
-        node_transform_Grp_allChildren = cmds.listRelatives(node_transform_Grp, allDescendents=True, type='joint')
-        for transform in node_transform_Grp_allChildren:
-            cmds.setAttr(transform+'_pairBlend.rotateMode', 1)
-
-    # IF the node orientation type is set to 'Object'
-    if cmds.getAttr(moduleNamespace+':splineStartHandleTransform.Node_Orientation_Type') == 1:
-
-        cmds.setAttr(moduleNamespace+':splineStartHandleTransform.Axis_Rotate', keyable=True)
-        node_transform_Grp = moduleNamespace+':moduleJointsGrp'
-        node_transform_Grp_allChildren = cmds.listRelatives(node_transform_Grp, allDescendents=True, type='joint')
-        for transform in node_transform_Grp_allChildren:
-            cmds.setAttr(transform+'_pairBlend.rotateMode', 2)
-
-    cmds.lockNode(moduleNamespace+':module_container', lock=True, lockUnpublished=True)
-    cmds.select(selection)
-
-def changeSplineJointOrientationType_forMirror(moduleNamespace, mirrorModuleNamespace): 
-    """
-    Executed when one of the mirrored module pairs of a spline module is modified. 
-    Called in setupMirrorMoveConnections() by a scriptJob. Modifies the spline node orientation type 
-    on modules in a mirrored module pair for a selected spline module (part of the pair).
-    """
-    selection = mel.eval('ls -sl -type dagNode')
-
-    cmds.lockNode(moduleNamespace+':module_container', lock=False, lockUnpublished=False)
-    cmds.lockNode(mirrorModuleNamespace+':module_container', lock=False, lockUnpublished=False)
-
-    if cmds.getAttr(moduleNamespace+':splineStartHandleTransform.Node_Orientation_Type') == 0:
-
-        cmds.setAttr(moduleNamespace+':splineStartHandleTransform.Axis_Rotate', 0, keyable=False)
-        cmds.setAttr(mirrorModuleNamespace+':splineStartHandleTransform.Axis_Rotate', 0, keyable=False)
-
-        node_transform_Grp = moduleNamespace+':moduleJointsGrp'
-        node_transform_Grp_allChildren = cmds.listRelatives(node_transform_Grp, allDescendents=True, type='joint')
-        for transform in node_transform_Grp_allChildren:
-            cmds.setAttr(transform+'_pairBlend.rotateMode', 1)
-
-        node_transform_Grp = mirrorModuleNamespace+':moduleJointsGrp'
-        node_transform_Grp_allChildren = cmds.listRelatives(node_transform_Grp, allDescendents=True, type='joint')
-        for transform in node_transform_Grp_allChildren:
-            cmds.setAttr(transform+'_pairBlend.rotateMode', 1)
-
-    if cmds.getAttr(moduleNamespace+':splineStartHandleTransform.Node_Orientation_Type') == 1:
-
-        cmds.setAttr(moduleNamespace+':splineStartHandleTransform.Axis_Rotate', keyable=True)
-        cmds.setAttr(mirrorModuleNamespace+':splineStartHandleTransform.Axis_Rotate', keyable=True)
-
-        node_transform_Grp = moduleNamespace+':moduleJointsGrp'
-        node_transform_Grp_allChildren = cmds.listRelatives(node_transform_Grp, allDescendents=True, type='joint')
-        for transform in node_transform_Grp_allChildren:
-            cmds.setAttr(transform+'_pairBlend.rotateMode', 2)
-
-        node_transform_Grp = mirrorModuleNamespace+':moduleJointsGrp'
-        node_transform_Grp_allChildren = cmds.listRelatives(node_transform_Grp, allDescendents=True, type='joint')
-        for transform in node_transform_Grp_allChildren:
-            cmds.setAttr(transform+'_pairBlend.rotateMode', 2)
-
-    cmds.lockNode(moduleNamespace+':module_container', lock=True, lockUnpublished=True)
-    cmds.lockNode(mirrorModuleNamespace+':module_container', lock=True, lockUnpublished=True)
-    cmds.select(selection)
-
-def changeProxyGeometryDrawStyle(moduleNamespace):
-    """
-    Toggle the transparency (vertex) draw style for the module proxy geometry, if it exists.
-    This function is executed by a scriptJob. See moduleUtilitySwitchFunctions().
-    """
-    proxyGeoGrp = moduleNamespace + ':proxyGeometryGrp'
-    allChildren = cmds.listRelatives(proxyGeoGrp, allDescendents=True, type='transform')
-
-    proxy_geo_transforms = [item for item in allChildren if str(item).rpartition('geo')[2] == '']
-
-    if cmds.getAttr(moduleNamespace+':module_transform.proxy_geometry_draw') == 1:
-        for transform in proxy_geo_transforms:
-            cmds.polyColorPerVertex(transform+'.vtx[*]', alpha=0.3, rgb=[0.663, 0.561, 0.319], notUndoable=True, \
-                                                                                           colorDisplayOption=True)
-
-    if cmds.getAttr(moduleNamespace+':module_transform.proxy_geometry_draw') == 0:
-        for transform in proxy_geo_transforms:
-            cmds.polyColorPerVertex(transform+'.vtx[*]', alpha=1.0, rgb=[0.663, 0.561, 0.319], notUndoable=True, \
-                                                                                           colorDisplayOption=True)
-
-    cmds.select(moduleNamespace+':module_transform', replace=True)
-
-def changeProxyGeometryDrawStyleForMirror(moduleNamespace, mirrorModuleNamespace):
-    """
-    Toggle the transparency (vertex) draw style for proxy geometry for a mirrored module pair.
-    This function is executed by a scriptJob. See setupMirrorMoveConnections().
-    """
-    if cmds.getAttr(moduleNamespace+':module_transform.proxy_geometry_draw') == 1:
-
-        for namespace in (moduleNamespace, mirrorModuleNamespace):
-
-            proxyGeoGrp = namespace + ':proxyGeometryGrp'
-            allChildren = cmds.listRelatives(proxyGeoGrp, allDescendents=True, type='transform')
-
-            proxy_geo_transforms = [item for item in allChildren if str(item).rpartition('geo')[2] == '']
-
-            for transform in proxy_geo_transforms:
-                cmds.polyColorPerVertex(transform+'.vtx[*]', alpha=0.3, rgb=[0.663, 0.561, 0.319], notUndoable=True, \
-                                                                                              colorDisplayOption=True)
-
-    if cmds.getAttr(moduleNamespace+':module_transform.proxy_geometry_draw') == 0:
-
-        for namespace in (moduleNamespace, mirrorModuleNamespace):
-
-            proxyGeoGrp = namespace + ':proxyGeometryGrp'
-            allChildren = cmds.listRelatives(proxyGeoGrp, allDescendents=True, type='transform')
-
-            proxy_geo_transforms = [item for item in allChildren if str(item).rpartition('geo')[2] == '']
-
-            for transform in proxy_geo_transforms:
-                cmds.polyColorPerVertex(transform+'.vtx[*]', alpha=1, rgb=[0.663, 0.561, 0.319], notUndoable=True, \
-                                                                                            colorDisplayOption=True)
-
-def changeSplineProxyGeometryDrawStyle(moduleNamespace):
-    """
-    Toggle the transparency (vertex) draw style for a spline module proxy geometry, if it exists.
-    This function is executed by a scriptJob. See moduleUtilitySwitchFunctions().
-    """
-    proxyGeoGrp = moduleNamespace + ':proxyGeometryGrp'
-    allChildren = cmds.listRelatives(proxyGeoGrp, allDescendents=True, type='transform')
-
-    proxy_geo_transforms = [item for item in allChildren if str(item).rpartition('geo')[2] == '']
-
-    if cmds.getAttr(moduleNamespace+':splineStartHandleTransform.proxy_geometry_draw') == 1:
-
-        for transform in proxy_geo_transforms:
-            cmds.polyColorPerVertex(transform+'.vtx[*]', alpha=0.3, rgb=[0.663, 0.561, 0.319], notUndoable=True, \
-                                                                                           colorDisplayOption=True)
-
-    if cmds.getAttr(moduleNamespace+':splineStartHandleTransform.proxy_geometry_draw') == 0:
-
-        for transform in proxy_geo_transforms:
-            cmds.polyColorPerVertex(transform+'.vtx[*]', alpha=1.0, rgb=[0.663, 0.561, 0.319], notUndoable=True, \
-                                                                                           colorDisplayOption=True)
-
-    cmds.select(moduleNamespace+':splineStartHandleTransform', replace=True)
-
-def changeSplineProxyGeometryDrawStyleForMirror(moduleNamespace, mirrorModuleNamespace):
-    """
-    Toggle the transparency (vertex) draw style for proxy geometry for a mirrored spline module pair.
-    This function is executed by a scriptJob. See setupMirrorMoveConnections().
-    """
-    if cmds.getAttr(moduleNamespace+':splineStartHandleTransform.proxy_geometry_draw') == 1:
-
-        for namespace in (moduleNamespace, mirrorModuleNamespace):
-
-            proxyGeoGrp = namespace + ':proxyGeometryGrp'
-            allChildren = cmds.listRelatives(proxyGeoGrp, allDescendents=True, type='transform')
-
-            proxy_geo_transforms = [item for item in allChildren if str(item).rpartition('geo')[2] == '']
-
-            for transform in proxy_geo_transforms:
-                cmds.polyColorPerVertex(transform+'.vtx[*]', alpha=0.3, rgb=[0.663, 0.561, 0.319], notUndoable=True, \
-                                                                                              colorDisplayOption=True)
-    if cmds.getAttr(moduleNamespace+':splineStartHandleTransform.proxy_geometry_draw') == 0:
-
-        for namespace in (moduleNamespace, mirrorModuleNamespace):
-
-            proxyGeoGrp = namespace + ':proxyGeometryGrp'
-            allChildren = cmds.listRelatives(proxyGeoGrp, allDescendents=True, type='transform')
-
-            proxy_geo_transforms = [item for item in allChildren if str(item).rpartition('geo')[2] == '']
-
-            for transform in proxy_geo_transforms:
-                cmds.polyColorPerVertex(transform+'.vtx[*]', alpha=1, rgb=[0.663, 0.561, 0.319], notUndoable=True, \
-                                                                                            colorDisplayOption=True)
 
 def returnModuleAttrsFromScene(moduleNamespace):
     """
@@ -1508,7 +1295,8 @@ def returnModuleAttrsFromScene(moduleNamespace):
 
             for transform in all_node_orientation_transforms:
                 orientationAttr = cmds.listAttr(transform, keyable=True, visible=True, unlocked=True)[0]
-                node_orientation_representation_values.append((stripMRTNamespace(transform)[1], cmds.getAttr(transform+'.'+orientationAttr)))
+                node_orientation_representation_values.append((stripMRTNamespace(transform)[1], \
+                                                                                cmds.getAttr(transform+'.'+orientationAttr)))
 
             moduleAttrsDict['orientation_representation_values'] = node_orientation_representation_values ##
 
@@ -1534,9 +1322,11 @@ def returnModuleAttrsFromScene(moduleNamespace):
 
             for transform in node_transform_Grp_allChildren:
                 node_translations.append((stripMRTNamespace(transform)[1], cmds.getAttr(transform+'.translate')[0]))
-                node_world_translations.append((stripMRTNamespace(transform)[1], cmds.xform(transform, query=True, worldSpace=True, translation=True)))
+                node_world_translations.append((stripMRTNamespace(transform)[1], cmds.xform(transform, query=True, worldSpace=True, \
+                                                                                                            translation=True)))
                 node_rotationOrders.append((stripMRTNamespace(transform)[1], cmds.getAttr(transform+'.rotateOrder')))
-                node_handle_sizes.append((stripMRTNamespace(transform)[1], cmds.getAttr(moduleNamespace+':module_transform.'+stripMRTNamespace(transform)[1]+'_handle_size')))
+                node_handle_sizes.append((stripMRTNamespace(transform)[1], \
+                            cmds.getAttr(moduleNamespace+':module_transform.'+stripMRTNamespace(transform)[1]+'_handle_size')))
 
             moduleAttrsDict['node_translation_values'] = node_translations ##
             moduleAttrsDict['node_world_translation_values'] = node_world_translations ##
@@ -1584,15 +1374,18 @@ def returnModuleAttrsFromScene(moduleNamespace):
 
         moduleAttrsDict['splineAdjustCurveTransformValues'] = splineAdjustCurveTransformValues
 
-        # Get the world translation and rotation values for spline nodes (used when creating a joint hierarchy from spline module in a character)
+        # Get the world translation and rotation values for spline nodes. Used when creating a joint hierarchy from
+        # spline module in a character.
         node_transform_Grp_allChildren = cmds.listRelatives(moduleNamespace+':moduleJointsGrp', allDescendents=True, type='joint')
 
         node_world_orientations = []
         node_world_translations = []
 
         for transform in node_transform_Grp_allChildren:
-            node_world_translations.append((stripMRTNamespace(transform)[1], cmds.xform(transform, query=True, worldSpace=True, translation=True)))
-            node_world_orientations.append((stripMRTNamespace(transform)[1], cmds.xform(transform, query=True, worldSpace=True, rotation=True)))
+            node_world_translations.append((stripMRTNamespace(transform)[1], cmds.xform(transform, query=True, worldSpace=True, \
+                                                                                                            translation=True)))
+            node_world_orientations.append((stripMRTNamespace(transform)[1], cmds.xform(transform, query=True, worldSpace=True, \
+                                                                                                               rotation=True)))
 
         moduleAttrsDict['node_world_translation_values'] = node_world_translations
         moduleAttrsDict['node_world_orientation_values'] = node_world_orientations
@@ -1630,8 +1423,9 @@ def returnModuleAttrsFromScene(moduleNamespace):
 
         moduleAttrsDict['node_translation_values'] = node_translations
 
-        # Get the world translation and rotation values for hinge module nodes (used when creating a joint hierarchy from hinge module in a character).
-        # First, in order to get the correct rotation values of the module nodes, we have to reset the node rotation orders to their default.
+        # Get the world translation and rotation values for hinge module nodes (used when creating a joint hierarchy from
+        # hinge module in a character). First, in order to get the correct rotation values of the module nodes, we have to
+        # reset the node rotation orders to their default.
 
         # Get the module node transforms
         node_transform_Grp_allChildren = cmds.listRelatives(moduleNamespace+':moduleJointsGrp', allDescendents=True, type='joint')
@@ -1658,9 +1452,12 @@ def returnModuleAttrsFromScene(moduleNamespace):
         node_handle_sizes = []
 
         for transform in node_transform_Grp_allChildren[::-1]:
-            node_world_translations.append((stripMRTNamespace(transform)[1], cmds.xform(transform, query=True, worldSpace=True, translation=True)))
-            node_world_orientations.append((stripMRTNamespace(transform)[1], cmds.xform(transform, query=True, worldSpace=True, rotation=True)))
-            node_handle_sizes.append((stripMRTNamespace(transform)[1], cmds.getAttr(moduleNamespace+':module_transform.'+stripMRTNamespace(transform)[1]+'_handle_size')))
+            node_world_translations.append((stripMRTNamespace(transform)[1], cmds.xform(transform, query=True, worldSpace=True, \
+                                                                                                            translation=True)))
+            node_world_orientations.append((stripMRTNamespace(transform)[1], cmds.xform(transform, query=True, worldSpace=True, \
+                                                                                                               rotation=True)))
+            node_handle_sizes.append((stripMRTNamespace(transform)[1], \
+                            cmds.getAttr(moduleNamespace+':module_transform.'+stripMRTNamespace(transform)[1]+'_handle_size')))
 
         moduleAttrsDict['node_world_translation_values'] = node_world_translations
         moduleAttrsDict['node_world_orientation_values'] = node_world_orientations
@@ -1671,8 +1468,10 @@ def returnModuleAttrsFromScene(moduleNamespace):
             cmds.setAttr(moduleNamespace+':module_transform.'+attr, rotOrder[1])
 
         # Get the world position of the middle "hinge" position for the IK chain segment.
-        # If the start, hinge and end positions in an IK chain are projected onto a line, the 'ikSegmentMidPos' is the middle position.
-        moduleAttrsDict['ikSegmentMidPos'] = cmds.xform(moduleNamespace+':ikSegmentAimCurve.cv[0]', query=True, worldSpace=True, translation=True)
+        # If the start, hinge and end positions in an IK chain are projected onto a line,
+        # the 'ikSegmentMidPos' is the middle position.
+        moduleAttrsDict['ikSegmentMidPos'] = cmds.xform(moduleNamespace+':ikSegmentAimCurve.cv[0]', query=True, \
+                                                                                            worldSpace=True, translation=True)
 
     # If proxy geometry exists, get its info.
     if cmds.objExists(moduleNamespace+':proxyGeometryGrp'):
@@ -1713,6 +1512,7 @@ def returnModuleAttrsFromScene(moduleNamespace):
             moduleAttrsDict['proxy_geo_options'][3] = cmds.getAttr(moduleNamespace+':proxyGeometryGrp.mirrorInstance')
 
     return moduleAttrsDict
+
 
 def createSkeletonFromModule(moduleAttrsDict, characterName):
     """
@@ -1968,6 +1768,7 @@ def createSkeletonFromModule(moduleAttrsDict, characterName):
 
     return joints
 
+
 def setupParentingForRawCharacterParts(characterJointSet, jointsMainGrp, characterName):
     """
     Set up parenting for joint hierarchies while creating a character. The type of parenting
@@ -2191,6 +1992,7 @@ def createProxyForSkeletonFromModule(characterJointSet, moduleAttrsDict, charact
         cmds.delete(proxyGrp)
         return None
 
+
 def createFKlayerDriverOnJointHierarchy(**kwargs):
     """
     Creates a joint layer on top of a selected character hierarchy. For description in context, see the "applyFK_Control" method
@@ -2362,6 +2164,7 @@ def createFKlayerDriverOnJointHierarchy(**kwargs):
             cmds.disconnectAttr(joint+'.instObjGroups[0]', c_info[0])
 
     return layerJointSet, driver_constraints, layerRootJoint
+
 
 def createModuleFromAttributes(moduleAttrsDict, createFromUI=False):
     """
@@ -2680,31 +2483,97 @@ def createModuleFromAttributes(moduleAttrsDict, createFromUI=False):
 
     return modules
 
-def returnValidSelectionFlagForModuleTransformObjects(selection):
+
+# -------------------------------------------------------------------------------------------------------------
+#
+#   RUNTIME FUNCTIONS (Or executing runtime functions)
+#
+# -------------------------------------------------------------------------------------------------------------
+
+def moduleUtilitySwitchScriptJob():      # This definition is to be modified as necessary.
     """
-    Checks a selection for a valid module object created by MRT.
+    Included as MRT startup function in userSetup file. Runs a scriptJob to trigger 
+    runtime procedures during maya events.
     """
-    matchObjects = [re.compile('^MRT_\D+__\w+:module_transform$'),
-                    re.compile('^MRT_\D+__\w+:root_node_transform$'),
-                    re.compile('^MRT_\D+__\w+:end_node_transform$'),
-                    re.compile('^MRT_\D+__\w+:node_\d+_transform$'),
-                    re.compile('^MRT_\D+__\w+:spline_\d+_adjustCurve_transform$'),
-                    re.compile('^MRT_\D+__\w+:splineStartHandleTransform$'),
-                    re.compile('^MRT_\D+__\w+:splineEndHandleTransform$'),
-                    re.compile('^MRT_\D+__\w+:root_node_transform_control$'),
-                    re.compile('^MRT_\D+__\w+:end_node_transform_control$'),
-                    re.compile('^MRT_\D+__\w+:node_1_transform_control$'),
-                    re.compile('^MRT_\D+__\w+:single_orientation_representation_transform$'),
-                    re.compile('^MRT_\D+__\w+:[_0-9a-z]*transform_orientation_representation_transform$')]
+    jobNumber = cmds.scriptJob(event=['SelectionChanged', moduleUtilitySwitchFunctions], protected=True)
+    return jobNumber
 
-    for matchObject in matchObjects:
 
-        matchResult = matchObject.match(selection)
+def moduleUtilitySwitchFunctions():      # This definition is to be modified as necessary.
+    """
+    Runtime function called by scriptJob to assist in module operations.
+    """
+    # Disable mirror operations
+    deleteMirrorMoveConnections()
 
-        if matchResult:
-            return True
+    # Toggle undo state
+    cmds.undoInfo(stateWithoutFlush=False)
 
-    return False
+    # Get the current namespace, and set to root namespace
+    currentNamespace = mel.eval('namespaceInfo -currentNamespace')
+    cmds.namespace(setNamespace=':')
+
+    # Get the current selection for modules, if any.
+    selection = mel.eval("ls -sl -type dagNode")   # The cmds version returned minor bugs, when executed via a scriptJob. 
+                                                   # Sometimes, it wouldn't take the boolean argument for 'selection'.
+    selectedModuleNamespaces = []
+    selectedMirrorModules = []
+    selectedMirrorModuleNamespaces = []
+
+    # If one of the modules in a mirrored module pairs are selected, select their mirrored pair as well.
+    if selection:
+        selection.reverse()
+
+        for sel in selection:
+
+            # Get the namespace of the selection, if a module is selected.
+            namespaceInfo = stripMRTNamespace(sel)
+            if namespaceInfo != None:
+                selectedModuleNamespaces.append(namespaceInfo[0])
+
+                # Select it mirrored module pair, if it exists (If the selected module is part of mirrored module pair)
+                if cmds.attributeQuery('mirrorModuleNamespace', node=namespaceInfo[0]+':moduleGrp', exists=True):
+                    selectedMirrorModules.append(sel)
+                    selectedMirrorModuleNamespaces.append(namespaceInfo[0])
+
+    # If valid modules are selected, perform operations on them as well.
+    if len(selectedModuleNamespaces):
+
+        # Based on the type of the selected module, do as follows
+        lastSelectionNamespace = selectedModuleNamespaces[0]
+        moduleType = returnModuleTypeFromNamespace(lastSelectionNamespace)
+
+        # If a spline module node is selected
+        if moduleType == 'SplineNode':
+
+            # Smooth the display for the spline module curve
+            cmds.displaySmoothness(lastSelectionNamespace+':splineNode_curve', pointsWire=32)
+
+            # Execute a single-run scriptJob for changing the orientation type handles for its nodes 
+            cmds.scriptJob(attributeChange=[lastSelectionNamespace+':splineStartHandleTransform.Node_Orientation_Type', \
+                                        partial(changeSplineJointOrientationType, lastSelectionNamespace)], runOnce=True)
+
+            # If the spline module has proxy geometry, execute a single-run scriptJob for modifying the proxy draw style
+            # by using the attribute on the module transform
+            if cmds.objExists(lastSelectionNamespace+':proxyGeometryGrp'):
+
+                cmds.scriptJob(attributeChange=[lastSelectionNamespace+':splineStartHandleTransform.proxy_geometry_draw', \
+                                        partial(changeSplineProxyGeometryDrawStyle, lastSelectionNamespace)], runOnce=True)
+
+
+        # If a joint or hinge module node is selected
+        if moduleType == 'JointNode' or moduleType == 'HingeNode':
+            if cmds.objExists(lastSelectionNamespace+':proxyGeometryGrp'):
+                cmds.scriptJob(attributeChange=[lastSelectionNamespace+':module_transform.proxy_geometry_draw', \
+                                            partial(changeProxyGeometryDrawStyle, lastSelectionNamespace)], runOnce=True)
+
+    if len(selectedMirrorModules):
+        setupMirrorMoveConnections(selectedMirrorModules, selectedMirrorModuleNamespaces)
+
+    # Set to the original namespace
+    cmds.namespace(setNamespace=currentNamespace)
+    cmds.undoInfo(stateWithoutFlush=True)
+
 
 def setupMirrorMoveConnections(selections, moduleNamespaces):
     """
@@ -2743,7 +2612,8 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
             if len(selectionAttrs) == 1: # A Joint module orientation representation control ?
                 if re.match('^MRT_\D+__\w+:[_0-9a-z]*transform_orientation_representation_transform$', selection):
                     __MRT_utility_tempScriptJob_list.append(cmds.scriptJob(attributeChange=[str(selection+'.'+selectionAttrs[0]), \
-                    partial(updateOrientationRepresentationTransformForMirrorMove, selection, mirrorObject, selectionAttrs[0], moduleNamespace)]))
+                    partial(updateOrientationRepresentationTransformForMirrorMove, selection, mirrorObject, selectionAttrs[0], \
+                                                                                                            moduleNamespace)]))
                 else:
                     __MRT_utility_tempScriptJob_list.append(cmds.scriptJob(attributeChange=[str(selection+'.'+selectionAttrs[0]), \
                                       partial(updateChangedAttributeForMirrorMove, selection, mirrorObject, selectionAttrs[0])]))
@@ -2754,7 +2624,8 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
                 if 'translate' in selectionAttrs[0]:
                     cmds.connectAttr(selection+'.translate', mirrorTranslateMultiplyDivide+'.input1')
                     cmds.connectAttr(mirrorTranslateMultiplyDivide+'.output', mirrorObject+'.translate')
-                    collected_nodes.append(cmds.listConnections(mirrorTranslateMultiplyDivide, source=True, destination=True, type='unitConversion'))
+                    collected_nodes.append(cmds.listConnections(mirrorTranslateMultiplyDivide, source=True, destination=True, \
+                                                                                                    type='unitConversion'))
                     cmds.setAttr(mirrorTranslateMultiplyDivide+'.input2'+mirrorAxis, -1)
 
                 if 'rotate' in selectionAttrs[0]:
@@ -2770,7 +2641,8 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
 
                 cmds.connectAttr(selection+'.translate', mirrorTranslateMultiplyDivide+'.input1')
                 cmds.connectAttr(mirrorTranslateMultiplyDivide+'.output', mirrorObject+'.translate')
-                collected_nodes.append(cmds.listConnections(mirrorTranslateMultiplyDivide, source=True, destination=True, type='unitConversion'))
+                collected_nodes.append(cmds.listConnections(mirrorTranslateMultiplyDivide, source=True, destination=True, \
+                                                                                                        type='unitConversion'))
                 cmds.setAttr(mirrorTranslateMultiplyDivide+'.input2'+mirrorAxis, -1)
 
                 for attr in selectionAttrs[3:]:
@@ -2778,19 +2650,22 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
                                                     partial(updateChangedAttributeForMirrorMove, selection, mirrorObject, attr)]))
                 # Node orientation type on spline module
                 __MRT_utility_tempScriptJob_list.append(cmds.scriptJob(attributeChange=[str(selection+'.Node_Orientation_Type'), \
-                    partial(changeSplineJointOrientationType_forMirror, moduleNamespace, cmds.getAttr(moduleNamespace+':moduleGrp.mirrorModuleNamespace'))]))
+                    partial(changeSplineJointOrientationType_forMirror, moduleNamespace, \
+                                                        cmds.getAttr(moduleNamespace+':moduleGrp.mirrorModuleNamespace'))]))
 
                 # Proxy geometry
                 if 'proxy_geometry_draw' in selectionAttrs:
                     __MRT_utility_tempScriptJob_list.append(cmds.scriptJob(attributeChange=[str(selection+'.proxy_geometry_draw'), \
-                        partial(changeSplineProxyGeometryDrawStyleForMirror, moduleNamespace, cmds.getAttr(moduleNamespace+':moduleGrp.mirrorModuleNamespace'))]))
+                        partial(changeSplineProxyGeometryDrawStyleForMirror, moduleNamespace, \
+                                                        cmds.getAttr(moduleNamespace+':moduleGrp.mirrorModuleNamespace'))]))
 
 
             if len(selectionAttrs) > 8: # Module transform ?
 
                 cmds.connectAttr(selection+'.translate', mirrorTranslateMultiplyDivide+'.input1')
                 cmds.connectAttr(mirrorTranslateMultiplyDivide+'.output', mirrorObject+'.translate')
-                collected_nodes.append(cmds.listConnections(mirrorTranslateMultiplyDivide, source=True, destination=True, type='unitConversion'))
+                collected_nodes.append(cmds.listConnections(mirrorTranslateMultiplyDivide, source=True, destination=True, \
+                                                                                                        type='unitConversion'))
                 cmds.setAttr(mirrorTranslateMultiplyDivide+'.input2'+mirrorAxis, -1)
 
                 # Set multipliers for mirroring module transform values
@@ -2806,10 +2681,38 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
                 # Proxy geometry
                 if 'proxy_geometry_draw' in selectionAttrs:
                     __MRT_utility_tempScriptJob_list.append(cmds.scriptJob(attributeChange=[str(selection+'.proxy_geometry_draw'), \
-                        partial(changeProxyGeometryDrawStyleForMirror, moduleNamespace, cmds.getAttr(moduleNamespace+':moduleGrp.mirrorModuleNamespace'))]))
+                        partial(changeProxyGeometryDrawStyleForMirror, moduleNamespace, \
+                                                        cmds.getAttr(moduleNamespace+':moduleGrp.mirrorModuleNamespace'))]))
 
             # Update the mirror move container
             addNodesToContainer('MRT_mirrorMove__Container', collected_nodes, includeHierarchyBelow=True)
+
+
+def deleteMirrorMoveConnections():
+    """
+    Kills all scriptJobs required for mirror move operations for modules,
+    removes container for mirror nodes.
+    """
+    # Toggle undo state
+    cmds.undoInfo(stateWithoutFlush=False)
+
+    # Kill all mirror utility scriptJobs. 
+    global __MRT_utility_tempScriptJob_list
+
+    if len(__MRT_utility_tempScriptJob_list) > 0:
+
+        for job in __MRT_utility_tempScriptJob_list:
+            if cmds.scriptJob(exists=job):
+                cmds.scriptJob(kill=job)
+
+        __MRT_utility_tempScriptJob_list = []
+
+    # Delete mirror nodes
+    if cmds.objExists('MRT_mirrorMove__Container'):
+        cmds.delete('MRT_mirrorMove__Container')
+
+    cmds.undoInfo(stateWithoutFlush=True)
+
 
 def updateChangedAttributeForMirrorMove(selection, mirrorObject, attribute, multiplier=None):
     """
@@ -2825,6 +2728,7 @@ def updateChangedAttributeForMirrorMove(selection, mirrorObject, attribute, mult
 
     # Affect the mirror control attribute.
     cmds.setAttr(mirrorObject+'.'+attribute, value)
+
 
 def updateOrientationRepresentationTransformForMirrorMove(selection, mirrorObject, attribute, namespace):
     """
@@ -2845,3 +2749,190 @@ def updateOrientationRepresentationTransformForMirrorMove(selection, mirrorObjec
             cmds.setAttr(mirrorObject+'.'+attribute, value)
     else:
         cmds.setAttr(mirrorObject+'.'+attribute, value)
+
+
+def changeSplineJointOrientationType(moduleNamespace):
+    """
+    Executed by scriptJob to modify the spline node orientation type by modifying the "Node_Orientation_Type"
+    attribute on the spline module start transform.
+    """
+    selection = mel.eval('ls -sl -type dagNode')
+
+    cmds.lockNode(moduleNamespace+':module_container', lock=False, lockUnpublished=False)
+
+    # If the node orientation type is set to 'World' 
+    if cmds.getAttr(moduleNamespace+':splineStartHandleTransform.Node_Orientation_Type') == 0:
+
+        cmds.setAttr(moduleNamespace+':splineStartHandleTransform.Axis_Rotate', 0, keyable=False)
+        node_transform_Grp = moduleNamespace+':moduleJointsGrp'
+        node_transform_Grp_allChildren = cmds.listRelatives(node_transform_Grp, allDescendents=True, type='joint')
+        for transform in node_transform_Grp_allChildren:
+            cmds.setAttr(transform+'_pairBlend.rotateMode', 1)
+
+    # IF the node orientation type is set to 'Object'
+    if cmds.getAttr(moduleNamespace+':splineStartHandleTransform.Node_Orientation_Type') == 1:
+
+        cmds.setAttr(moduleNamespace+':splineStartHandleTransform.Axis_Rotate', keyable=True)
+        node_transform_Grp = moduleNamespace+':moduleJointsGrp'
+        node_transform_Grp_allChildren = cmds.listRelatives(node_transform_Grp, allDescendents=True, type='joint')
+        for transform in node_transform_Grp_allChildren:
+            cmds.setAttr(transform+'_pairBlend.rotateMode', 2)
+
+    cmds.lockNode(moduleNamespace+':module_container', lock=True, lockUnpublished=True)
+    cmds.select(selection)
+
+def changeSplineJointOrientationType_forMirror(moduleNamespace, mirrorModuleNamespace): 
+    """
+    Executed when one of the mirrored module pairs of a spline module is modified. 
+    Called in setupMirrorMoveConnections() by a scriptJob. Modifies the spline node orientation type 
+    on modules in a mirrored module pair for a selected spline module (part of the pair).
+    """
+    selection = mel.eval('ls -sl -type dagNode')
+
+    cmds.lockNode(moduleNamespace+':module_container', lock=False, lockUnpublished=False)
+    cmds.lockNode(mirrorModuleNamespace+':module_container', lock=False, lockUnpublished=False)
+
+    if cmds.getAttr(moduleNamespace+':splineStartHandleTransform.Node_Orientation_Type') == 0:
+
+        cmds.setAttr(moduleNamespace+':splineStartHandleTransform.Axis_Rotate', 0, keyable=False)
+        cmds.setAttr(mirrorModuleNamespace+':splineStartHandleTransform.Axis_Rotate', 0, keyable=False)
+
+        node_transform_Grp = moduleNamespace+':moduleJointsGrp'
+        node_transform_Grp_allChildren = cmds.listRelatives(node_transform_Grp, allDescendents=True, type='joint')
+        for transform in node_transform_Grp_allChildren:
+            cmds.setAttr(transform+'_pairBlend.rotateMode', 1)
+
+        node_transform_Grp = mirrorModuleNamespace+':moduleJointsGrp'
+        node_transform_Grp_allChildren = cmds.listRelatives(node_transform_Grp, allDescendents=True, type='joint')
+        for transform in node_transform_Grp_allChildren:
+            cmds.setAttr(transform+'_pairBlend.rotateMode', 1)
+
+    if cmds.getAttr(moduleNamespace+':splineStartHandleTransform.Node_Orientation_Type') == 1:
+
+        cmds.setAttr(moduleNamespace+':splineStartHandleTransform.Axis_Rotate', keyable=True)
+        cmds.setAttr(mirrorModuleNamespace+':splineStartHandleTransform.Axis_Rotate', keyable=True)
+
+        node_transform_Grp = moduleNamespace+':moduleJointsGrp'
+        node_transform_Grp_allChildren = cmds.listRelatives(node_transform_Grp, allDescendents=True, type='joint')
+        for transform in node_transform_Grp_allChildren:
+            cmds.setAttr(transform+'_pairBlend.rotateMode', 2)
+
+        node_transform_Grp = mirrorModuleNamespace+':moduleJointsGrp'
+        node_transform_Grp_allChildren = cmds.listRelatives(node_transform_Grp, allDescendents=True, type='joint')
+        for transform in node_transform_Grp_allChildren:
+            cmds.setAttr(transform+'_pairBlend.rotateMode', 2)
+
+    cmds.lockNode(moduleNamespace+':module_container', lock=True, lockUnpublished=True)
+    cmds.lockNode(mirrorModuleNamespace+':module_container', lock=True, lockUnpublished=True)
+    cmds.select(selection)
+
+def changeProxyGeometryDrawStyle(moduleNamespace):
+    """
+    Toggle the transparency (vertex) draw style for the module proxy geometry, if it exists.
+    This function is executed by a scriptJob. See moduleUtilitySwitchFunctions().
+    """
+    proxyGeoGrp = moduleNamespace + ':proxyGeometryGrp'
+    allChildren = cmds.listRelatives(proxyGeoGrp, allDescendents=True, type='transform')
+
+    proxy_geo_transforms = [item for item in allChildren if str(item).rpartition('geo')[2] == '']
+
+    if cmds.getAttr(moduleNamespace+':module_transform.proxy_geometry_draw') == 1:
+        for transform in proxy_geo_transforms:
+            cmds.polyColorPerVertex(transform+'.vtx[*]', alpha=0.3, rgb=[0.663, 0.561, 0.319], notUndoable=True, \
+                                                                                           colorDisplayOption=True)
+
+    if cmds.getAttr(moduleNamespace+':module_transform.proxy_geometry_draw') == 0:
+        for transform in proxy_geo_transforms:
+            cmds.polyColorPerVertex(transform+'.vtx[*]', alpha=1.0, rgb=[0.663, 0.561, 0.319], notUndoable=True, \
+                                                                                           colorDisplayOption=True)
+
+    cmds.select(moduleNamespace+':module_transform', replace=True)
+
+def changeProxyGeometryDrawStyleForMirror(moduleNamespace, mirrorModuleNamespace):
+    """
+    Toggle the transparency (vertex) draw style for proxy geometry for a mirrored module pair.
+    This function is executed by a scriptJob. See setupMirrorMoveConnections().
+    """
+    if cmds.getAttr(moduleNamespace+':module_transform.proxy_geometry_draw') == 1:
+
+        for namespace in (moduleNamespace, mirrorModuleNamespace):
+
+            proxyGeoGrp = namespace + ':proxyGeometryGrp'
+            allChildren = cmds.listRelatives(proxyGeoGrp, allDescendents=True, type='transform')
+
+            proxy_geo_transforms = [item for item in allChildren if str(item).rpartition('geo')[2] == '']
+
+            for transform in proxy_geo_transforms:
+                cmds.polyColorPerVertex(transform+'.vtx[*]', alpha=0.3, rgb=[0.663, 0.561, 0.319], notUndoable=True, \
+                                                                                              colorDisplayOption=True)
+
+    if cmds.getAttr(moduleNamespace+':module_transform.proxy_geometry_draw') == 0:
+
+        for namespace in (moduleNamespace, mirrorModuleNamespace):
+
+            proxyGeoGrp = namespace + ':proxyGeometryGrp'
+            allChildren = cmds.listRelatives(proxyGeoGrp, allDescendents=True, type='transform')
+
+            proxy_geo_transforms = [item for item in allChildren if str(item).rpartition('geo')[2] == '']
+
+            for transform in proxy_geo_transforms:
+                cmds.polyColorPerVertex(transform+'.vtx[*]', alpha=1, rgb=[0.663, 0.561, 0.319], notUndoable=True, \
+                                                                                            colorDisplayOption=True)
+
+def changeSplineProxyGeometryDrawStyle(moduleNamespace):
+    """
+    Toggle the transparency (vertex) draw style for a spline module proxy geometry, if it exists.
+    This function is executed by a scriptJob. See moduleUtilitySwitchFunctions().
+    """
+    proxyGeoGrp = moduleNamespace + ':proxyGeometryGrp'
+    allChildren = cmds.listRelatives(proxyGeoGrp, allDescendents=True, type='transform')
+
+    proxy_geo_transforms = [item for item in allChildren if str(item).rpartition('geo')[2] == '']
+
+    if cmds.getAttr(moduleNamespace+':splineStartHandleTransform.proxy_geometry_draw') == 1:
+
+        for transform in proxy_geo_transforms:
+            cmds.polyColorPerVertex(transform+'.vtx[*]', alpha=0.3, rgb=[0.663, 0.561, 0.319], notUndoable=True, \
+                                                                                           colorDisplayOption=True)
+
+    if cmds.getAttr(moduleNamespace+':splineStartHandleTransform.proxy_geometry_draw') == 0:
+
+        for transform in proxy_geo_transforms:
+            cmds.polyColorPerVertex(transform+'.vtx[*]', alpha=1.0, rgb=[0.663, 0.561, 0.319], notUndoable=True, \
+                                                                                           colorDisplayOption=True)
+
+    cmds.select(moduleNamespace+':splineStartHandleTransform', replace=True)
+
+
+def changeSplineProxyGeometryDrawStyleForMirror(moduleNamespace, mirrorModuleNamespace):
+    """
+    Toggle the transparency (vertex) draw style for proxy geometry for a mirrored spline module pair.
+    This function is executed by a scriptJob. See setupMirrorMoveConnections().
+    """
+    if cmds.getAttr(moduleNamespace+':splineStartHandleTransform.proxy_geometry_draw') == 1:
+
+        for namespace in (moduleNamespace, mirrorModuleNamespace):
+
+            proxyGeoGrp = namespace + ':proxyGeometryGrp'
+            allChildren = cmds.listRelatives(proxyGeoGrp, allDescendents=True, type='transform')
+
+            proxy_geo_transforms = [item for item in allChildren if str(item).rpartition('geo')[2] == '']
+
+            for transform in proxy_geo_transforms:
+                cmds.polyColorPerVertex(transform+'.vtx[*]', alpha=0.3, rgb=[0.663, 0.561, 0.319], notUndoable=True, \
+                                                                                              colorDisplayOption=True)
+    if cmds.getAttr(moduleNamespace+':splineStartHandleTransform.proxy_geometry_draw') == 0:
+
+        for namespace in (moduleNamespace, mirrorModuleNamespace):
+
+            proxyGeoGrp = namespace + ':proxyGeometryGrp'
+            allChildren = cmds.listRelatives(proxyGeoGrp, allDescendents=True, type='transform')
+
+            proxy_geo_transforms = [item for item in allChildren if str(item).rpartition('geo')[2] == '']
+
+            for transform in proxy_geo_transforms:
+                cmds.polyColorPerVertex(transform+'.vtx[*]', alpha=1, rgb=[0.663, 0.561, 0.319], notUndoable=True, \
+                                                                                            colorDisplayOption=True)
+
+
+# --------------------------------------------------- END -----------------------------------------------------
