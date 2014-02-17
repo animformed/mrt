@@ -2384,9 +2384,8 @@ class MRT_UI(object):
             characterJointSet.append((moduleAttrsDict['moduleParentInfo'][0][1], joints[:]))
 
             if moduleAttrsDict['proxy_geo_options'][3] == 'On':
-                returnData = mfunc.createProxyForSkeletonFromModule(characterJointSet, moduleAttrsDict, characterName)
-                if returnData:
-                    proxyGrp, distanceScaleInitMultNodes = returnData
+                proxyGrp = mfunc.createProxyForSkeletonFromModule(characterJointSet, moduleAttrsDict, characterName)
+                if proxyGrp:
                     cmds.parent(proxyGrp, proxyMainGrp, absolute=True)
 
         self.deleteAllSceneModules()
