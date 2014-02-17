@@ -30,7 +30,7 @@ def cleanup_MRT_actions(jobNum=None):
     # and all under the directory MRT/userControlClasses.
     if os.path.exists(path+'mrt_controlRig.py'):
         os.remove(path+'mrt_controlRig.py')
-    if os.path.exists(path+'mrt_controlRig.pyc'):
+    if os.path.exists(path+'mrt_controlRig.pyc'):1`     q1q
         os.remove(path+'mrt_controlRig.pyc')
 
     # If a scriptJob is passed in, kill it as well.
@@ -185,7 +185,7 @@ def returnRootForCharacterHierarchy(joint):
 
     # The cmds version returned occasional errors stating incorrect boolean value with parent flag, if
     # this function was used in a scriptJob event call. Not sure why.
-    # parentJoint = cmds.listRelatives(joint, parent=True, type='joint')  
+    # parentJoint = cmds.listRelatives(joint, parent=True, type='joint')  <-- What's wrong with you??
 
     parentJoint = mel.eval('listRelatives -parent -type joint '+joint)
 
@@ -436,13 +436,17 @@ def findHighestCommonTextScrollListNameSuffix(baseName, names):
     Name(2)
     Name(4)
     """
-    highestValue = 1
+    highestValue = 1    # Start with base value for the num suffix
+    
     for name in names:
+    
+        # If a num suffix is found, modify the base value.
         if re.match('^%s \(\d+\)$' % baseName, name):
             suffix = name.partition('(')[2].partition(')')[0]
             numSuffix = int(suffix)
             if numSuffix > highestValue:
                 highestValue = numSuffix
+    
     return highestValue        
 
 def returnModuleUserSpecNames(namespaces):
@@ -822,15 +826,18 @@ def checkForJointDuplication():
     Checks if a character joint has been manually duplicated in the scene.
     """
     allJoints = cmds.ls(type='joint')
-
+    
+    # Get all the mrt joint names in the scene. Only the node name at the end of
+    # a DAG path.
     mrt_joints = [item.split('|')[-1] for item in allJoints if \
                   re.match('^MRT_character\w+_transform$', item.split('|')[-1])]
     check = True
 
     if mrt_joints:
-
+    
         for joint in mrt_joints:
-
+        
+            # If the joint "node" name occurs twice in the list, warn.
             if mrt_joints.count(joint) > 1:
                 cmds.warning('MRT Error: One of the character joints has been manually duplicated. \
                               Please undo it in order to perform control rigging.')
@@ -1797,14 +1804,14 @@ def createSkeletonFromModule(moduleAttrsDict, characterName):
                 
                 # Orient the joint rotation axes. First orient the root joint with children to align the aim axis.
                 
-                # Get the up axis.
-                s_axis = {'XY':'zup', 'YZ':'xup', 'XZ':'yup'}[moduleAttrsDict['creation_plane'][-2:]]
+                # Get the up axis for joint orientation from creation plane axes.
+                s_axis = {'XY':'zup', 'YZ':'xup', 'XZ':'yup'}[moduleAttrsDict['creation_plane'][1:]]
                 
                 # Select the root joint in the joint hierarchy.
                 cmds.select(joints[0], replace=True)
                 
                 # Perform joint orientation, this is done to align the aim axis down the joint hierarchy.
-                cmds.joint(edit=True, orientJoint=moduleAttrsDict['node_axes'].lower(), secondaryAxisOrient=s_axis,
+                cmds.joint(edit=True, orientJoint=moduleAttrsDict['node_axes'].lower(), secondaryAxisOrient=s_axis,     \
                                                                                          zeroScaleOrient=True, children=True)
                 cmds.select(clear=True)
                 
@@ -1828,9 +1835,16 @@ def createSkeletonFromModule(moduleAttrsDict, characterName):
                 for joint, rotOrder in zip(joints, moduleAttrsDict['node_rotationOrder_values']):
                     cmds.setAttr(joint+'.rotateOrder', rotOrder[1])
 
+        # If the module type is SplineNode.
         if moduleAttrsDict['node_type'] == 'SplineNode':
+        
+            # Create joints for every spline node position.
             for position in moduleAttrsDict['node_world_translation_values']:
+            
+                # Get the name for the joint.
                 name = 'MRT_character'+characterName+'__'+moduleAttrsDict['userSpecName']+'_'+position[0]
+                
+                # Create the joint and add attributes
                 jointName = cmds.joint(name=name, position=position[1], radius=moduleAttrsDict['globalScale']*0.17)
                 cmds.addAttr(jointName, dataType='string', longName='inheritedNodeType')
                 cmds.setAttr(jointName+'.inheritedNodeType', 'SplineNode', type='string', lock=True)
@@ -1839,68 +1853,105 @@ def createSkeletonFromModule(moduleAttrsDict, characterName):
                 cmds.setAttr(jointName+'.overrideEnabled', 1)
                 cmds.setAttr(jointName+'.overrideColor', moduleAttrsDict['handle_colour'])               
                 joints.append(jointName)
-            s_axis = {'XY':'zup', 'YZ':'xup', 'XZ':'yup'}[moduleAttrsDict['creation_plane'][-2:]]
+            
+            # Get the up axis for joint orientation from creation plane axes for the spline module.
+            s_axis = {'XY':'zup', 'YZ':'xup', 'XZ':'yup'}[moduleAttrsDict['creation_plane'][1:]]
+            
+            # Orient the joint chain along the aim axis
             cmds.select(joints[0], replace=True)
-            cmds.joint(edit=True, orientJoint=moduleAttrsDict['node_axes'].lower(), secondaryAxisOrient=s_axis, zeroScaleOrient=True, children=True)     
+            cmds.joint(edit=True, orientJoint=moduleAttrsDict['node_axes'].lower(), secondaryAxisOrient=s_axis, \
+                                                                                        zeroScaleOrient=True, children=True)
             cmds.select(clear=True)
+            
+            # Unparent the child joints in the joint chain
             for joint in joints[1:]:
                 cmds.parent(joint, absolute=True, world=True)
-
+            
+            # If the spline module node orinetatioh type is set to 'object', orient the joints individually.
             if moduleAttrsDict['node_objectOrientation'] == 1:
                 aimVector={'X':[1.0, 0.0, 0.0], 'Y':[0.0, 1.0, 0.0], 'Z':[0.0, 0.0, 1.0]}[moduleAttrsDict['node_axes'][0]]
                 upVector = {'X':[1.0, 0.0, 0.0], 'Y':[0.0, 1.0, 0.0], 'Z':[0.0, 0.0, 1.0]}[moduleAttrsDict['node_axes'][1]]
-                worldUpVector = {'XY':[0.0, 0.0, 1.0], 'YZ':[1.0, 0.0, 0.0], 'XZ':[0.0, 1.0, 0.0]}[moduleAttrsDict['creation_plane'][-2:]]
+                worldUpVector = \
+                {'XY':[0.0, 0.0, 1.0], 'YZ':[1.0, 0.0, 0.0], 'XZ':[0.0, 1.0, 0.0]}[moduleAttrsDict['creation_plane'][1:]]
+                
+                # Aim and orient to the next joint, except the last joint.
                 for i in xrange(len(joints)):
                     if not joints[i] == joints[-1]:
-                        tempConstraint = cmds.aimConstraint(joints[i+1], joints[i], aimVector=aimVector, upVector=upVector, worldUpVector=worldUpVector)
+                        tempConstraint = cmds.aimConstraint(joints[i+1], joints[i], aimVector=aimVector, upVector=upVector, \
+                                                                                                worldUpVector=worldUpVector)
                         cmds.delete(tempConstraint) 
                         cmds.makeIdentity(joints[i], rotate=True, apply=True)        
-
+            
+                # Add the 'axis rotate' value to the joint orientations.
                 for (joint, orientation) in zip(joints, moduleAttrsDict['node_world_orientation_values']):
                     axes_mult = {'x':[1, 0, 0], 'y':[0, 1, 0], 'z':[0, 0, 1]}[moduleAttrsDict['node_axes'][0].lower()]
                     addOrientation = [moduleAttrsDict['splineOrientation_value']*item for item in axes_mult]
                     jointOrientation = list(cmds.getAttr(joint+'.jointOrient')[0])
                     newOrientation = map(lambda x, y:x+y, addOrientation, jointOrientation)
                     cmds.setAttr(joint+'.jointOrient', newOrientation[0], newOrientation[1], newOrientation[2], type='double3')  
+
+            # If the spline node orientation type is set to 'world'.
             else:
                 for joint in joints:
                     cmds.setAttr(joint+'.jointOrient', 0, 0, 0, type='double3')
 
-            i = 0
-            for joint in joints[1:]:
+            # Re-parent the child joints in the spline joint chain.
+            for i, joint in enumerate(joints[1:]):
                 cmds.parent(joint, joints[i], absolute=True)
-                i += 1
 
+            # Set orientation for the last joint.
             cmds.setAttr(joints[-1]+'.jointOrient', 0, 0, 0, type='double3')
-
+        
+        # If the module type is HingeNode.
         if moduleAttrsDict['node_type'] == 'HingeNode':
-            i = 0
-            for position in moduleAttrsDict['node_world_translation_values']:
+            
+            # Create the joints for the module nodes with their position.
+            for i, position in enumerate(moduleAttrsDict['node_world_translation_values']):
+            
+                # Get the name of the joint
                 name = 'MRT_character'+characterName+'__'+moduleAttrsDict['userSpecName']+'_'+position[0]
-                jointName = cmds.joint(name=name, position=position[1], radius=moduleAttrsDict['globalScale']*moduleAttrsDict['node_handle_sizes'][i][1]*0.16)
+                
+                # Create the joint.
+                jointName = cmds.joint(name=name, position=position[1], \
+                                       radius=moduleAttrsDict['globalScale']*moduleAttrsDict['node_handle_sizes'][i][1]*0.16)
+                                       
+                # Add / set the joint attributes.
                 cmds.addAttr(jointName, dataType='string', longName='inheritedNodeType')
                 cmds.setAttr(jointName+'.inheritedNodeType', 'HingeNode', type='string', lock=True)
                 cmds.setAttr(jointName+'.overrideEnabled', 1)
                 cmds.setAttr(jointName+'.overrideColor', moduleAttrsDict['handle_colour'])            
                 joints.append(jointName)
-                i += 1
-            s_axis = {'XY':'zup', 'YZ':'xup', 'XZ':'yup'}[moduleAttrsDict['creation_plane'][-2:]]
+        
+            # Get the secondary / up axis for joint orientation from module creation plane.
+            s_axis = {'XY':'zup', 'YZ':'xup', 'XZ':'yup'}[moduleAttrsDict['creation_plane'][1:]]
             cmds.select(joints[0], replace=True)
-            cmds.joint(edit=True, orientJoint=moduleAttrsDict['node_axes'].lower(), secondaryAxisOrient=s_axis, zeroScaleOrient=True, children=True)
+            # Orient the joint chain along their aim axis.
+            cmds.joint(edit=True, orientJoint=moduleAttrsDict['node_axes'].lower(), secondaryAxisOrient=s_axis, \
+                                                                                         zeroScaleOrient=True, children=True)
             cmds.select(clear=True)
+            
+            # Unparent the child joints.
             for joint in joints[1:]:
                 cmds.parent(joint, absolute=True, world=True)
+            
+            # Apply the orientation to joints from the module attribute data.
             for (joint, orientation) in zip(joints, moduleAttrsDict['node_world_orientation_values']):
                 cmds.joint(joint, edit=True, orientation=orientation[1])
-            i = 0
-            for joint in joints[1:]:
+            
+            # Reparent the child joints.
+            for i, joint in enumerate(joints[1:]):
                 cmds.parent(joint, joints[i], absolute=True)
-                i += 1
+            
+            # Apply the joint rotation orders.
             for joint, rotOrder in zip(joints, moduleAttrsDict['node_rotationOrder_values']):
                 cmds.setAttr(joint+'.rotateOrder', rotOrder[1])
+            
+            # Add / set the 'ikSegmentModPos' attribute to the root joint (It's the position of the middle/hinge joint in the
+            # joint chain in a straight line).
             cmds.addAttr(joints[0], dataType='string', longName='ikSegmentMidPos')
             cmds.setAttr(joints[0]+'.ikSegmentMidPos', moduleAttrsDict['ikSegmentMidPos'], type='string', lock=True)
 
+        # Add additional joint attributes common to all module types.
         for joint in joints:
             cmds.addAttr(joint, longName='numNodes')
             cmds.setAttr(joint+'.numNodes', moduleAttrsDict['num_nodes'], lock=True)
@@ -1913,7 +1964,8 @@ def createSkeletonFromModule(moduleAttrsDict, characterName):
             cmds.addAttr(joint, dataType='string', longName='rotationFunction')
             cmds.setAttr(joint+'.rotationFunction', moduleAttrsDict['mirror_options'][2].lower(), type='string', lock=True)
 
-        cmds.select(clear=True) 
+        cmds.select(clear=True)
+
     return joints
 
 def setupParentingForRawCharacterParts(characterJointSet, jointsMainGrp, characterName):
@@ -1930,7 +1982,7 @@ def setupParentingForRawCharacterParts(characterJointSet, jointsMainGrp, charact
     for item in characterJointSet:
 
         # Each "item", contains the following data:
-        # ("<parent module node>,<parent type>", ["<child hierarchy root joint>", ..., "<child hierarchy end joint>"]
+        # ("<parent module node>,<parent type>", ["<child hierarchy root joint>", ..., "<child hierarchy end joint>"])
         # As an example:
         # ("MRT_JointNode__r_clavicle:root_node_transform,Constrained", ["MRT_characterNew__r_arm_root_node_transform",
         #                                                                "MRT_characterNew__r_arm_node_1_transform",
@@ -2002,6 +2054,10 @@ def setupParentingForRawCharacterParts(characterJointSet, jointsMainGrp, charact
 
 
 def createProxyForSkeletonFromModule(characterJointSet, moduleAttrsDict, characterName):
+    """
+    Set up proxy geometry for joint hierarchies during character creation. It uses the module attribute data generated by 
+    "returnModuleAttrsFromScene". It uses the existing module proxy geometry, if it exists.
+    """
     distanceScaleInitMultNodes = []
     jointSet = characterJointSet[-1][1]
     proxyGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__'+moduleAttrsDict['userSpecName']+'_proxyGeoGrp')
