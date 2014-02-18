@@ -44,45 +44,52 @@
 # include <maya/MPlug.h>
 # include <maya/MHardwareRenderer.h>
 
-static GLfloat handle_low[][3] = {
-{0.41f, 1.0f, 0.0f},
-{1.0f, 0.41f, 0.0f},
-{1.0f, -0.41f, 0.0f},
-{0.41f, -1.0f, 0.0f}, 
-{-0.41f, -1.0f, 0.0f},
-{-1.0f, -0.41f, 0.0f},
-{-1.0f, 0.41f, 0.0f},
-{-0.41f, 1.0f, 0.0f}};
+// Vertex points
+static GLfloat handle_low[][3] = { {0.41f, 1.0f, 0.0f},
+                                   {1.0f, 0.41f, 0.0f},
+                                   {1.0f, -0.41f, 0.0f},
+                                   {0.41f, -1.0f, 0.0f},
+                                   {-0.41f, -1.0f, 0.0f},
+                                   {-1.0f, -0.41f, 0.0f},
+                                   {-1.0f, 0.41f, 0.0f},
+                                   {-0.41f, 1.0f, 0.0f} };
 
-static GLfloat handle_high[][3] = {
-{0.15f, 0.0f, 0.0f},
-{0.138644463844f, 0.0572513112978f, 0.0f},
-{0.106297164729f, 0.10583436479f, 0.0f},
-{0.0578557149829f, 0.138393338871f, 0.0f},
-{0.000654496392712f, 0.149998572108f, 0.0f},
-{-0.0566458176302f, 0.138892949227f, 0.0f},
-{-0.105369549918f, 0.106757940923f, 0.0f},
-{-0.138139579088f, 0.0584590171787f, 0.0f},
-{-0.14999428846f, 0.00130898032476f, 0.0f},
-{-0.139138790288f, -0.0560392455079f, 0.0f},
-{-0.1072166846f, -0.104902728961f, 0.0f},
-{-0.059061206399f, -0.137883189326f, 0.0f},
-{-0.0019634393357f, -0.149987149136f, 0.0f},
-{0.0554316064791f, -0.139381982348f, 0.0f},
-{0.104433910807f, -0.107673387026f, 0.0f},
-{0.137624174467f, -0.0596622711791f, 0.0f}};
+static GLfloat handle_high[][3] = { {0.15f, 0.0f, 0.0f},
+                                    {0.138644463844f, 0.0572513112978f, 0.0f},
+                                    {0.106297164729f, 0.10583436479f, 0.0f},
+                                    {0.0578557149829f, 0.138393338871f, 0.0f},
+                                    {0.000654496392712f, 0.149998572108f, 0.0f},
+                                    {-0.0566458176302f, 0.138892949227f, 0.0f},
+                                    {-0.105369549918f, 0.106757940923f, 0.0f},
+                                    {-0.138139579088f, 0.0584590171787f, 0.0f},
+                                    {-0.14999428846f, 0.00130898032476f, 0.0f},
+                                    {-0.139138790288f, -0.0560392455079f, 0.0f},
+                                    {-0.1072166846f, -0.104902728961f, 0.0f},
+                                    {-0.059061206399f, -0.137883189326f, 0.0f},
+                                    {-0.0019634393357f, -0.149987149136f, 0.0f},
+                                    {0.0554316064791f, -0.139381982348f, 0.0f},
+                                    {0.104433910807f, -0.107673387026f, 0.0f},
+                                    {0.137624174467f, -0.0596622711791f, 0.0f} };
 
 class xhandleShape : public MPxLocatorNode
 {
 	public:
 		xhandleShape();
-		virtual	~xhandleShape(); 
-		virtual void		postConstructor();
-		virtual MStatus   	compute(const MPlug& plug, MDataBlock& data);
-		virtual void            draw(M3dView &view, const MDagPath &path, M3dView::DisplayStyle style, M3dView::DisplayStatus status);
-		virtual void		drawShapes(short enumType, bool drawWire, float unit_multiplier, GLfloat w_size, short drawOrtho, bool selection);
+		virtual	~xhandleShape();
+    
+		virtual void postConstructor();
+    
+		virtual MStatus compute(const MPlug& plug, MDataBlock& data);
+    
+		virtual void draw(M3dView &view, const MDagPath &path,
+                          M3dView::DisplayStyle style, M3dView::DisplayStatus status);
+    
+		virtual void drawShapes(short enumType, bool drawWire, float unit_multiplier,
+                                     GLfloat w_size, short drawOrtho, bool selection);
+    
 		virtual bool            isBounded() const;
-		virtual MBoundingBox    boundingBox() const; 
+		virtual MBoundingBox    boundingBox() const;
+    
 		static  void *          creator();
 		static  MStatus         initialize();
 		static  MTypeId     	id;
@@ -129,17 +136,24 @@ MStatus xhandleShape::compute(const MPlug& /*plug*/, MDataBlock& /*data*/)
 	return MS::kUnknownParameter;
 }
 
-void xhandleShape::drawShapes(short enumType, bool drawWire, float unit_multiplier, GLfloat w_size, short drawOrtho, bool selection)
+void xhandleShape::drawShapes(short enumType, bool drawWire, float unit_multiplier,
+                                            GLfloat w_size, short drawOrtho, bool selection)
 {
 	MObject thisNode = thisMObject();
+    
+    // Get the current draw color for this node
 	MPlug drawAxColourPlug(thisNode, aDrawAxColour);
 	short drawAxColourValue;
 	drawAxColourPlug.getValue(drawAxColourValue);
+    
+    // Check if draw ortho is turned on.
 	MPlug drawOrthoPlug(thisNode, aDrawOrtho);
 	short drawOrthoValue;
 	drawOrthoPlug.getValue(drawOrthoValue);
 
+    // Draw according to drawStyle attribute value passed to enumType.
 	switch(enumType) {
+    
 	case 1: gGLFT->glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
 		gGLFT->glEnable(GL_POINT_SMOOTH);
 		gGLFT->glLineWidth(w_size);
