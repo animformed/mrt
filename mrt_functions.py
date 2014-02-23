@@ -579,6 +579,25 @@ def runDeferredFunction_wrapper(function):
     maya.utils.executeDeferred(function)
 
 
+def findLastSubClassForSuperClass(clsName, moduleName=''):
+    """
+    Find the leaf child subclass for a given class. Used by the control
+    rig class hierarchy.
+    """
+    if moduleName:
+        klasses = eval('%s.%s'%(moduleName, clsName)).__subclasses__()
+    else:
+        klasses = eval(clsName).__subclasses__()
+    
+    if not klasses:
+        subClass = clsName
+
+    if klasses:
+        subClass = findLastSubClassForSuperClass(klasses[0].__name__, moduleName=moduleName)
+
+    return subClass
+
+
 def returnValidSelectionFlagForModuleTransformObjects(selection):
     """
     Checks a selection for a valid module object created by MRT.

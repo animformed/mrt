@@ -2958,7 +2958,7 @@ class MRT_UI(object):
             scrollTextString = '\n\t\t\t\t  < Available control rigging options for character hierarchy types >'.upper()
             for cls in control_types:
                 klassName = cls.__name__
-                klassName = findLastSubClassForSuperClass(klassName, 'mrt_controlRig')
+                klassName = mfunc.findLastSubClassForSuperClass(klassName, 'mrt_controlRig')
                 klass_p_name = klassName[0].upper()
                 for char in klassName[1:]:
                     if char.isupper():
@@ -3017,7 +3017,7 @@ class MRT_UI(object):
                 customClasses = [klass.__name__ for klass in getattr(mrt_controlRig, 'BaseJointControl').__subclasses__() if eval('mrt_controlRig.%s.customHierarchy'%klass.__name__) != None]
                 customClasses.sort()
                 for klass in customClasses:
-                    klass = findLastSubClassForSuperClass(klass, 'mrt_controlRig')
+                    klass = mfunc.findLastSubClassForSuperClass(klass, 'mrt_controlRig')
                     h_string = eval('mrt_controlRig.%s.customHierarchy'%klass)
                     if h_string == customHierarchyTreeListString:
                         mp_klasses.append(klass)
@@ -3044,7 +3044,7 @@ class MRT_UI(object):
 
                 if subClasses:
                     for klass in subClasses:
-                        klass = findLastSubClassForSuperClass(klass, 'mrt_controlRig')
+                        klass = mfunc.findLastSubClassForSuperClass(klass, 'mrt_controlRig')
                         mp_klasses.append(klass)
                         #subs = [sklass.__name__ for sklass in getattr(mrt_controlRig, klass).__subclasses__()]
                         #if not len(subs):
@@ -3902,47 +3902,107 @@ class MRT_UI(object):
                 cmds.scrollLayout(self.uiVars['moduleList_Scroll'], edit=True, height=treeLayoutHeight+8)
                 cmds.frameLayout(self.uiVars['moduleList_frameLayout'], edit=True, height=treeLayoutHeight)
 
+
+    '''
+    # ---- FOR FUTURE USE - TO BE IMPLEMENTED ---- #
+    
     def makeAnimateTabControls(self):
+    
         self.uiVars['animate_Column'] = cmds.columnLayout(adjustableColumn=True, rowSpacing=3)
 
-        self.uiVars['refCharacterList_frameLayout'] = cmds.frameLayout(label='Referenced characters', font='boldLabelFont', collapsable=True, borderVisible=True, borderStyle='etchedIn', marginHeight=5, marginWidth=4, collapse=True)
-        self.uiVars['refCharacterList_textScrollList'] = cmds.textScrollList(enable=False, height=32, allowMultiSelection=False, append=['              < no character references(s) loaded in the scene >'], font='boldLabelFont')
-        self.uiVars['refCharacterList_button_load'] = cmds.button(label='Load a new character into the scene', enable=False, command=self.loadCharAsReference)
-        self.uiVars['refCharacterList_button_unload'] = cmds.button(label='Unload the selected character from scene', enable=False, command=self.unloadRefCharFromScene)
-        self.uiVars['refCharacterList_button_reload'] = cmds.button(label='Reload the selected character', enable=False, command=self.reloadRefCharInScene)
+        self.uiVars['refCharacterList_frameLayout'] = cmds.frameLayout(label='Referenced characters', font='boldLabelFont',
+                                                                       collapsable=True, borderVisible=True,
+                                                                       borderStyle='etchedIn', marginHeight=5,
+                                                                       marginWidth=4, collapse=True)
+                                                                       
+        self.uiVars['refCharacterList_textScrollList'] = cmds.textScrollList(enable=False, height=32,
+                                                                             allowMultiSelection=False,
+                                                 append=['              < no character references(s) loaded in the scene >'],
+                                                                             font='boldLabelFont')
+                           
+        self.uiVars['refCharacterList_button_load'] = cmds.button(label='Load a new character into the scene',
+                                                                  enable=False,
+                                                                  command=self.loadCharAsReference)
+                                                                  
+        self.uiVars['refCharacterList_button_unload'] = cmds.button(label='Unload the selected character from scene',
+                                                                    enable=False,
+                                                                    command=self.unloadRefCharFromScene)
+                                                                    
+        self.uiVars['refCharacterList_button_reload'] = cmds.button(label='Reload the selected character',
+                                                                    enable=False, command=self.reloadRefCharInScene)
+                                                                    
         cmds.setParent(self.uiVars['animate_Column'])
 
-        #self.uiVars['characterAttributes_frameLayout'] = cmds.frameLayout(label='Character attributes', font='boldLabelFont', collapsable=True, borderVisible=True, borderStyle='etchedIn', marginHeight=5, marginWidth=4, collapse=True)
-        #cmds.text(label='Select a referenced character to display attributes', font='boldLabelFont')
-        #cmds.setParent(self.uiVars['animate_Column'])
+        # self.uiVars['characterAttributes_frameLayout'] = cmds.frameLayout(label='Character attributes',
+        #                                                                   font='boldLabelFont', collapsable=True,
+        #                                                                   borderVisible=True, borderStyle='etchedIn',
+        #                                                                   marginHeight=5, marginWidth=4, collapse=True)
+        
+        # cmds.text(label='Select a referenced character to display attributes', font='boldLabelFont')
+        
+        # cmds.setParent(self.uiVars['animate_Column'])
 
-        self.uiVars['characterLayout_frameLayout'] = cmds.frameLayout(label='Character control rigs', font='boldLabelFont', collapsable=True, borderVisible=True, borderStyle='etchedIn', marginHeight=5, marginWidth=4, collapse=True)
-        cmds.text(label='Select a character in the scene from list to display its\nhierarchies and the controls on them', font='boldLabelFont')
+        self.uiVars['characterLayout_frameLayout'] = cmds.frameLayout(label='Character control rigs', font='boldLabelFont',
+                                                                      collapsable=True, borderVisible=True,
+                                                                      borderStyle='etchedIn', marginHeight=5,
+                                                                      marginWidth=4, collapse=True)
+                                                                      
+        cmds.text(label='Select a character in the scene from list to display its\nhierarchies and the controls on them',
+                  font='boldLabelFont')
+                  
         self.uiVars['refChar_selectListMenu'] = cmds.optionMenu(label='Character', enable=False)
+        
         cmds.menuItem(label='No character found in the scene')
+        
         cmds.text(label='Select a character hierarchy')
-        self.uiVars['characterHierarchyList_textScrollList'] = cmds.textScrollList(enable=False, height=32, allowMultiSelection=False, append=['                           < no character selected from the list >'], font='boldLabelFont')
+        
+        self.uiVars['characterHierarchyList_textScrollList'] = cmds.textScrollList(enable=False, height=32,
+                                                                                   allowMultiSelection=False,
+                                               append=['                           < no character selected from the list >'],
+                                                                                   font='boldLabelFont')
+                                                                                   
         cmds.text(label='Select a control rig from the selected hierarchy to adjust its weight')
-        self.uiVars['hierarchyControlRigList_textScrollList'] = cmds.textScrollList(enable=False, height=32, allowMultiSelection=False, append=['                           < no character selected from the list >'], font='boldLabelFont')
+        
+        self.uiVars['hierarchyControlRigList_textScrollList'] = cmds.textScrollList(enable=False, height=32,
+                                                                                    allowMultiSelection=False,
+                                               append=['                           < no character selected from the list >'],
+                                                                                    font='boldLabelFont')
         cmds.setParent(self.uiVars['animate_Column'])
 
-        #self.uiVars['animateConstraints_frameLayout'] = cmds.frameLayout(label='Constraints', font='boldLabelFont', collapsable=True, borderVisible=True, borderStyle='etchedIn', marginHeight=5, marginWidth=4, collapse=True)
-        #cmds.setParent(self.uiVars['animate_Column'])
+        # self.uiVars['animateConstraints_frameLayout'] = cmds.frameLayout(label='Constraints', font='boldLabelFont',
+        #                                                                  collapsable=True, borderVisible=True,
+        #                                                                  borderStyle='etchedIn', marginHeight=5,
+        #                                                                  marginWidth=4, collapse=True)
+        
+        # cmds.setParent(self.uiVars['animate_Column'])
 
-        #self.uiVars['bakeAnim_frameLayout'] = cmds.frameLayout(label='Bake animation to FK', font='boldLabelFont', collapsable=True, borderVisible=True, borderStyle='etchedIn', marginHeight=5, marginWidth=4, collapse=True)
-        #cmds.text(label='Select a referenced character to bake animation', font='boldLabelFont')
+        # self.uiVars['bakeAnim_frameLayout'] = cmds.frameLayout(label='Bake animation to FK', font='boldLabelFont',
+        #                                                        collapsable=True, borderVisible=True, borderStyle='etchedIn',
+        #                                                              marginHeight=5, marginWidth=4, collapse=True)
+        
+        # cmds.text(label='Select a referenced character to bake animation', font='boldLabelFont')
 
-        #self.animateTabFrames.extend([self.uiVars['refCharacterTemplates_frameLayout'], self.uiVars['characterAttributes_frameLayout'], self.uiVars['characterLayout_frameLayout'], self.uiVars['animateConstraints_frameLayout'], self.uiVars['bakeAnim_frameLayout']])
-        self.animateTabFrames.extend([self.uiVars['refCharacterList_frameLayout'], self.uiVars['characterLayout_frameLayout']])
+        # self.animateTabFrames.extend([self.uiVars['refCharacterTemplates_frameLayout'],
+        #                               self.uiVars['characterAttributes_frameLayout'],
+        #                               self.uiVars['characterLayout_frameLayout'],
+        #                               self.uiVars['animateConstraints_frameLayout'],
+        #                               self.uiVars['bakeAnim_frameLayout']])
+        
+        self.animateTabFrames.extend([self.uiVars['refCharacterList_frameLayout'],
+                                      self.uiVars['characterLayout_frameLayout']])
+
 
     def loadCharAsReference(self, args=None):
         pass
+        
 
     def unloadRefCharFromScene(self, args=None):
         pass
+        
 
     def reloadRefCharInScene(self, args=None):
         pass
+    '''
 
 
     def createModuleFromUI(self, args=None):
@@ -4301,7 +4361,7 @@ class MRT_UI(object):
 
     def updateModuleLengthValue(self, args=None):
         """
-        Updates the module length value based on the number of module nodes and the type of
+        Updates the module length value in the UI based on the number of module nodes and the type of
         module node type set in the create UI tab. UI callback method.
         """
         num_nodes = cmds.intSliderGrp(self.uiVars['numNodes_sliderGrp'], query=True, value=True)
@@ -4336,7 +4396,10 @@ class MRT_UI(object):
 
 
     def updateNumNodesValue(self, args=None):
-    
+        """
+        Updates the number of module nodes in the UI based on the number of module nodes and the type of
+        module node type set in the create UI tab. UI callback method.
+        """
         length_module = cmds.floatSliderGrp(self.uiVars['lenNodes_sliderGrp'], query=True, value=True)
         num_nodes = cmds.intSliderGrp(self.uiVars['numNodes_sliderGrp'], query=True, value=True)
         node_type = cmds.radioCollection(self.uiVars['moduleType_radioCollection'], query=True, select=True)
@@ -4372,7 +4435,9 @@ class MRT_UI(object):
 
 
     def collapseAllUIframes(self, args=None):
-    
+        """
+        Called as a menu item under windows to collapse all frames under UI tabs.
+        """
         for element in self.uiVars:
         
             try:
@@ -4385,7 +4450,9 @@ class MRT_UI(object):
 
 
     def expandAllUIframes(self, args=None):
-    
+        """
+        Called as a menu item under windows to expand frames under the current UI tab.
+        """
         currentTabIndex = cmds.tabLayout(self.uiVars['tabs'], query=True, selectTabIndex=True)
         
         if currentTabIndex == 1:
@@ -4410,27 +4477,6 @@ class MRT_UI(object):
             cmds.rowLayout(self.uiVars['proxyElbowType_row'], edit=True, enable=True)
         else:
             cmds.rowLayout(self.uiVars['proxyElbowType_row'], edit=True, enable=False)
-
-
-def returnModuleListDictFromUImodule():
-
-    return _MRT_moduleList_forUIutilities
-
-
-def findLastSubClassForSuperClass(clsName, moduleName=''):
-
-    if moduleName:
-        klasses = eval('%s.%s'%(moduleName, clsName)).__subclasses__()
-    else:
-        klasses = eval(clsName).__subclasses__()
-    
-    if not klasses:
-        subClass = clsName
-
-    if klasses:
-        subClass = findLastSubClassForSuperClass(klasses[0].__name__, moduleName=moduleName)
-
-    return subClass
 
 
 def moduleSelectionFromTreeView():
@@ -4466,7 +4512,7 @@ def treeViewButtonAction(item, state):
     
     cmds.lockNode(item+':module_container', lock=True, lockUnpublished=True)
 
+
 def processItemRenameForTreeViewList(itemName, newName):
-    #val = mrt_UI.returnModuleListDictFromUImodule()
     return ""
 
