@@ -3722,174 +3722,400 @@ class MRT_UI(object):
 
         self.createTabFrames.extend([self.uiVars['modules_frameLayout'], self.uiVars['creationOpt_frameLayout'], self.uiVars['nodeCompnt_frameLayout'], self.uiVars['proxyGeo_frameLayout'], self.uiVars['mirroring_frameLayout'], self.uiVars['moduleNaming_frameLayout']])
 
+
     def makeEditTabControls(self):
+    
         scrollWidth = self.width_Height[0] - 20
+        
         self.uiVars['edit_Column'] = cmds.columnLayout(adjustableColumn=True, rowSpacing=3)
 
-        self.uiVars['loadedCollections_frameLayout'] = cmds.frameLayout(label='Module collections', font='boldLabelFont', collapsable=True, borderVisible=True, borderStyle='etchedIn', marginHeight=1, marginWidth=2, collapse=True)
-        self.uiVars['moduleCollection_textScrollList'] = cmds.textScrollList(enable=False, height=32, allowMultiSelection=False, append=['              < no module collection(s) loaded >'], font='boldLabelFont')
+        self.uiVars['loadedCollections_frameLayout'] = cmds.frameLayout(label='Module collections', font='boldLabelFont',
+                                                                        collapsable=True, borderVisible=True,
+                                                                        borderStyle='etchedIn', marginHeight=1,
+                                                                        marginWidth=2, collapse=True)
+                                                                        
+        self.uiVars['moduleCollection_textScrollList'] = cmds.textScrollList(enable=False, height=32,
+                                                                             allowMultiSelection=False,
+                                                                 append=['              < no module collection(s) loaded >'],
+                                                                             font='boldLabelFont')
 
         cmds.setParent(self.uiVars['loadedCollections_frameLayout'])
-        self.uiVars['collectionDescrp_scrollField'] = cmds.scrollField(text='< no collection info >', font='obliqueLabelFont', editable=False, width=scrollWidth-10, enableBackground=True, backgroundColor=[0.7, 0.7, 0.7], height=32, wordWrap=True)
-        self.uiVars['loadedCollections_button_install'] = cmds.button(label='Install selected module collection into the scene', enable=False, command=self.installSelectedModuleCollectionToScene)
-        self.uiVars['loadedCollections_button_edit'] = cmds.button(label='Edit description for selected module collection', enable=False, command=self.editSelectedModuleCollectionDescriptionFromUI)
-        self.uiVars['loadedCollections_button_delete'] = cmds.button(label='Delete selected module collection', enable=False, command=self.deleteSelectedModuleCollection)
+        
+        self.uiVars['collectionDescrp_scrollField'] = cmds.scrollField(text='< no collection info >', font='obliqueLabelFont',
+                                                                       editable=False, width=scrollWidth-10,
+                                                                       enableBackground=True,
+                                                                       backgroundColor=[0.7, 0.7, 0.7], height=32,
+                                                                        wordWrap=True)
+                                                                        
+        self.uiVars['loadedCollections_button_install'] = cmds.button(label='Install selected module collection into the scene',
+                                                            enable=False, command=self.installSelectedModuleCollectionToScene)
+                                                            
+        self.uiVars['loadedCollections_button_edit'] = cmds.button(label='Edit description for selected module collection',
+                                                                   enable=False,
+                                                                   command=self.editSelectedModuleCollectionDescriptionFromUI)
+                                                                   
+        self.uiVars['loadedCollections_button_delete'] = cmds.button(label='Delete selected module collection', enable=False,
+                                                                                 command=self.deleteSelectedModuleCollection)
 
         cmds.setParent(self.uiVars['edit_Column'])
-        self.uiVars['sceneModules_frameLayout'] = cmds.frameLayout(label='Scene modules', font='boldLabelFont', collapsable=True, borderVisible=True, borderStyle='etchedIn', marginHeight=1, marginWidth=2, collapse=True)
-        self.uiVars['moduleList_Scroll'] = cmds.scrollLayout(visible=True, childResizable=True, horizontalScrollBarThickness=0, verticalScrollBarThickness=0, height=40)
-        self.uiVars['moduleList_frameLayout'] = cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=32)
-        self.uiVars['sceneModuleList_treeView'] = cmds.treeView('__MRT_treeView_SceneModulesUI', numberOfButtons=1, allowReparenting=False, preventOverride=True, enable=False)
+        
+        self.uiVars['sceneModules_frameLayout'] = cmds.frameLayout(label='Scene modules', font='boldLabelFont',
+                                                                   collapsable=True, borderVisible=True, borderStyle='etchedIn',
+                                                                   marginHeight=1, marginWidth=2, collapse=True)
+                                                                   
+        self.uiVars['moduleList_Scroll'] = cmds.scrollLayout(visible=True, childResizable=True, horizontalScrollBarThickness=0,
+                                                             verticalScrollBarThickness=0, height=40)
+                                                             
+        self.uiVars['moduleList_frameLayout'] = cmds.frameLayout(visible=True, borderVisible=False, collapsable=False,
+                                                                                        labelVisible=False, height=32)
+                                                                                        
+        self.uiVars['sceneModuleList_treeView'] = cmds.treeView('__MRT_treeView_SceneModulesUI', numberOfButtons=1,
+                                                                allowReparenting=False, preventOverride=True, enable=False)
 
         cmds.setParent(self.uiVars['sceneModules_frameLayout'])
-        self.uiVars['sortModuleList_row'] = cmds.rowLayout(numberOfColumns=7, columnWidth=[(1, 50), (2, 120), (3, 120)], columnAttach=[(1, 'left', 10), (2, 'left', 20), (3, 'left', 10), (4, 'left', 20)], rowAttach=[(1, 'top', 2), (2, 'top', 0), (3, 'top', 0)], enable=False)
+        
+        self.uiVars['sortModuleList_row'] = cmds.rowLayout(numberOfColumns=7, columnWidth=[(1, 50), (2, 120), (3, 120)],
+                                           columnAttach=[(1, 'left', 10), (2, 'left', 20), (3, 'left', 10), (4, 'left', 20)],
+                                           rowAttach=[(1, 'top', 2), (2, 'top', 0), (3, 'top', 0)], enable=False)
+                                           
         cmds.text(label='Sort:', font='boldLabelFont')
+        
         self.uiVars['sortModuleList_radioCollection'] = cmds.radioCollection()
+        
         cmds.radioButton('Alphabetically', label='Alphabetically', select=True, onCommand=self.toggleSceneModuleListSortTypeFromUI)
         cmds.radioButton('By_hierarchy', label='By hierarchy', select=False, onCommand=self.toggleSceneModuleListSortTypeFromUI)
+        
         cmds.button(label='+', recomputeSize=False, width=20, height=20, command=self.increaseModuleListHeight)
         cmds.button(label='-', recomputeSize=False, width=20, height=20, command=self.decreaseModuleListHeight)
         cmds.button(label='R', recomputeSize=False, width=20, height=20, command=self.resetListHeightForSceneModulesUI)
         cmds.setParent(self.uiVars['sceneModules_frameLayout'])
-        self.uiVars['moduleSaveColl_button'] = cmds.button(label='Save selected module(s) as a collection', enable=False, command=self.makeCollectionFromSceneTreeViewModulesUI)
-        self.uiVars['moduleSaveCollOptions_row1'] = cmds.rowLayout(enable=False, numberOfColumns=5, columnWidth=[(1, 70), (2, 67), (3, 70), (4, 70), (5, 70)], columnAttach=[(1, 'left', 10), (2, 'right', 10), (3, 'right', 20)])#, rowAttach=[(2, 'top', 3), (5, 'top', 4)])
+        
+        self.uiVars['moduleSaveColl_button'] = cmds.button(label='Save selected module(s) as a collection', enable=False,
+                                                                    command=self.makeCollectionFromSceneTreeViewModulesUI)
+        
+        self.uiVars['moduleSaveCollOptions_row1'] = cmds.rowLayout(enable=False, numberOfColumns=5, columnWidth=[(1, 70),
+                                                                                      (2, 67), (3, 70), (4, 70), (5, 70)],
+                                                      columnAttach=[(1, 'left', 10), (2, 'right', 10), (3, 'right', 20)])
+        
         cmds.text(label='Include:', font='boldLabelFont')
         cmds.text(label='Parent', font='boldLabelFont')
         self.uiVars['moduleSaveColl_options_parentsCheckRadioCollection'] = cmds.radioCollection()
-        self.uiVars['moduleSaveColl_options_parentsCheckRadioButtonAll'] = cmds.radioButton('All_Parents', label='All', select=False)
-        self.uiVars['moduleSaveColl_options_parentsCheckRadioButtonDirect'] = cmds.radioButton('Direct_Parent', label='Direct', select=True)
-        self.uiVars['moduleSaveColl_options_parentsCheckRadioButtonNone'] = cmds.radioButton('None', label='None', select=False)
+        
+        self.uiVars['moduleSaveColl_options_parentsCheckRadioButtonAll'] = cmds.radioButton('All_Parents', label='All',
+                                                                                                            select=False)
+        
+        self.uiVars['moduleSaveColl_options_parentsCheckRadioButtonDirect'] = cmds.radioButton('Direct_Parent', label='Direct',
+                                                                                                                  select=True)
+        
+        self.uiVars['moduleSaveColl_options_parentsCheckRadioButtonNone'] = cmds.radioButton('None', label='None',
+                                                                                                        select=False)
+        
         cmds.setParent(self.uiVars['sceneModules_frameLayout'])
-        self.uiVars['moduleSaveCollOptions_row2'] = cmds.rowLayout(enable=False, numberOfColumns=4, columnWidth=[(1, 140), (2, 70), (3, 70), (4, 70)], columnAttach=[(1, 'right', 10), (2, 'right', 20)])#, rowAttach=[(2, 'top', 3), (5, 'top', 4)])
+        
+        self.uiVars['moduleSaveCollOptions_row2'] = cmds.rowLayout(enable=False, numberOfColumns=4, columnWidth=[(1, 140),
+                                                                                                (2, 70), (3, 70), (4, 70)],
+                                                                        columnAttach=[(1, 'right', 10), (2, 'right', 20)])
+        
         cmds.text(label='Children', font='boldLabelFont')
         self.uiVars['moduleSaveColl_options_childrenCheckRadioCollection'] = cmds.radioCollection()
-        self.uiVars['moduleSaveColl_options_childrenCheckRadioButtonAll'] = cmds.radioButton('All_Children', label='All', select=False)
-        self.uiVars['moduleSaveColl_options_childrenCheckRadioButtonDirect'] = cmds.radioButton('Direct_Children', label='Direct', select=True)
-        self.uiVars['moduleSaveColl_options_childrenCheckRadioButtonNone'] = cmds.radioButton('None', label='None', select=False)
-        # --------------------FOR_FUTURE_RELEASE----------------------- #
-        # self.uiVars['moduleEditFunc1_row'] = cmds.rowLayout(numberOfColumns=2, rowAttach=[(1, 'top', 0), (2, 'top', 0)], columnWidth=[(1, 190), (2, 205)], columnAttach=[(1, 'both', 3), (2, 'left', 35)])
-        # self.uiVars['moduleEdit_button'] = cmds.button(label='Edit selected module', enable=False)
-        # self.uiVars['moduleEditMirror_check'] = cmds.checkBox(label='Affect mirror module', enable=False, value=True)
-        # cmds.setParent(self.uiVars['sceneModules_frameLayout'])
-        # self.uiVars['moduleEditFunc2_row'] = cmds.rowLayout(numberOfColumns=2, columnWidth=[(1, 190), (2, 205)], columnAttach=[(1, 'both', 3), (2, 'left', 35)])
-        # self.uiVars['moduleEditApply_button'] = cmds.button(label='Apply changes', enable=False)
-        # --------------------FOR_FUTURE_RELEASE----------------------- #
+        self.uiVars['moduleSaveColl_options_childrenCheckRadioButtonAll'] = cmds.radioButton('All_Children', label='All',
+                                                                                                            select=False)
+                                                                                                            
+        self.uiVars['moduleSaveColl_options_childrenCheckRadioButtonDirect'] = cmds.radioButton('Direct_Children',
+                                                                                                label='Direct', select=True)
+                                                                                                
+        self.uiVars['moduleSaveColl_options_childrenCheckRadioButtonNone'] = cmds.radioButton('None', label='None',
+                                                                                                        select=False)
+        
         cmds.setParent(self.uiVars['sceneModules_frameLayout'])
         cmds.separator()
-        self.uiVars['moduleEditFunc3_row'] = cmds.rowLayout(numberOfColumns=2, rowAttach=[(1, 'top', 0), (2, 'top', 0)], columnWidth=[(1, 220), (2, 160)], columnAttach=[(1, 'both', 3), (2, 'both', 3)])
+        self.uiVars['moduleEditFunc3_row'] = cmds.rowLayout(numberOfColumns=2, rowAttach=[(1, 'top', 0), (2, 'top', 0)],
+                                                            columnWidth=[(1, 220), (2, 160)],
+                                                            columnAttach=[(1, 'both', 3), (2, 'both', 3)])
+        
         self.uiVars['moduleRename_textField'] = cmds.textField(enable=True, enterCommand=self.performModuleRename)
-        self.uiVars['moduleRename_button'] = cmds.button(label='Rename selected module', enable=False, command=self.performModuleRename)
+        
+        self.uiVars['moduleRename_button'] = cmds.button(label='Rename selected module', enable=False,
+                                                         command=self.performModuleRename)
+        
         cmds.setParent(self.uiVars['sceneModules_frameLayout'])
-        self.uiVars['moduleEditFunc4_row'] = cmds.rowLayout(numberOfColumns=2, rowAttach=[(1, 'top', 0), (2, 'top', 0)], columnWidth=[(1, 190), (2, 190)], columnAttach=[(1, 'both', 3), (2, 'both', 3)])
-        self.uiVars['moduleDelete_button'] = cmds.button(label='Delete selected module', enable=False, command=self.performModuleDeletion)
-        self.uiVars['moduleDuplicate_button'] = cmds.button(label='Duplicate selected module', enable=False, command=self.performModuleDuplicate_UI_wrapper)
+        
+        self.uiVars['moduleEditFunc4_row'] = cmds.rowLayout(numberOfColumns=2, rowAttach=[(1, 'top', 0), (2, 'top', 0)],
+                                                            columnWidth=[(1, 190), (2, 190)],
+                                                            columnAttach=[(1, 'both', 3), (2, 'both', 3)])
+        
+        self.uiVars['moduleDelete_button'] = cmds.button(label='Delete selected module', enable=False,
+                                                         command=self.performModuleDeletion)
+        
+        self.uiVars['moduleDuplicate_button'] = cmds.button(label='Duplicate selected module', enable=False,
+                                                            command=self.performModuleDuplicate_UI_wrapper)
 
         cmds.setParent(self.uiVars['edit_Column'])
-        self.uiVars['moduleParenting_frameLayout'] = cmds.frameLayout(label='Module parenting', font='boldLabelFont', collapsable=True, borderVisible=True, borderStyle='etchedIn', marginHeight=1, marginWidth=2, collapse=True)
-        self.uiVars['moduleParent1_row'] = cmds.rowLayout(numberOfColumns=3, columnWidth=[(1, 130), (2, 130), (3, 130)], columnAttach=[(1, 'right', 5), (2, 'right', 23), (3, 'both', 0)], rowAttach=[(1, 'top', 4), (2, 'top', 2), (3, 'top', 2)])
+        self.uiVars['moduleParenting_frameLayout'] = cmds.frameLayout(label='Module parenting', font='boldLabelFont',
+                                                                      collapsable=True, borderVisible=True,
+                                                                      borderStyle='etchedIn', marginHeight=1, marginWidth=2,
+                                                                      collapse=True)
+        
+        self.uiVars['moduleParent1_row'] = cmds.rowLayout(numberOfColumns=3, columnWidth=[(1, 130), (2, 130), (3, 130)],
+                                                          columnAttach=[(1, 'right', 5), (2, 'right', 23), (3, 'both', 0)],
+                                                          rowAttach=[(1, 'top', 4), (2, 'top', 2), (3, 'top', 2)])
+        
         cmds.text(label='Parent type:', font='boldLabelFont')
         self.uiVars['moduleParent_radioCollection'] = cmds.radioCollection()
         cmds.radioButton('Constrained', label='Constrained', select=True)
         cmds.radioButton('Hierarchical', label='Hierarchical', select=False)
         cmds.setParent(self.uiVars['moduleParenting_frameLayout'])
 
-        self.uiVars['moduleParent3_row'] = cmds.rowLayout(numberOfColumns=4, rowAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0), (4, 'both', 0)], columnWidth=[(1, 110), (2, 220), (3, 25), (4, 20)], columnAttach=[(1, 'both', 3), (2, 'both', 3), (3, 'both', 0), (4, 'both', 0)])
+        self.uiVars['moduleParent3_row'] = cmds.rowLayout(numberOfColumns=4, rowAttach=[(1, 'both', 0), (2, 'both', 0),
+                                                                                        (3, 'both', 0), (4, 'both', 0)],
+                                                                        columnWidth=[(1, 110), (2, 220), (3, 25), (4, 20)],
+                                                                        columnAttach=[(1, 'both', 3), (2, 'both', 3),
+                                                                                      (3, 'both', 0), (4, 'both', 0)])
+        
         self.uiVars['moduleParent_button'] = cmds.button(label='Parent', enable=False, command=self.performParentForModule)
-        self.uiVars['selectedParent_textField'] = cmds.textField(enable=True, editable=False, text='< insert parent module node >', font='obliqueLabelFont', enableBackground=True, backgroundColor=[0.7, 1.0, 0.4])
+        
+        self.uiVars['selectedParent_textField'] = cmds.textField(enable=True, editable=False,
+                                                                 text='< insert parent module node >', font='obliqueLabelFont',
+                                                                 enableBackground=True, backgroundColor=[0.7, 1.0, 0.4])
+        
         cmds.button(label='<<', command=self.insertParentModuleNodeIntoField)
         cmds.button(label='C', command=self.clearParentModuleField)
         cmds.setParent(self.uiVars['moduleParenting_frameLayout'])
 
-        self.uiVars['moduleParent2_row'] = cmds.rowLayout(numberOfColumns=4, rowAttach=[(1, 'both', 0), (2, 'both', 0), (3, 'both', 0), (4, 'both', 0)], columnWidth=[(1, 110), (2, 220), (3, 25), (4, 20)], columnAttach=[(1, 'both', 3), (2, 'both', 3), (3, 'both', 0), (4, 'both', 0)])
+        self.uiVars['moduleParent2_row'] = cmds.rowLayout(numberOfColumns=4, rowAttach=[(1, 'both', 0), (2, 'both', 0),
+                                                                                        (3, 'both', 0), (4, 'both', 0)],
+                                                                        columnWidth=[(1, 110), (2, 220), (3, 25), (4, 20)],
+                                                                        columnAttach=[(1, 'both', 3), (2, 'both', 3),
+                                                                                      (3, 'both', 0), (4, 'both', 0)])
+                                                  
         self.uiVars['moduleUnparent_button'] = cmds.button(label='Unparent', enable=False, command=self.performUnparentForModule)
-        self.uiVars['selectedChildModule_textField'] = cmds.textField(enable=True, editable=False, text='< insert child module >', font='obliqueLabelFont', enableBackground=True, backgroundColor=[1.0, 0.4, 0.9])
+        
+        self.uiVars['selectedChildModule_textField'] = cmds.textField(enable=True, editable=False,
+                                                                      text='< insert child module >', font='obliqueLabelFont',
+                                                                      enableBackground=True, backgroundColor=[1.0, 0.4, 0.9])
+        
         cmds.button(label='<<', command=self.insertChildModuleIntoField)
         cmds.button(label='C', command=self.clearChildModuleField)
         cmds.setParent(self.uiVars['moduleParenting_frameLayout'])
 
-        self.uiVars['moduleParent_l_row'] = cmds.rowLayout(numberOfColumns=2, rowAttach=[(1, 'top', 0), (2, 'top', 0)], columnWidth=[(1, 190), (2, 190)], columnAttach=[(1, 'both', 3), (2, 'both', 3)])
+        self.uiVars['moduleParent_l_row'] = cmds.rowLayout(numberOfColumns=2, rowAttach=[(1, 'top', 0), (2, 'top', 0)],
+                                                           columnWidth=[(1, 190), (2, 190)],
+                                                           columnAttach=[(1, 'both', 3), (2, 'both', 3)])
+        
         cmds.text(label='Parent module node', enableBackground=True, backgroundColor=[0.7, 1.0, 0.4])
         cmds.text(label='Child module', enableBackground=True, backgroundColor=[1.0, 0.4, 0.9])
         cmds.setParent(self.uiVars['moduleParenting_frameLayout'])
 
-        self.uiVars['moduleParent4_row'] = cmds.rowLayout(numberOfColumns=2, rowAttach=[(1, 'top', 0), (2, 'top', 0)], columnWidth=[(1, 190), (2, 190)], columnAttach=[(1, 'both', 3), (2, 'both', 3)])
-        self.uiVars['parentSnap_button'] = cmds.button(label='Snap parent to child', enable=False, command=self.performSnapParentToChild)
-        self.uiVars['childSnap_button'] = cmds.button(label='Snap child root to parent', enable=False, command=self.performSnapChildToParent)
-        # ------------------FOR_FUTURE_RELEASE---------------------- #
-        # cmds.setParent(self.uiVars['edit_Column'])
-        # self.uiVars['moduleAttributes_frameLayout'] = cmds.frameLayout(label='Module attributes', font='boldLabelFont', collapsable=True, borderVisible=True, borderStyle='etchedIn', marginHeight=1, marginWidth=2, collapse=True)
-        # ------------------FOR_FUTURE_RELEASE---------------------- #
-        self.editTabFrames.extend([self.uiVars['loadedCollections_frameLayout'], self.uiVars['sceneModules_frameLayout'], self.uiVars['moduleParenting_frameLayout']])
+        self.uiVars['moduleParent4_row'] = cmds.rowLayout(numberOfColumns=2, rowAttach=[(1, 'top', 0), (2, 'top', 0)],
+                                                          columnWidth=[(1, 190), (2, 190)],
+                                                          columnAttach=[(1, 'both', 3), (2, 'both', 3)])
+                                                          
+        self.uiVars['parentSnap_button'] = cmds.button(label='Snap parent to child', enable=False,
+                                                            command=self.performSnapParentToChild)
+        
+        self.uiVars['childSnap_button'] = cmds.button(label='Snap child root to parent', enable=False,
+                                                                command=self.performSnapChildToParent)
+        
+        self.editTabFrames.extend([self.uiVars['loadedCollections_frameLayout'], self.uiVars['sceneModules_frameLayout'],
+                                                                             self.uiVars['moduleParenting_frameLayout']])
+
 
     def makeRigTabControls(self):
+        """
+        Create the tab layout contents for rig controls. These function will create character from scene module(s)
+        and then modify it by applying control rigging and space switching.
+        """
         scrollWidth = self.width_Height[0] - 20
+        
         self.uiVars['rig_Column'] = cmds.columnLayout(adjustableColumn=True, rowSpacing=3)
-        self.uiVars['characterCreation_frameLayout'] = cmds.frameLayout(label='Character creation', font='boldLabelFont', collapsable=True, borderVisible=True, borderStyle='etchedIn', marginHeight=5, marginWidth=4, collapse=True)
+        
+        
+        # Creating character from scene modules ---
+        
+        self.uiVars['characterCreation_frameLayout'] = cmds.frameLayout(label='Character creation', font='boldLabelFont',
+                                                                        collapsable=True, borderVisible=True,
+                                                                        borderStyle='etchedIn', marginHeight=5,
+                                                                        marginWidth=4, collapse=True)
+                                                                        
         cmds.button(label='Create character from scene modules', command=self.processCharacterFromScene)
+        
         cmds.button(label='Revert current character to modules', command=self.revertModulesFromCharacter)
-        cmds.rowLayout(numberOfColumns=2, rowAttach=[(1, 'top', 2), (2, 'top', 0)], columnWidth=[(1, 180), (2, 190)], columnAttach=[(1, 'both', 3), (2, 'both', 3)])
+        
+        cmds.rowLayout(numberOfColumns=2, rowAttach=[(1, 'top', 2), (2, 'top', 0)], columnWidth=[(1, 180), (2, 190)],
+                                          columnAttach=[(1, 'both', 3), (2, 'both', 3)])
+                                          
         cmds.text(label='Character name (no underscore):')
+        
         self.uiVars['characterName_textField'] = cmds.textField(text='')
-        #cmds.setParent(self.uiVars['characterCreation_frameLayout'])
-        #cmds.button(label='Save character template', command=self.saveCharacterTemplate)
+
         cmds.setParent(self.uiVars['rig_Column'])
-        self.uiVars['charTemplates_frameLayout'] = cmds.frameLayout(label='Character templates and Control rigging', font='boldLabelFont', collapsable=True, borderVisible=True, borderStyle='etchedIn', marginHeight=7, marginWidth=4, collapse=True)
+        
+        
+        # Working with character templates ---
+        
+        self.uiVars['charTemplates_frameLayout'] = cmds.frameLayout(label='Character templates and Control rigging',
+                                                                    font='boldLabelFont', collapsable=True,
+                                                                    borderVisible=True, borderStyle='etchedIn',
+                                                                    marginHeight=7, marginWidth=4, collapse=True)
+                                                                    
         cmds.text(label='Note: You can only save a character template before adding a control rig', font='smallBoldLabelFont')
+        
         cmds.button(label='Save character template from scene', command=self.saveCharacterTemplate)
-        self.uiVars['charTemplatesList_frameLayout'] = cmds.frameLayout(label='Templates', font='boldLabelFont', collapsable=True, borderVisible=True, borderStyle='etchedIn', marginHeight=1, marginWidth=2, collapse=True)
-        self.uiVars['charTemplates_textScrollList'] = cmds.textScrollList(enable=False, height=32, allowMultiSelection=False, append=['              < no character template(s) loaded >'], font='boldLabelFont')
+        
+        self.uiVars['charTemplatesList_frameLayout'] = cmds.frameLayout(label='Templates', font='boldLabelFont',
+                                                                        collapsable=True, borderVisible=True,
+                                                                        borderStyle='etchedIn', marginHeight=1,
+                                                                        marginWidth=2, collapse=True)
+                                                                        
+        self.uiVars['charTemplates_textScrollList'] = cmds.textScrollList(enable=False, height=32, allowMultiSelection=False,
+                                                                append=['              < no character template(s) loaded >'],
+                                                                                                        font='boldLabelFont')
         scrollWidth = self.width_Height[0] - 20
-        self.uiVars['charTemplateDescrp_scrollField'] = cmds.scrollField(text='< no template info >', font='obliqueLabelFont', editable=False, width=scrollWidth-10, enableBackground=True, backgroundColor=[0.7, 0.7, 0.7], height=32, wordWrap=True)
-        self.uiVars['charTemplate_button_import'] = cmds.button(label='Install selected character template', enable=False, command=self.importSelectedCharTemplate)
-        self.uiVars['charTemplate_button_edit'] = cmds.button(label='Edit description for selected character template', enable=False, command=self.editSelectedCharTemplateDescriptionFromUI)
-        self.uiVars['charTemplate_button_delete'] = cmds.button(label='Delete selected character template', enable=False, command=self.deleteSelectedCharTemplate)
+        
+        self.uiVars['charTemplateDescrp_scrollField'] = cmds.scrollField(text='< no template info >', font='obliqueLabelFont',
+                                                                         editable=False, width=scrollWidth-10,
+                                                                         enableBackground=True,
+                                                                         backgroundColor=[0.7, 0.7, 0.7], height=32,
+                                                                         wordWrap=True)
+                                                                         
+        self.uiVars['charTemplate_button_import'] = cmds.button(label='Install selected character template', enable=False,
+                                                                command=self.importSelectedCharTemplate)
+                                                                
+        self.uiVars['charTemplate_button_edit'] = cmds.button(label='Edit description for selected character template',
+                                                              enable=False,
+                                                              command=self.editSelectedCharTemplateDescriptionFromUI)
+                                                              
+        self.uiVars['charTemplate_button_delete'] = cmds.button(label='Delete selected character template',
+                                                                enable=False,
+                                                                command=self.deleteSelectedCharTemplate)
+                                                                
         cmds.setParent(self.uiVars['charTemplates_frameLayout'])
-        self.uiVars['characterRigging_frameLayout'] = cmds.frameLayout(label='Control rigging', font='boldLabelFont', collapsable=True, borderVisible=True, borderStyle='etchedIn', marginHeight=3, marginWidth=2, collapse=True)
-        cmds.button(label='Click to view available control rigs for character hierarchies', height=20, command=self.displayControlRiggingOptionsAllWindow)
-        self.uiVars['characterRigging_textScrollList'] = cmds.textScrollList(enable=False, height=32, allowMultiSelection=False, append=['        < select a character hierarchy to attach control rig(s) >'], font='boldLabelFont')
+        
+        
+        # Working with control rigging ---
+        
+        self.uiVars['characterRigging_frameLayout'] = cmds.frameLayout(label='Control rigging', font='boldLabelFont',
+                                                                       collapsable=True, borderVisible=True,
+                                                                       borderStyle='etchedIn', marginHeight=3,
+                                                                       marginWidth=2, collapse=True)
+
+        cmds.button(label='Click to view available control rigs for character hierarchies', height=20,
+                    command=self.displayControlRiggingOptionsAllWindow)
+                    
+        self.uiVars['characterRigging_textScrollList'] = cmds.textScrollList(enable=False, height=32,
+                                                                             allowMultiSelection=False,
+                                                append=['        < select a character hierarchy to attach control rig(s) >'],
+                                                                             font='boldLabelFont')
+                                                                             
         cmds.rowColumnLayout(numberOfColumns=2, rowOffset=[(1, 'both', 2), (2, 'both', 2)], columnWidth=[(1, 105), (2, 260)])
+        
         cmds.text(label='Control rig colour', font='smallBoldLabelFont')
-        self.uiVars['controlLayerColour_slider'] = cmds.colorIndexSliderGrp('__MRT_controlLayerColour_IndexSliderGrp', minValue=1, maxValue=32, value=23, enable=True)
+        
+        self.uiVars['controlLayerColour_slider'] = cmds.colorIndexSliderGrp('__MRT_controlLayerColour_IndexSliderGrp',
+                                                                            minValue=1, maxValue=32, value=23, enable=True)
+                                                                            
         cmds.setParent(self.uiVars['characterRigging_frameLayout'])
-        self.uiVars['characterRigging_attachRigButton'] = cmds.button(label='Attach rig', enable=False, command=self.attachSelectedControlRigToHierarchy)
+        
+        self.uiVars['characterRigging_attachRigButton'] = cmds.button(label='Attach rig', enable=False,
+                                                                      command=self.attachSelectedControlRigToHierarchy)
+                                                                      
         cmds.setParent(self.uiVars['characterRigging_frameLayout'])
-        self.uiVars['characterRigging_attachedRigs_textScrollList'] = cmds.textScrollList(enable=False, height=32, allowMultiSelection=False, append=['      < select a character hierarchy to remove attached rig(s) >'], font='boldLabelFont')
-        self.uiVars['characterRigging_removeRigButton'] = cmds.button(label='Detach Rig', enable=False, command=self.removeSelectedControlRigFromHierarchy)
+        
+        self.uiVars['characterRigging_attachedRigs_textScrollList'] = cmds.textScrollList(enable=False, height=32,
+                                                                                          allowMultiSelection=False,
+                                                 append=['      < select a character hierarchy to remove attached rig(s) >'],
+                                                                                          font='boldLabelFont')
+                                                                                          
+        self.uiVars['characterRigging_removeRigButton'] = cmds.button(label='Detach Rig', enable=False,
+                                                                      command=self.removeSelectedControlRigFromHierarchy)
+                                                                      
         cmds.setParent(self.uiVars['charTemplates_frameLayout'])
-        self.uiVars['characterRigging_parentSwitching_frameLayout'] = cmds.frameLayout(label='Parent switching', font='boldLabelFont', collapsable=True, borderVisible=True, borderStyle='etchedIn', marginHeight=3, marginWidth=2, collapse=True)
+        
+        
+        # Working with space or parent switching ---
+        
+        self.uiVars['characterRigging_parentSwitching_frameLayout'] = cmds.frameLayout(label='Parent switching',
+                                                                                       font='boldLabelFont',
+                                                                                       collapsable=True, borderVisible=True,
+                                                                                       borderStyle='etchedIn', marginHeight=3,
+                                                                                       marginWidth=2, collapse=True)
+                                                                                       
         cmds.rowLayout(numberOfColumns=1, rowAttach=(1, 'both', 2), columnAttach=(1, 'left', 12))
+        
         cmds.text(label='Note: Parent switching works only on control names with "handle" suffix.', font='smallBoldLabelFont')
+        
         cmds.setParent(self.uiVars['characterRigging_parentSwitching_frameLayout'])
-        self.uiVars['characterRigging_parentSwitching_row1'] = cmds.rowLayout(numberOfColumns=3, rowAttach=[(1, 'both', 0), (2, 'top', 0)], columnWidth=[(1, 299), (2, 33)], columnAttach=[(1, 'both', 3), (2, 'both', 3)])
-        self.uiVars['characterRigging_parentSwitching_textField'] = cmds.textField(enable=True, editable=False, text='< insert control >', font='obliqueLabelFont')
+        
+        self.uiVars['characterRigging_parentSwitching_row1'] = cmds.rowLayout(numberOfColumns=3,
+                                                                              rowAttach=[(1, 'both', 0), (2, 'top', 0)],
+                                                                              columnWidth=[(1, 299), (2, 33)],
+                                                                              columnAttach=[(1, 'both', 3), (2, 'both', 3)])
+                                                                              
+        self.uiVars['characterRigging_parentSwitching_textField'] = cmds.textField(enable=True, editable=False,
+                                                                                   text='< insert control >',
+                                                                                   font='obliqueLabelFont')
+                                                                                   
         cmds.button(label='<<', command=self.insertValidSelectionForParentSwitching)
+        
         cmds.button(label='Clear', command=self.clearParentSwitchControlField)
+        
         cmds.setParent(self.uiVars['characterRigging_parentSwitching_frameLayout'])
+        
         cmds.text(label='Parent switch target(s)')
-        #self.uiVars['characterRigging_parentSwitching_targetList_scroll'] = cmds.scrollLayout(visible=True, childResizable=True, horizontalScrollBarThickness=0, verticalScrollBarThickness=0, height=40)
-        #self.uiVars['characterRigging_parentSwitching_targetList_frameLayout'] = cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=32)
-        #self.uiVars['characterRigging_parentSwitching_targetList_treeView'] = cmds.treeView(numberOfButtons=0, allowReparenting=False, preventOverride=True, enable=False)
-        #cmds.treeView(self.uiVars['characterRigging_parentSwitching_targetList_treeView'], edit=True, numberOfButtons=1, addItem=('< no control inserted >', ''), hideButtons=True)
-        #mel.eval('global proc string processItemRenameForTreeViewListCallback(string $itemName, string $newName){string $returnStr = python("processItemRenameForTreeViewList(\'" + $itemName + "\', \'" + $newName + "\')");return $returnStr;}')
-        #cmds.treeView(self.uiVars['characterRigging_parentSwitching_targetList_treeView'], edit=True, font=['< no control inserted >', 'boldLabelFont'], editLabelCommand='processItemRenameForTreeViewListCallback', enable=False)
-        self.uiVars['characterRigging_parentSwitching_targetTextScrollList'] = cmds.textScrollList(enable=False, height=32, allowMultiSelection=False, append=['\t           < no control inserted >'], font='boldLabelFont', selectCommand=self.postSelectionParentSwitchListItem)
+        
+        self.uiVars['characterRigging_parentSwitching_targetTextScrollList'] = cmds.textScrollList(enable=False, height=32,
+                                                                                                   allowMultiSelection=False,
+                                                                             append=['\t           < no control inserted >'],
+                                                                                                        font='boldLabelFont',
+                                                                        selectCommand=self.postSelectionParentSwitchListItem)
+                                                                        
         cmds.setParent(self.uiVars['characterRigging_parentSwitching_frameLayout'])
-        self.uiVars['characterRigging_parentSwitching_addButton'] = cmds.button(label='Add selected control to target list', enable=False, command=self.addSelectedControlToTargetList)
-        self.uiVars['characterRigging_parentSwitching_row2'] = cmds.rowLayout(numberOfColumns=2, rowAttach=[(1, 'top', 0), (2, 'top', 0)], columnWidth=[(1, 188), (2, 188)], columnAttach=[(1, 'both', 3), (2, 'both', 3)])
-        self.uiVars['characterRigging_parentSwitching_RemoveAll'] = cmds.button(label='Remove All', enable=False, command=self.removeAllTargetsFromParentSwitchList)
-        self.uiVars['characterRigging_parentSwitching_RemoveSelected'] = cmds.button(label='Remove selected', enable=False, command=self.removeSelectedTargetFromParentSwitchList)
+        
+        self.uiVars['characterRigging_parentSwitching_addButton'] = cmds.button(label='Add selected control to target list',
+                                                                                enable=False,
+                                                                                command=self.addSelectedControlToTargetList)
+                                                                                
+        self.uiVars['characterRigging_parentSwitching_row2'] = cmds.rowLayout(numberOfColumns=2,
+                                                                              rowAttach=[(1, 'top', 0), (2, 'top', 0)],
+                                                                              columnWidth=[(1, 188), (2, 188)],
+                                                                              columnAttach=[(1, 'both', 3), (2, 'both', 3)])
+                                                                              
+        self.uiVars['characterRigging_parentSwitching_RemoveAll'] = cmds.button(label='Remove All', enable=False,
+                                                                        command=self.removeAllTargetsFromParentSwitchList)
+                                                                
+        self.uiVars['characterRigging_parentSwitching_RemoveSelected'] = cmds.button(label='Remove selected', enable=False,
+                                                                     command=self.removeSelectedTargetFromParentSwitchList)
+                                                                     
         cmds.setParent(self.uiVars['characterRigging_parentSwitching_frameLayout'])
-        self.uiVars['characterRigging_parentSwitching_createButton'] = cmds.button(label='Create / Update parent switch for inserted control', enable=False, command=self.create_update_parentSwitchTargetsForControl)
-        self.editTabFrames.extend([self.uiVars['characterCreation_frameLayout'], self.uiVars['charTemplates_frameLayout'], self.uiVars['charTemplatesList_frameLayout'], self.uiVars['characterRigging_frameLayout'], self.uiVars['characterRigging_parentSwitching_frameLayout']])
+        
+        self.uiVars['characterRigging_parentSwitching_createButton'] = cmds.button(label='Create / Update parent switch for' \
+                                                                                'inserted control', enable=False,
+                                                                    command=self.create_update_parentSwitchTargetsForControl)
+        # Save frames under rig tab ---
+        
+        self.editTabFrames.extend([self.uiVars['characterCreation_frameLayout'], self.uiVars['charTemplates_frameLayout'],
+                                   self.uiVars['charTemplatesList_frameLayout'], self.uiVars['characterRigging_frameLayout'],
+                                   self.uiVars['characterRigging_parentSwitching_frameLayout']])
+
 
     def increaseModuleListHeight(self, args=None):
+        """
+        UI callback method to increment the height of scroll list for scene modules.
+        """
         height = cmds.frameLayout(self.uiVars['moduleList_frameLayout'], query=True, height=True)
         cmds.frameLayout(self.uiVars['moduleList_frameLayout'], edit=True, height=height+40)
         cmds.scrollLayout(self.uiVars['moduleList_Scroll'], edit=True, height=height+48)
 
+
     def decreaseModuleListHeight(self, args=None):
+        """
+        UI callback method to decrement the height of scroll list for scene modules.
+        """
+        # Get the module namespaces ion the scene.
         sceneNamespaces = cmds.namespaceInfo(listOnlyNamespaces=True)
         MRT_namespaces = mfunc.returnMRT_Namespaces(sceneNamespaces)
+        
+        # Set the size of the scroll list based on the number of modules, minus a decrement value.
         if MRT_namespaces != None:
             treeLayoutHeight = len(MRT_namespaces) * 29
             if treeLayoutHeight > 200:
