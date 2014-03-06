@@ -274,7 +274,7 @@ class MRT_UI(object):
             cmds.select(selection)
         cmds.undoInfo(stateWithoutFlush=True)
 
-    def createParentSwitchGroupforControlHandle(self, args=None):
+    def createParentSwitchGroupforControlHandle(self, *args):
         selection = cmds.ls(selection=True)
         if selection:
             selection = selection[-1]
@@ -314,7 +314,7 @@ class MRT_UI(object):
         controlContainer = cmds.container(selection, query=True, findContainer=True)
         mfunc.addNodesToContainer(controlContainer, [parentSwitch_grp, transform_grp])
 
-    def display_mrt_issues(self, args=None):
+    def display_mrt_issues(self, *args):
     
         printString1 = ' Known Issues with Modular Rigging Tools for Maya' \
             '\n ------------------------------------------------'
@@ -387,7 +387,7 @@ class MRT_UI(object):
                                                                             enableBackground=True, height=400, wordWrap=False)
         cmds.showWindow(self.uiVars['displayMrtIssuesWindow'])
 
-    def display_mrt_about(self, args=None):
+    def display_mrt_about(self, *args):
         printString1 = '\n\t\t\tModular Rigging Tools v1.0\n\t\t\tfor Maya 2011 - 2013'
         printString2 = '\n\n\tWritten by Himanish Bhattacharya' \
             '\n\thimanish@animformed.net' \
@@ -408,10 +408,10 @@ class MRT_UI(object):
         cmds.text(label=printString2)
         cmds.showWindow(self.uiVars['displayMrtAboutWindow'])
 
-    def closeWindow(self, windowName, args=None):
+    def closeWindow(self, windowName, *args):
         cmds.deleteUI(windowName)
 
-    def openWebPage(self, urlString, args=None):
+    def openWebPage(self, urlString, *args):
         webbrowser.open(urlString)
 
     def createUIutilityScriptJobs(self):
@@ -430,7 +430,7 @@ class MRT_UI(object):
         cmds.scriptJob(event=['SelectionChanged', self.viewControlRigOptionsOnHierarchySelection], parent=mainWin)
         self.c_jobNum = cmds.scriptJob(uiDeleted=[mainWin, partial(mfunc.cleanup_MRT_actions, self.c_jobNum)])
 
-    def purgeAutoCollections(self, args=None):
+    def purgeAutoCollections(self, *args):
         autoCollectionFiles = filter(lambda fileName:re.match('^character__[0-9]*\.mrtmc$', fileName), \
                                                                                     os.listdir(self.autoCollections_path))
         if len(autoCollectionFiles):
@@ -441,7 +441,7 @@ class MRT_UI(object):
         else:
             sys.stderr.write('No auto-collection file(s) found.\n')
 
-    def deleteSelectedProxyGeo(self, args=None):
+    def deleteSelectedProxyGeo(self, *args):
         selection = cmds.ls(selection=True)
         moduleProxies = []
         check = False
@@ -460,7 +460,7 @@ class MRT_UI(object):
         if not check:
             cmds.warning('MRT Error: Please select a module proxy geometry.')
 
-    def deleteAllProxyGeoForModule(self, args=None):
+    def deleteAllProxyGeoForModule(self, *args):
         modules = []
         selection = cmds.ls(selection=True)
         if selection:
@@ -481,7 +481,7 @@ class MRT_UI(object):
         else:
             cmds.warning('MRT Error: Please select a module.')
 
-    def deleteHistoryAllProxyGeo(self, args=None):
+    def deleteHistoryAllProxyGeo(self, *args):
         proxyGrpList = []
         all_transforms = cmds.ls(type='transform')
         for transform in all_transforms:
@@ -493,7 +493,7 @@ class MRT_UI(object):
         else:
             cmds.warning('MRT Error: No module proxy geometry found.')
 
-    def swapHingeNodeRootEndHandlePos(self, args=None):
+    def swapHingeNodeRootEndHandlePos(self, *args):
         selection = cmds.ls(selection=True)
         if not selection:
             sys.stderr.write('Please select a hinge node module.\n')
@@ -526,8 +526,8 @@ class MRT_UI(object):
     def deferredSelectionUpdate(self, selection):
         cmds.select(selection, replace=True)
 
-    def autoLoadSettingsUIforCollections(self, args=None):
-        def setAutoLoadSettingsValues(args=None):
+    def autoLoadSettingsUIforCollections(self, *args):
+        def setAutoLoadSettingsValues(*args):
             ui_preferences_file = open(self.ui_preferences_path, 'rb')
             ui_preferences = cPickle.load(ui_preferences_file)
             ui_preferences_file.close()
@@ -579,15 +579,15 @@ class MRT_UI(object):
         cmds.text(label='')
         cmds.showWindow(self.uiVars['autoLoadSettingsUIwindow'])
 
-    def changeLoadCollectionListClearMode(self, args=None):
-        def loadCollectionsFromSettingsWindow(args=None):
+    def changeLoadCollectionListClearMode(self, *args):
+        def loadCollectionsFromSettingsWindow(*args):
             try:
                 cmds.deleteUI('mrt_loadCollectionClearMode_setting_UI_window')
             except:
                 pass
             self.loadSavedModuleCollections()
 
-        def setLoadCollectionClearModeValue(args=None):
+        def setLoadCollectionClearModeValue(*args):
             value = cmds.checkBox(self.uiVars['loadCollectionClearMode_checkBox'], query=True, value=True)
             ui_preferences_file = open(self.ui_preferences_path, 'rb')
             ui_preferences = cPickle.load(ui_preferences_file)
@@ -629,15 +629,15 @@ class MRT_UI(object):
         cmds.text(label='')
         cmds.showWindow(self.uiVars['loadCollectionClearModeWindow'])
 
-    def changeLoadCollectionDirectoryClearMode(self, args=None):
-        def loadCollectionsFromSettingsWindow(args=None):
+    def changeLoadCollectionDirectoryClearMode(self, *args):
+        def loadCollectionsFromSettingsWindow(*args):
             try:
                 cmds.deleteUI('mrt_loadCollectionDirectoryClearMode_setting_UI_window')
             except:
                 pass
             self.selectDirectoryForLoadingCollections()
 
-        def setLoadCollectionDirectoryClearModeValue(args=None):
+        def setLoadCollectionDirectoryClearModeValue(*args):
             value = cmds.checkBox(self.uiVars['loadCollectionDirectoryClearMode_checkBox'], query=True, value=True)
             ui_preferences_file = open(self.ui_preferences_path, 'rb')
             ui_preferences = cPickle.load(ui_preferences_file)
@@ -680,7 +680,7 @@ class MRT_UI(object):
         cmds.text(label='')
         cmds.showWindow(self.uiVars['loadCollectionDirectoryClearModeWindow'])
 
-    def loadSavedCharTemplates(self, args=None):
+    def loadSavedCharTemplates(self, *args):
         ui_preferences_file = open(self.ui_preferences_path, 'rb')
         ui_preferences = cPickle.load(ui_preferences_file)
         ui_preferences_file.close()
@@ -699,8 +699,8 @@ class MRT_UI(object):
         cPickle.dump(ui_preferences, ui_preferences_file, cPickle.HIGHEST_PROTOCOL)
         ui_preferences_file.close()
 
-    def changeLoadSettingsForCharTemplates(self, args=None):
-        def setCharTemplateLoadSettingsValues(args=None):
+    def changeLoadSettingsForCharTemplates(self, *args):
+        def setCharTemplateLoadSettingsValues(*args):
             ui_preferences_file = open(self.ui_preferences_path, 'rb')
             ui_preferences = cPickle.load(ui_preferences_file)
             ui_preferences_file.close()
@@ -715,7 +715,7 @@ class MRT_UI(object):
             ui_preferences_file = open(self.ui_preferences_path, 'wb')
             cPickle.dump(ui_preferences, ui_preferences_file, cPickle.HIGHEST_PROTOCOL)
             ui_preferences_file.close()
-        def loadTemplatesFromSettingsWindow(args=None):
+        def loadTemplatesFromSettingsWindow(*args):
             try:
                 cmds.deleteUI('mrt_charTemplateLoadSettingsUI_window')
             except:
@@ -825,7 +825,7 @@ class MRT_UI(object):
             cmds.button(self.uiVars['charTemplate_button_edit'], edit=True, enable=False)
             cmds.button(self.uiVars['charTemplate_button_delete'], edit=True, enable=False)
 
-    def printCharTemplateInfoForUI(self, args=None):
+    def printCharTemplateInfoForUI(self, *args):
         selectedItem = cmds.textScrollList(self.uiVars['charTemplates_textScrollList'], query=True, selectItem=True)[0]
         templateFile = self.charTemplateList[selectedItem]
         if os.path.exists(templateFile):
@@ -876,7 +876,7 @@ class MRT_UI(object):
             cmds.button(self.uiVars['charTemplate_button_delete'], edit=True, enable=False)
             return False
 
-    def importSelectedCharTemplate(self, args=None):
+    def importSelectedCharTemplate(self, *args):
         namespace = cmds.namespaceInfo(currentNamespace=True)
         cmds.namespace(setNamespace=':')
         transforms = cmds.ls(type='transform')
@@ -905,8 +905,8 @@ class MRT_UI(object):
         cmds.file(tempFilePath, i=True, type='mayaAscii', prompt=False, ignoreVersion=True)
         os.remove(tempFilePath)
 
-    def editSelectedCharTemplateDescriptionFromUI(self, args=None):
-        def editDescriptionForSelectedCharTemplate(templateDescription, args=None):
+    def editSelectedCharTemplateDescriptionFromUI(self, *args):
+        def editDescriptionForSelectedCharTemplate(templateDescription, *args):
             cancelEditCharTemplateNoDescrpErrorWindow()
             selectedItem = cmds.textScrollList(self.uiVars['charTemplates_textScrollList'], query=True, \
                                                                                                     selectItem=True)[0]
@@ -919,13 +919,13 @@ class MRT_UI(object):
             cPickle.dump(templateFileData, templateFileObj, cPickle.HIGHEST_PROTOCOL)
             templateFileObj.close()
             self.printCharTemplateInfoForUI()
-        def cancelEditCharTemplateNoDescrpErrorWindow(args=None):
+        def cancelEditCharTemplateNoDescrpErrorWindow(*args):
             cmds.deleteUI(self.uiVars['editCharTemplateDescrpWindow'])
             try:
                 cmds.deleteUI(self.uiVars['editCharTemplateNoDescrpErrorWindow'])
             except:
                 pass
-        def checkEditDescriptionForSelectedCharTemplate(args=None):
+        def checkEditDescriptionForSelectedCharTemplate(*args):
             templateDescription = cmds.scrollField(self.uiVars['editCharTemplateDescrpWindowScrollField'], \
                                                                                                        query=True, text=True)
             if templateDescription == '':
@@ -983,8 +983,8 @@ class MRT_UI(object):
         cmds.text(label='')
         cmds.showWindow(self.uiVars['editCharTemplateDescrpWindow'])
 
-    def deleteSelectedCharTemplate(self, args=None):
-        def deleteCharTemplate(deleteFromDisk=False, args=None):
+    def deleteSelectedCharTemplate(self, *args):
+        def deleteCharTemplate(deleteFromDisk=False, *args):
             cmds.deleteUI('mrt_deleteCharTemplate_UI_window')
             selectedItem = cmds.textScrollList(self.uiVars['charTemplates_textScrollList'], query=True, selectItem=True)[0]
             templateFile = self.charTemplateList[selectedItem]
@@ -1041,7 +1041,7 @@ class MRT_UI(object):
         cmds.button(label='Remove from list', width=120, command=deleteCharTemplate)
         cmds.showWindow(self.uiVars['deleteCharTemplateWindow'])
 
-    def selectDirectoryForLoadingCollections(self, args=None):
+    def selectDirectoryForLoadingCollections(self, *args):
         ui_preferences_file = open(self.ui_preferences_path, 'rb')
         ui_preferences = cPickle.load(ui_preferences_file)
         ui_preferences_file.close()
@@ -1063,7 +1063,7 @@ class MRT_UI(object):
         cPickle.dump(ui_preferences, ui_preferences_file, cPickle.HIGHEST_PROTOCOL)
         ui_preferences_file.close()
 
-    def loadSavedModuleCollections(self, args=None):
+    def loadSavedModuleCollections(self, *args):
         ui_preferences_file = open(self.ui_preferences_path, 'rb')
         ui_preferences = cPickle.load(ui_preferences_file)
         ui_preferences_file.close()
@@ -1188,8 +1188,8 @@ class MRT_UI(object):
             cmds.button(self.uiVars['loadedCollections_button_delete'], edit=True, enable=False)
             return False
 
-    def deleteSelectedModuleCollection(self, args=None):
-        def deleteModuleCollection(deleteFromDisk=False, args=None):
+    def deleteSelectedModuleCollection(self, *args):
+        def deleteModuleCollection(deleteFromDisk=False, *args):
             cmds.deleteUI('mrt_deleteCollection_UI_window')
             selectedItem = cmds.textScrollList(self.uiVars['moduleCollection_textScrollList'], query=True, \
                                                                                                           selectItem=True)[0]
@@ -1248,7 +1248,7 @@ class MRT_UI(object):
         cmds.button(label='Remove from list', width=120, command=deleteModuleCollection)
         cmds.showWindow(self.uiVars['deleteCollectionWindow'])
 
-    def installSelectedModuleCollectionToScene(self, args=None, autoInstallFile=None):
+    def installSelectedModuleCollectionToScene(self, *args, autoInstallFile=None):
         if not autoInstallFile:
             validItem = self.printCollectionInfoForUI()
             if not validItem:
@@ -1329,8 +1329,8 @@ class MRT_UI(object):
         self.clearParentModuleField()
         self.clearChildModuleField()
 
-    def editSelectedModuleCollectionDescriptionFromUI(self, args=None):
-        def editDescriptionForSelectedModuleCollection(collectionDescription, args=None):
+    def editSelectedModuleCollectionDescriptionFromUI(self, *args):
+        def editDescriptionForSelectedModuleCollection(collectionDescription, *args):
             cancelEditCollectionNoDescpErrorWindow()
             selectedItem = cmds.textScrollList(self.uiVars['moduleCollection_textScrollList'], query=True, \
                                                                                                         selectItem=True)[0]
@@ -1344,13 +1344,13 @@ class MRT_UI(object):
             collectionFileObj_file.close()
             self.printCollectionInfoForUI()
 
-        def cancelEditCollectionNoDescpErrorWindow(args=None):
+        def cancelEditCollectionNoDescpErrorWindow(*args):
             cmds.deleteUI(self.uiVars['editCollectionDescpWindow'])
             try:
                 cmds.deleteUI(self.uiVars['editCollectionNoDescpErrorWindow'])
             except:
                 pass
-        def checkEditDescriptionForSelectedModuleCollection(args=None):
+        def checkEditDescriptionForSelectedModuleCollection(*args):
             collectionDescription = cmds.scrollField(self.uiVars['editCollectionDescpWindowScrollField'], \
                                                                                                     query=True, text=True)
             if collectionDescription == '':
@@ -1407,7 +1407,7 @@ class MRT_UI(object):
         cmds.text(label='')
         cmds.showWindow(self.uiVars['editCollectionDescpWindow'])
 
-    def putShelfButtonForUI(self, args=None):
+    def putShelfButtonForUI(self, *args):
         currentTab = cmds.tabLayout('ShelfLayout', query=True, selectTab=True)
         shelfTabButtons = cmds.shelfLayout(currentTab, query=True, childArray=True)
         if shelfTabButtons:
@@ -1447,16 +1447,16 @@ class MRT_UI(object):
             self.updateListForSceneModulesInUI()
         cmds.undoInfo(stateWithoutFlush=True)
 
-    def updateListForSceneModulesInUI_runIdle(self, args=None):
+    def updateListForSceneModulesInUI_runIdle(self, *args):
         cmds.evalDeferred(self.updateListForSceneModulesInUI, lowestPriority=True)
 
-    def toggleSceneModuleListSortTypeFromUI(self, args=None):
+    def toggleSceneModuleListSortTypeFromUI(self, *args):
         selection = cmds.ls(selection=True)
         self.updateListForSceneModulesInUI()
         if selection:
             cmds.select(selection, replace=True)
 
-    def resetListHeightForSceneModulesUI(self, args=None):
+    def resetListHeightForSceneModulesUI(self, *args):
         sceneNamespaces = cmds.namespaceInfo(listOnlyNamespaces=True)
         MRT_namespaces = mfunc.returnMRT_Namespaces(sceneNamespaces)
         if MRT_namespaces != None:
@@ -1466,7 +1466,7 @@ class MRT_UI(object):
             cmds.scrollLayout(self.uiVars['moduleList_Scroll'], edit=True, height=treeLayoutHeight+8)
             cmds.frameLayout(self.uiVars['moduleList_frameLayout'], edit=True, height=treeLayoutHeight)
 
-    def updateListForSceneModulesInUI(self, args=None):
+    def updateListForSceneModulesInUI(self, *args):
         cmds.undoInfo(stateWithoutFlush=False)
         selection = mel.eval("ls -sl -type dagNode")
         if selection == None:
@@ -1762,9 +1762,9 @@ class MRT_UI(object):
         cmds.namespace(setNamespace=currentNamespace)
         cmds.undoInfo(stateWithoutFlush=True)
 
-    def makeCollectionFromSceneTreeViewModulesUI(self, args=None, allModules=False, auto=None):
+    def makeCollectionFromSceneTreeViewModulesUI(self, *args, allModules=False, auto=None):
         # NESTED_DEF_1 #
-        def saveModuleCollectionFromDescription(collectionDescription, treeViewSelection, args=None):
+        def saveModuleCollectionFromDescription(collectionDescription, treeViewSelection, *args):
             # Create a module collection from the passed-in information.
             # Close the windows for module description and its error prompt window.
             try:
@@ -1913,7 +1913,7 @@ class MRT_UI(object):
                 cmds.select(clear=True)
             cmds.namespace(setNamespace=currentNamespace)
         # NESTED_DEF_2 #
-        def saveModuleCollectionFromDescriptionProcessInputUI(args=None):
+        def saveModuleCollectionFromDescriptionProcessInputUI(*args):
             # Process the module collection description input before proceeding with creating a module collection.
             if allModules:
                 treeViewSelection = mrt_namespaces
@@ -1994,7 +1994,7 @@ class MRT_UI(object):
         if auto:
             saveModuleCollectionFromDescriptionProcessInputUI()
 
-    def performModuleRename(self, args=None):
+    def performModuleRename(self, *args):
         mfunc.deleteMirrorMoveConnections()
         newUserSpecifiedName = cmds.textField(self.uiVars['moduleRename_textField'], query=True, text=True)
         newUserSpecifiedName = newUserSpecifiedName.lower()
@@ -2055,7 +2055,7 @@ class MRT_UI(object):
         if cmds.namespace(exists=currentNamespace):
             cmds.namespace(setNamespace=currentNamespace)
 
-    def performModuleDuplicate_UI_wrapper(self, args=None):
+    def performModuleDuplicate_UI_wrapper(self, *args):
         try:
             cmds.deleteUI('mrt_duplicateModuleAction_UI_window')
         except:
@@ -2078,7 +2078,7 @@ class MRT_UI(object):
         cmds.text(label='')
         cmds.showWindow(self.uiVars['duplicateActionWindow'])
 
-    def performModuleDuplicate(self, args=None):
+    def performModuleDuplicate(self, *args):
         selection = cmds.ls(selection=True)
         if not selection:
             cmds.warning('MRT Error: Duplicate Module Error. Nothing is selected. Please select a module to perform duplication.')
@@ -2284,7 +2284,7 @@ class MRT_UI(object):
 
         cmds.evalDeferred(partial(mfunc.performOnIdle), lowestPriority=True)
 
-    def performModuleDeletion(self, args=None):
+    def performModuleDeletion(self, *args):
         currentNamespace = cmds.namespaceInfo(currentNamespace=True)
         cmds.namespace(setNamespace=':')
         selection = mel.eval("ls -sl -type dagNode")
@@ -2409,7 +2409,7 @@ class MRT_UI(object):
             cmds.button(self.uiVars['moduleDuplicate_button'], edit=True, enable=False)
             cmds.textField(self.uiVars['moduleRename_textField'], edit=True, text=None)
 
-    def insertChildModuleIntoField(self, args=None):
+    def insertChildModuleIntoField(self, *args):
         selection = cmds.ls(selection=True)
         if selection:
             lastSelection = selection[-1]
@@ -2440,7 +2440,7 @@ class MRT_UI(object):
             cmds.button(self.uiVars['childSnap_button'], edit=True, enable=False)
             cmds.warning('MRT Error: Please select and insert a module as child.')
 
-    def insertParentModuleNodeIntoField(self, args=None):
+    def insertParentModuleNodeIntoField(self, *args):
         selection = cmds.ls(selection=True)
         if selection:
             lastSelection = selection[-1]
@@ -2478,17 +2478,17 @@ class MRT_UI(object):
             cmds.button(self.uiVars['moduleParent_button'], edit=True, enable=False)
             cmds.warning('MRT Error: Please select and insert a module node as parent.')
 
-    def clearParentModuleField(self, args=None):
+    def clearParentModuleField(self, *args):
         cmds.textField(self.uiVars['selectedParent_textField'], edit=True, text='< insert parent module node >', font='obliqueLabelFont')
         cmds.button(self.uiVars['moduleParent_button'], edit=True, enable=False)
 
-    def clearChildModuleField(self, args=None):
+    def clearChildModuleField(self, *args):
         cmds.textField(self.uiVars['selectedChildModule_textField'], edit=True, text='< insert child module >', font='obliqueLabelFont')
         cmds.button(self.uiVars['moduleUnparent_button'], edit=True, enable=False)
         cmds.button(self.uiVars['parentSnap_button'], edit=True, enable=False)
         cmds.button(self.uiVars['childSnap_button'], edit=True, enable=False)
 
-    def performUnparentForModule(self, args=None):
+    def performUnparentForModule(self, *args):
         fieldInfo = cmds.textField(self.uiVars['selectedChildModule_textField'], query=True, text=True)
         currentNamespace = cmds.namespaceInfo(currentNamespace=True)
         cmds.namespace(setNamespace=':')
@@ -2516,7 +2516,7 @@ class MRT_UI(object):
         cmds.button(self.uiVars['childSnap_button'], edit=True, enable=False)
         self.updateListForSceneModulesInUI()
 
-    def performParentForModule(self, args=None):
+    def performParentForModule(self, *args):
         parentFieldInfo = cmds.textField(self.uiVars['selectedParent_textField'], query=True, text=True)
         if 'MRT_HingeNode' in parentFieldInfo:
             parentFieldInfo = parentFieldInfo.rpartition('_control')[0]
@@ -2575,7 +2575,7 @@ class MRT_UI(object):
         if not 'MRT_SplineNode' in parentFieldInfo:
             cmds.button(self.uiVars['parentSnap_button'], edit=True, enable=True)
 
-    def performSnapParentToChild(self, args=None):
+    def performSnapParentToChild(self, *args):
         childFieldInfo = cmds.textField(self.uiVars['selectedChildModule_textField'], query=True, text=True)
         childRootNode = childFieldInfo+':root_node_transform'
         parentModuleNode = cmds.getAttr(childFieldInfo+':moduleGrp.moduleParent')
@@ -2584,7 +2584,7 @@ class MRT_UI(object):
             parentModuleNode = parentModuleNode + '_control'
         cmds.xform(parentModuleNode, worldSpace=True, absolute=True, translation=cmds.xform(childRootNode, query=True, worldSpace=True, translation=True))
 
-    def performSnapChildToParent(self, args=None):
+    def performSnapChildToParent(self, *args):
         childFieldInfo = cmds.textField(self.uiVars['selectedChildModule_textField'], query=True, text=True)
         if 'MRT_HingeNode' in childFieldInfo:
             childRootNode = childFieldInfo+':root_node_transform_control'
@@ -2596,7 +2596,7 @@ class MRT_UI(object):
         parentModuleNode = parentModuleNode.split(',')[0]
         cmds.xform(childRootNode, worldSpace=True, absolute=True, translation=cmds.xform(parentModuleNode, query=True, worldSpace=True, translation=True))
 
-    def processCharacterFromScene(self, args=None):
+    def processCharacterFromScene(self, *args):
         characterStatus = self.checkMRTcharacter()
         currentNamespace = cmds.namespaceInfo(currentNamespace=True)
         cmds.namespace(setNamespace=':')
@@ -2743,7 +2743,7 @@ class MRT_UI(object):
         cmds.sets(name='MRT_character'+characterName+'__skinJointSet')
         cmds.select(clear=True)
 
-    def revertModulesFromCharacter(self, args=None):
+    def revertModulesFromCharacter(self, *args):
         status = self.checkMRTcharacter()
         if not status[0]:
             cmds.warning('MRT Error: No character in the scene. Aborting.')
@@ -2808,8 +2808,8 @@ class MRT_UI(object):
         cmds.namespace(setNamespace=namespace)
         return characterGrp, characterCollectionFile
 
-    def saveCharacterTemplate(self, args=None):
-        def saveCharTemplateFromDescriptionProcessInputUI(args=None):
+    def saveCharacterTemplate(self, *args):
+        def saveCharTemplateFromDescriptionProcessInputUI(*args):
             status = self.checkMRTcharacter()
             if not status[0]:
                 cmds.warning('MRT Error: No character in the scene. Aborting.')
@@ -2941,7 +2941,7 @@ class MRT_UI(object):
         cmds.text(label='')
         cmds.showWindow(self.uiVars['charTemplateDescrpWindow'])
 
-    def displayControlRiggingOptionsAllWindow(self, args=None):
+    def displayControlRiggingOptionsAllWindow(self, *args):
         '''
         control_types = []
         for attribute in dir(mrt_controlRig):
@@ -3095,7 +3095,7 @@ class MRT_UI(object):
         #else:
             #cmds.text(self.uiVars['characterRigging_hierarchySelect_text'], edit=True, label='< no character hierarchy selected >', align='center')
 
-    def attachSelectedControlRigToHierarchy(self, args=None):
+    def attachSelectedControlRigToHierarchy(self, *args):
         selection = cmds.ls(selection=True)[-1]
         if cmds.ls(selection, referencedNodes=True):
             cmds.warning('MRT Error: Referenced object selected. Aborting.')
@@ -3127,7 +3127,7 @@ class MRT_UI(object):
         cmds.select(selection)
         #cmds.evalDeferred('cmds.textScrollList(\"'+self.uiVars['characterRigging_textScrollList']+'\", edit=True, selectItem=\"'+selectFunc+'\")', lowestPriority=True)
 
-    def removeSelectedControlRigFromHierarchy(self, args=None):
+    def removeSelectedControlRigFromHierarchy(self, *args):
         cy_check = cmds.cycleCheck(query=True, evaluation=True)
         if cy_check:
             cmds.cycleCheck(evaluation=False)
@@ -3318,7 +3318,7 @@ class MRT_UI(object):
             self.displayControlRiggingOptions(None)
             self.displayAttachedControlRigs(None)
 
-    def clearParentSwitchControlField(self, args=None):
+    def clearParentSwitchControlField(self, *args):
         cmds.textField(self.uiVars['characterRigging_parentSwitching_textField'], edit=True, text='< insert control >', font='obliqueLabelFont')
         cmds.button(self.uiVars['characterRigging_parentSwitching_addButton'], edit=True, enable=False)
         cmds.button(self.uiVars['characterRigging_parentSwitching_RemoveAll'], edit=True, enable=False)
@@ -3329,7 +3329,7 @@ class MRT_UI(object):
         self.controlParentSwitchGrp = None
         self.existingParentSwitchTargets = []
 
-    def insertValidSelectionForParentSwitching(self, args=None):
+    def insertValidSelectionForParentSwitching(self, *args):
         selection = cmds.ls(selection=True)
         if selection:
             selection = selection[-1]
@@ -3374,37 +3374,33 @@ class MRT_UI(object):
                 cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], edit=True, selectIndexedItem=1)
                 self.postSelectionParentSwitchListItem()
                 cmds.button(self.uiVars['characterRigging_parentSwitching_RemoveAll'], edit=True, enable=True)
-            '''
-        if len(targetInfoList) > 0:
-        if len(targetInfoList) == 1 and re.match('^MRT_character[A-Za-z0-9]*__root_transform$', targetInfoList[0]):
-            pass
         else:
-            cmds.button(self.uiVars['characterRigging_parentSwitching_RemoveAll'], edit=True, enable=True)
-        '''
-        else:
-            cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], edit=True, enable=False, height=32, append='\t           < no current target(s) >', font='boldLabelFont')
+            cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], edit=True, enable=False,
+                                              height=32, append='\t           < no current target(s) >', font='boldLabelFont')
+        
         self.updateRemoveAllButtonStatForParentSwitching()
 
-    def postSelectionParentSwitchListItem(self, args=None):
-        selectedItem = cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], query=True, selectItem=True)
+
+    def postSelectionParentSwitchListItem(self, *args):
+        selectedItem = cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], query=True,
+                                                                                                            selectItem=True)
         if selectedItem:
             cmds.button(self.uiVars['characterRigging_parentSwitching_RemoveSelected'], edit=True, enable=True)
         else:
             cmds.button(self.uiVars['characterRigging_parentSwitching_RemoveSelected'], edit=True, enable=False)
-        '''
-    if not re.match('^MRT_character[A-Za-z0-9]*__root_transform \(default\)$', selectedItem):
-        cmds.button(self.uiVars['characterRigging_parentSwitching_RemoveSelected'], edit=True, enable=True)
-    else:
-        cmds.button(self.uiVars['characterRigging_parentSwitching_RemoveSelected'], edit=True, enable=False)
-    '''
 
-    def addSelectedControlToTargetList(self, args=None):
+
+    def addSelectedControlToTargetList(self, *args):
+    
         selection = cmds.ls(selection=True)
+        
         if selection:
             selection = selection[-1]
         else:
             return
-        if re.match('^MRT_character[A-Za-z0-9]*__\w+_handle$', selection) or re.match('^MRT_character[A-Za-z0-9]*__root_transform$', selection):
+        
+        if re.match('^MRT_character[A-Za-z0-9]*__\w+_handle$', selection) or \
+                                                    re.match('^MRT_character[A-Za-z0-9]*__root_transform$', selection):
             ins_control = cmds.textField(self.uiVars['characterRigging_parentSwitching_textField'], query=True, text=True)
             characterName = selection.partition('__')[0].partition('MRT_character')[2]
             ins_control = ins_control.partition('__')[2]
@@ -3417,45 +3413,66 @@ class MRT_UI(object):
                 if rootJoint != ins_control_rootJoint:
                     result = mfunc.traverseConstrainedParentHierarchiesForSkeleton(rootJoint)
                     if ins_control_rootJoint in result:
-                        cmds.warning('MRT Error: Cannot add target parent control from a child hierarchy, which will cause cyclic DG evaluation. Select and add another control handle.')
+                        cmds.warning('MRT Error: Cannot add target parent control from a child hierarchy, which ' \
+                                     'will cause cyclic DG evaluation. Select and add another control handle.')
                         return
                 else:
-                    cmds.warning('MRT Error: Cannot add a target parent control within the same hierarchy. Select and add another control handle.')
+                    cmds.warning('MRT Error: Cannot add a target parent control within the same hierarchy. ' \
+                                 'Select and add another control handle.')
                     return
             else:
                 result = mfunc.traverseConstrainedParentHierarchiesForSkeleton(ins_control_rootJoint)
                 if not result:
-                    cmds.warning('MRT Warning: The joint hierarchy for the selected control rig has no parent hierarchy. If you\'re adding the character root transform as a target parent for a root FK control assigned to this hierarchy, it\'d have no effect.')
+                    cmds.warning('MRT Warning: The joint hierarchy for the selected control rig has no parent hierarchy. '\
+                                 'If you\'re adding the character root transform as a target parent for a root FK control '\
+                                 'assigned to this hierarchy, it\'d have no effect.')
 
             #self.controlParentSwitchAddList.append(selection)
-            if not cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], query=True, enable=True):
-                cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], edit=True, height=32, removeAll=True)
-            allItems = cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], query=True, allItems=True) or []
+            if not cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], query=True,
+                                                                                                                enable=True):
+                cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], edit=True,
+                                                                                            height=32, removeAll=True)
+
+            allItems = cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], query=True,
+                                                                                                        allItems=True) or []
             scrollHeight = (len(allItems) + 1)* 25
             if scrollHeight > 100:
                 scrollHeight = 100
             if scrollHeight < 40:
                 scrollHeight = 60
             selection = selection+' (new)'
-            cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], edit=True, enable=True, append=selection, width=300, height=scrollHeight, font='plainLabelFont')
+            cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], edit=True, enable=True,
+                                                     append=selection, width=300, height=scrollHeight, font='plainLabelFont')
             cmds.button(self.uiVars['characterRigging_parentSwitching_createButton'], edit=True, enable=True)
 
         else:
-            cmds.warning('MRT Error: Invalid control/object as a parent target. You can only select a control transform (with suffix \'handle\') or the character root transform.')
+            cmds.warning('MRT Error: Invalid control/object as a parent target. You can only select a control ' \
+                         'transform (with suffix \'handle\') or the character root transform.')
+        
         self.updateRemoveAllButtonStatForParentSwitching()
 
-    def removeSelectedTargetFromParentSwitchList(self, args=None):
-        selectedItem = cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], query=True, selectItem=True)[0]
-        cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], edit=True, removeItem=selectedItem)
-        allItems = cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], query=True, allItems=True) or []
+
+    def removeSelectedTargetFromParentSwitchList(self, *args):
+        selectedItem = cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], query=True,
+                                                                                                         selectItem=True)[0]
+        cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], edit=True,
+                                                                                    removeItem=selectedItem)
+                                                                                    
+        allItems = cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], query=True,
+                                                                                                        allItems=True) or []
         if not allItems:
-            cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], edit=True, enable=False, height=32, append='\t           < no current target(s) >', font='boldLabelFont')
+            cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], edit=True, enable=False,
+                                              height=32, append='\t           < no current target(s) >', font='boldLabelFont')
+        
         targetDiff = set.symmetric_difference(set(self.existingParentSwitchTargets), set(allItems))
+        
         if len(targetDiff) > 0:
             cmds.button(self.uiVars['characterRigging_parentSwitching_createButton'], edit=True, enable=True)
         else:
             cmds.button(self.uiVars['characterRigging_parentSwitching_createButton'], edit=True, enable=False)
+        
         cmds.button(self.uiVars['characterRigging_parentSwitching_RemoveSelected'], edit=True, enable=False)
+
         if len(allItems):
             scrollHeight = len(allItems)* 25
             if scrollHeight > 100:
@@ -3464,27 +3481,41 @@ class MRT_UI(object):
                 scrollHeight = 60
             if scrollHeight == 25:
                 scrollHeight = 40
-            cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], edit=True, height=scrollHeight)
+            cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], edit=True,
+                                                                                            height=scrollHeight)
             self.postSelectionParentSwitchListItem()
+
         self.updateRemoveAllButtonStatForParentSwitching()
 
-    def removeAllTargetsFromParentSwitchList(self, args=None):
-        allItems = cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], query=True, allItems=True)
+
+    def removeAllTargetsFromParentSwitchList(self, *args):
+        allItems = cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], query=True,
+                                                                                                          allItems=True)
         for item in allItems:
-            cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], edit=True, removeItem=item)
-        remItems = cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], query=True, allItems=True) or []
+            cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], edit=True,
+                                                                                                removeItem=item)
+        
+        remItems = cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], query=True,
+                                                                                                    allItems=True) or []
         if not remItems:
-            cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], edit=True, enable=False, append='\t           < no current target(s) >', font='boldLabelFont')
+            cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], edit=True,
+                              enable=False, append='\t           < no current target(s) >', font='boldLabelFont')
+        
         cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], edit=True, height=32)
+        
         targetDiff = set.symmetric_difference(set(self.existingParentSwitchTargets), set(remItems))
+        
         if len(targetDiff) > 0:
             cmds.button(self.uiVars['characterRigging_parentSwitching_createButton'], edit=True, enable=True)
         else:
             cmds.button(self.uiVars['characterRigging_parentSwitching_createButton'], edit=True, enable=False)
+        
         cmds.button(self.uiVars['characterRigging_parentSwitching_RemoveAll'], edit=True, enable=False)
 
+
     def updateRemoveAllButtonStatForParentSwitching(self):
-        allItems = cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], query=True, allItems=True)
+        allItems = cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], query=True,
+                                                                                                          allItems=True)
         if allItems:
             if len(allItems) == 1 and re.findall('< no current target\(s\) >', allItems[0]):
                 cmds.button(self.uiVars['characterRigging_parentSwitching_RemoveAll'], edit=True, enable=False)
@@ -3493,11 +3524,17 @@ class MRT_UI(object):
         else:
             cmds.button(self.uiVars['characterRigging_parentSwitching_RemoveAll'], edit=True, enable=False)
 
-    def create_update_parentSwitchTargetsForControl(self, args=None):
-        allItems = cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], query=True, allItems=True)
+
+    def create_update_parentSwitchTargetsForControl(self, *args):
+    
+        allItems = cmds.textScrollList(self.uiVars['characterRigging_parentSwitching_targetTextScrollList'], query=True,
+                                                                                                          allItems=True)
+                                                                                                          
         ss_control = cmds.textField(self.uiVars['characterRigging_parentSwitching_textField'], query=True, text=True)
+        
         updatedTargets = []
         existingTargets = []
+        
         for item in allItems:
             if not '< no current target(s) >' in item:
                 item = item.partition('(')[0].strip()
@@ -3508,10 +3545,15 @@ class MRT_UI(object):
         targetsToBeAdded = set.difference(set(updatedTargets), set(existingTargets))
 
         cmds.currentTime(0)
-        # Collect the character root and world transform controls, and all the control rig containers currently in the scene.
+        
+        # Collect the character root and world transform controls, and all the control rig
+        # containers currently in the scene.
         nodes = []
-        nodes.extend([item for item in cmds.ls(type='transform') if re.match('^MRT_character[0-9a-zA-Z]*__(world|root){1}_transform$', item)])
-        nodes.extend([item for item in cmds.ls(type='container') if re.match('^MRT_character[0-9a-zA-Z]*__\w+_Container$', item)])
+        nodes.extend([item for item in cmds.ls(type='transform') if \
+                                                re.match('^MRT_character[0-9a-zA-Z]*__(world|root){1}_transform$', item)])
+        nodes.extend([item for item in cmds.ls(type='container') if \
+                                                            re.match('^MRT_character[0-9a-zA-Z]*__\w+_Container$', item)])
+                                                            
         # Iterate through the nodes, remove all keyframes, and set the channel attributes.
         for node in nodes:
             mel.eval('cutKey -t ":" '+node+';')
@@ -3548,13 +3590,16 @@ class MRT_UI(object):
         if targetsToBeAdded:
             for target in targetsToBeAdded:
                 if cmds.objectType(ss_control, isType='joint'):
-                    constraint = cmds.orientConstraint(target, self.controlParentSwitchGrp, maintainOffset=True, name=self.controlParentSwitchGrp+'_orientConstraint')[0]
+                    constraint = cmds.orientConstraint(target, self.controlParentSwitchGrp, maintainOffset=True,
+                                                            name=self.controlParentSwitchGrp+'_orientConstraint')[0]
                 else:
-                    constraint = cmds.parentConstraint(target, self.controlParentSwitchGrp, maintainOffset=True, name=self.controlParentSwitchGrp+'_parentConstraint')[0]
+                    constraint = cmds.parentConstraint(target, self.controlParentSwitchGrp, maintainOffset=True,
+                                                            name=self.controlParentSwitchGrp+'_parentConstraint')[0]
                 attrs = cmds.addAttr(ss_control+'.targetParents', query=True, enumName=True)
                 attrs = attrs + ':' + target
                 cmds.addAttr(ss_control+'.targetParents', edit=True, enumName=attrs)
-                parentSwitchCondition = cmds.createNode('condition', name=ss_control+'_'+target+'_parentSwitch_condition', skipSelect=True)
+                parentSwitchCondition = cmds.createNode('condition', name=ss_control+'_'+target+'_parentSwitch_condition',
+                                                                                                          skipSelect=True)
                 attrs = attrs.split(':')
                 index = attrs.index(target)
                 cmds.setAttr(parentSwitchCondition+'.firstTerm', index)
@@ -3593,45 +3638,93 @@ class MRT_UI(object):
         cmds.select(ss_control, replace=True)
         self.insertValidSelectionForParentSwitching()
 
+
     def makeCreateTabControls(self):
+        """
+        Create the tab layout contents for creating scene modules. Contains options for specifying module type,
+        module length, module node attributes and components, module proxy geometry, module mirroring and module naming.
+        """
         # Create the main column for the 'Create' tab.
         self.uiVars['modules_Column'] = cmds.columnLayout(adjustableColumn=True, rowSpacing=3)
+        
         # Create a frame layout for 'Module Creation'.
-        self.uiVars['modules_frameLayout'] = cmds.frameLayout(label='Module creation', font='boldLabelFont', collapsable=True, borderVisible=True, borderStyle='etchedIn', marginHeight=1, marginWidth=2, collapse=True)
+        self.uiVars['modules_frameLayout'] = cmds.frameLayout(label='Module creation', font='boldLabelFont', collapsable=True,
+                                                              borderVisible=True, borderStyle='etchedIn', marginHeight=1,
+                                                              marginWidth=2, collapse=True)
+        
         # Create a row layout to hold a text label and two radio buttons.
-        self.uiVars['moduleType_row'] = cmds.rowLayout(numberOfColumns=4, columnWidth=[(1, 100), (2, 85), (3, 100), (4, 100)], columnAttach=[(1, 'right', 15), (2, 'left', 0), (3, 'left', 5), (4, 'left', 0)])
+        self.uiVars['moduleType_row'] = cmds.rowLayout(numberOfColumns=4, columnWidth=[(1, 100), (2, 85), (3, 100), (4, 100)],
+                                              columnAttach=[(1, 'right', 15), (2, 'left', 0), (3, 'left', 5), (4, 'left', 0)])
+                                              
         cmds.text(label='Module Type', font='boldLabelFont')
+        
         self.uiVars['moduleType_radioCollection'] = cmds.radioCollection()
         cmds.radioButton('JointNode', label='Joint Node', select=True, onCommand=self.modifyModuleCreationOptions)
         cmds.radioButton('SplineNode', label='Spline Node', select=False, onCommand=self.modifyModuleCreationOptions)
         cmds.radioButton('HingeNode', label='Hinge Node', select=False, onCommand=self.modifyModuleCreationOptions)
-        # Set parent to the 'Module Creation' frame layout, and then create two field input sliders and then two buttons for creating and undoing module creation.
+        
+        # Set parent to the 'Module Creation' frame layout, and then create two field input sliders
+        # and then two buttons for creating and undoing module creation.
         cmds.setParent(self.uiVars['modules_frameLayout'])
 
-        self.uiVars['numNodes_sliderGrp'] = cmds.intSliderGrp(field=True, label='Number of nodes', columnWidth=[(1, 100), (2, 70), (3, 100)], columnAttach=[(1, 'both', 5), (2, 'both', 5), (3, 'right', 5)], minValue=1, maxValue=20, fieldMinValue=1, fieldMaxValue=100, value=1, dragCommand=self.updateModuleLengthValue, changeCommand=self.updateModuleLengthValue)
-        self.uiVars['lenNodes_sliderGrp'] = cmds.floatSliderGrp(field=True, label='Length of module', columnWidth=[(1, 100), (2, 70), (3, 100)], columnAttach=[(1, 'both', 5), (2, 'both', 5), (3, 'right', 5)], minValue=0, maxValue=50, fieldMinValue=0, fieldMaxValue=100, value=0, dragCommand=self.updateNumNodesValue, changeCommand=self.updateNumNodesValue)
+        self.uiVars['numNodes_sliderGrp'] = cmds.intSliderGrp(field=True, label='Number of nodes',
+                                                              columnWidth=[(1, 100), (2, 70), (3, 100)],
+                                                              columnAttach=[(1, 'both', 5), (2, 'both', 5), (3, 'right', 5)],
+                                                              minValue=1, maxValue=20, fieldMinValue=1, fieldMaxValue=100,
+                                                              value=1, dragCommand=self.updateModuleLengthValue,
+                                                              changeCommand=self.updateModuleLengthValue)
+                                                              
+        self.uiVars['lenNodes_sliderGrp'] = cmds.floatSliderGrp(field=True, label='Length of module',
+                                                                columnWidth=[(1, 100), (2, 70), (3, 100)],
+                                                                columnAttach=[(1, 'both', 5), (2, 'both', 5), (3, 'right', 5)],
+                                                                minValue=0, maxValue=50, fieldMinValue=0, fieldMaxValue=100,
+                                                                value=0, dragCommand=self.updateNumNodesValue,
+                                                                changeCommand=self.updateNumNodesValue)
+        
         # Put the module creation and undo buttons under a row layout.
-        self.uiVars['moduleCreateButtons_row'] = cmds.rowLayout(numberOfColumns=2, rowAttach=[(1, 'top', 0), (2, 'top', 0)], columnWidth=[(1, 190), (2, 190)], columnAttach=[(1, 'both', 3), (2, 'both', 3)])
+        self.uiVars['moduleCreateButtons_row'] = cmds.rowLayout(numberOfColumns=2, rowAttach=[(1, 'top', 0), (2, 'top', 0)],
+                                                                                           columnWidth=[(1, 190), (2, 190)],
+                                                                              columnAttach=[(1, 'both', 3), (2, 'both', 3)])
+                                                                
         self.uiVars['moduleCreate_button'] = cmds.button(label='Create', command=self.createModuleFromUI)
-        self.uiVars['moduleUndoCreate_button'] = cmds.button(label='Undo last create', enable=False, command=self.undoCreateModuleTool)
+        
+        self.uiVars['moduleUndoCreate_button'] = cmds.button(label='Undo last create', enable=False,
+                                                                   command=self.undoCreateModuleTool)
+        
         # Set parent to the main column for the tab to create the 'Create Options' frame layout.
         cmds.setParent(self.uiVars['modules_Column'])
+        
         # Create a frame layout for 'Create Options'.
-        self.uiVars['creationOpt_frameLayout'] = cmds.frameLayout(label='Creation options', font='boldLabelFont', collapsable=True, borderVisible=True, borderStyle='etchedIn', marginHeight=1, marginWidth=2, collapse=True)
+        self.uiVars['creationOpt_frameLayout'] = cmds.frameLayout(label='Creation options', font='boldLabelFont',
+                                                                  collapsable=True, borderVisible=True,
+                                                                  borderStyle='etchedIn', marginHeight=1,
+                                                                  marginWidth=2, collapse=True)
+        
         # Create a row layout to hold four elements, a text label and radio buttons in a row.
-        self.uiVars['creationPlane_row'] = cmds.rowLayout(numberOfColumns=4, columnWidth=[(1, 146), (2, 81), (3, 81), (4, 81)], columnAttach=[(1, 'right', 20)])
+        self.uiVars['creationPlane_row'] = cmds.rowLayout(numberOfColumns=4,
+                                                          columnWidth=[(1, 146), (2, 81), (3, 81), (4, 81)],
+                                                          columnAttach=[(1, 'right', 20)])
+                                                          
         cmds.text(label='Creation Plane', font='boldLabelFont')
+        
         self.uiVars['creationPlane_radioCollection'] = cmds.radioCollection()
         cmds.radioButton('XY', label='XY', select=True)
         cmds.radioButton('YZ', label='YZ', select=False)
         cmds.radioButton('XZ', label='XZ', select=False)
+        
         # Set parent to the 'Creation Options' frame layout.
         cmds.setParent(self.uiVars['creationOpt_frameLayout'])
-        self.uiVars['modOriginOffset_slider'] = cmds.floatSliderGrp(field=True, label='Offset from creation plane', columnWidth=[(1, 140), (2, 70), (3, 100)], columnAttach=[(1, 'both', 5), (2, 'both', 5), (3, 'right', 5)], minValue=0, maxValue=20, fieldMinValue=0, fieldMaxValue=100, value=1)
+        self.uiVars['modOriginOffset_slider'] = cmds.floatSliderGrp(field=True, label='Offset from creation plane',
+                                                                    columnWidth=[(1, 140), (2, 70), (3, 100)],
+                                               columnAttach=[(1, 'both', 5), (2, 'both', 5), (3, 'right', 5)],
+                                               minValue=0, maxValue=20, fieldMinValue=0, fieldMaxValue=100, value=1)
         # Create a separator.
         cmds.separator()
+        
         # Create a row layout to hold four elements, a text label and three option menu controls in a row.
-        self.uiVars['nodeAxes_row'] = cmds.rowLayout(numberOfColumns=4, columnWidth=[(1, 70), (2, 100), (3, 110), (4, 130)], columnAttach=[(1, 'right', 3), (2, 'right', 0), (3, 'left', 15), (4, 'left', 0)])
+        self.uiVars['nodeAxes_row'] = cmds.rowLayout(numberOfColumns=4, columnWidth=[(1, 70), (2, 100), (3, 110), (4, 130)],
+                                           columnAttach=[(1, 'right', 3), (2, 'right', 0), (3, 'left', 15), (4, 'left', 0)])
+                                           
         cmds.text(label='Node Axes', font='boldLabelFont')
         self.uiVars['aimAxis_menu'] = cmds.optionMenu(label='Aim axis')
         cmds.menuItem(label='X')
@@ -3645,89 +3738,157 @@ class MRT_UI(object):
         cmds.menuItem(label='Z')
         cmds.menuItem(label='Y')
         cmds.menuItem(label='X')
+        
         cmds.setParent(self.uiVars['modules_Column'])
 
         # Set parent to the main column for the tab to create the 'Node Components' frame layout.
         cmds.setParent(self.uiVars['modules_Column'])
+        
         # Create a frame layout for 'Node Components'.
-        self.uiVars['nodeCompnt_frameLayout'] = cmds.frameLayout(label='Node components', font='boldLabelFont', collapsable=True, borderVisible=True, borderStyle='etchedIn', collapse=True, marginWidth=4)
+        self.uiVars['nodeCompnt_frameLayout'] = cmds.frameLayout(label='Node components', font='boldLabelFont',
+                                                                 collapsable=True, borderVisible=True, borderStyle='etchedIn',
+                                                                 collapse=True, marginWidth=4)
+        
         # Create a row layout to hold two check box elements in a row.
-        self.uiVars['nodeCompnts_row'] = cmds.rowLayout(numberOfColumns=3, columnWidth=[(1, 100), (2, 140), (3, 160)], columnAttach=[(1, 'right', 0), (2, 'right', 15), (3, 'right', 40)])
+        self.uiVars['nodeCompnts_row'] = cmds.rowLayout(numberOfColumns=3, columnWidth=[(1, 100), (2, 140), (3, 160)],
+                                                   columnAttach=[(1, 'right', 0), (2, 'right', 15), (3, 'right', 40)])
+                                                   
         self.uiVars['node_hierarchy_check'] = cmds.checkBox(label='Hierarchy', enable=False, value=False)
         self.uiVars['node_orientation_check'] = cmds.checkBox(label='Orientation', enable=True, value=True)
         self.uiVars['proxyGeo_check'] = cmds.checkBox(label='Proxy Geometry', enable=True, value=False)
+        
         # Set parent to 'Node Components' frame layout to create a child frame layout 'Proxy Geometry'.
         cmds.setParent(self.uiVars['nodeCompnt_frameLayout'])
+        
         # Create a frame layout for 'Proxy Geometry'.
-        self.uiVars['proxyGeo_frameLayout'] = cmds.frameLayout(label='Proxy geometry', font='boldLabelFont', borderStyle='etchedIn', collapsable=True, collapse=True, enable=False)
+        self.uiVars['proxyGeo_frameLayout'] = cmds.frameLayout(label='Proxy geometry', font='boldLabelFont',
+                                                                                     borderStyle='etchedIn',
+                                                                                     collapsable=True,
+                                                                                     collapse=True,
+                                                                                     enable=False)
         # Create a row layout to hold two check box elements.
-        self.uiVars['proxyGeoFrame_firstRow'] = cmds.rowLayout(numberOfColumns=2, columnWidth=[(1, 167), (2, 167)], columnAttach=[(1, 'left', 60), (2, 'right', 0)])
+        self.uiVars['proxyGeoFrame_firstRow'] = cmds.rowLayout(numberOfColumns=2, columnWidth=[(1, 167), (2, 167)],
+                                                               columnAttach=[(1, 'left', 60), (2, 'right', 0)])
+                                                               
         self.uiVars['proxyGeoBones_check'] = cmds.checkBox(label='Create Bones', enable=False, value=False)
-        self.uiVars['proxyGeoElbow_check'] = cmds.checkBox(label='Create Elbow / joint', enable=True, value=True, changeCommand=self.toggleElbowProxyTypeRadio)
+        self.uiVars['proxyGeoElbow_check'] = cmds.checkBox(label='Create Elbow / joint', enable=True, value=True,
+                                                                    changeCommand=self.toggleElbowProxyTypeRadio)
+        
         # Set parent to the 'Proxy Geometry' frame layout.
         cmds.setParent(self.uiVars['proxyGeo_frameLayout'])
-        self.uiVars['proxyElbowType_row'] = cmds.rowLayout(numberOfColumns=3, columnWidth=[(1, 145), (2, 125), (3, 125)], columnAttach=[(1, 'right', 0), (2, 'right', 30)])
+        self.uiVars['proxyElbowType_row'] = cmds.rowLayout(numberOfColumns=3, columnWidth=[(1, 145), (2, 125), (3, 125)],
+                                                                        columnAttach=[(1, 'right', 0), (2, 'right', 30)])
         cmds.text(label='Elbow proxy type', font='plainLabelFont')
+        
         self.uiVars['elbowproxyType_radioCollection'] = cmds.radioCollection()
+        
         cmds.radioButton('sphere', label='Sphere', select=True)
         cmds.radioButton('cube', label='Cube', select=False)
         cmds.setParent(self.uiVars['proxyGeo_frameLayout'])
+        
         # Create a separator.
         cmds.separator()
+        
         # Create a row layout to hold a text label, and two radio buttons.
-        self.uiVars['proxyGeoFrame_secondRow'] = cmds.rowLayout(numberOfColumns=3, columnWidth=[(1, 150), (2, 125), (3, 125)], columnAttach=[(1, 'right', 0), (2, 'right', 30)], enable=False)
+        self.uiVars['proxyGeoFrame_secondRow'] = cmds.rowLayout(numberOfColumns=3, columnWidth=[(1, 150), (2, 125), (3, 125)],
+                                                                             columnAttach=[(1, 'right', 0), (2, 'right', 30)],
+                                                                                                                enable=False)
         cmds.text(label='Mirror Instancing')
+        
         self.uiVars['proxyGeo_mirrorInstn_radioCollection'] = cmds.radioCollection()
         self.uiVars['proxyGeo_mirrorInstn_radioButton_on'] = cmds.radioButton('On', label='On', enable=True, select=False)
         self.uiVars['proxyGeo_mirrorInstn_radioButton_off'] = cmds.radioButton('Off', label='Off', enable=True, select=True)
-        # Add options to the 'Proxy Geometry' checkbox. This is done here because the callback functions uses keys from self.UI_Elements that are created
-        # after the checkBox is initialized.
-        cmds.checkBox(self.uiVars['proxyGeo_check'], edit=True, onCommand=self.enableProxyGeoOptions, offCommand=self.disableProxyGeoOptions)
+        
+        # Add options to the 'Proxy Geometry' checkbox. This is done here because the callback functions uses keys from
+        # self.UI_Elements that are created after the checkBox is initialized.
+        cmds.checkBox(self.uiVars['proxyGeo_check'], edit=True, onCommand=self.enableProxyGeoOptions,
+                                                                offCommand=self.disableProxyGeoOptions)
+        
         # Set parent to the main column for the tab to create the 'Mirroring' frame layout.
         cmds.setParent(self.uiVars['modules_Column'])
+        
         # Create a frame layout for 'Mirroring'.
-        self.uiVars['mirroring_frameLayout'] = cmds.frameLayout(label='Mirroring & Transform Function', font='boldLabelFont', borderStyle='etchedIn', collapsable=True, collapse=True)
+        self.uiVars['mirroring_frameLayout'] = cmds.frameLayout(label='Mirroring & Transform Function', font='boldLabelFont',
+                                                                    borderStyle='etchedIn', collapsable=True, collapse=True)
+        
         # Create a row layout to hold a text label and two check box elements in a row.
-        self.uiVars['mirrorSwitch_row'] = cmds.rowLayout(numberOfColumns=3, columnWidth=[(1, 130), (2, 130), (3, 130)], columnAttach=[(1, 'right', 0), (2, 'right', 30), (3, 'right', 65)])
+        self.uiVars['mirrorSwitch_row'] = cmds.rowLayout(numberOfColumns=3, columnWidth=[(1, 130), (2, 130), (3, 130)],
+                                                    columnAttach=[(1, 'right', 0), (2, 'right', 30), (3, 'right', 65)])
+                                                    
         cmds.text(label='Mirror module', font='boldLabelFont')
+        
         self.uiVars['mirrorSwitch_radioCollection'] = cmds.radioCollection()
         cmds.radioButton('On', label='On', select=False, onCommand=self.enableMirrorFunctions)
         cmds.radioButton('Off', label='Off', select=True, onCommand=self.disableMirrorFunctions)
+        
         # Set parent to the 'Mirroring' frame layout.
         cmds.setParent(self.uiVars['mirroring_frameLayout'])
+        
         # Create a separator.
         cmds.separator()
+        
         # Create a text label.
         cmds.text(label='Transform Function', font='boldLabelFont')
+        
         # Create a row column layout to hold a text label and two radio buttons in two subsequent rows.
-        self.uiVars['transformFunc_rowColumn'] = cmds.rowColumnLayout(numberOfColumns=3, rowOffset=[(1, 'both', 2), (2, 'both', 2)], columnWidth=[(1, 130), (2, 130), (3, 130)], enable=True)
+        self.uiVars['transformFunc_rowColumn'] = cmds.rowColumnLayout(numberOfColumns=3,
+                                                                      rowOffset=[(1, 'both', 2), (2, 'both', 2)],
+                                                                      columnWidth=[(1, 130), (2, 130), (3, 130)], enable=True)
         cmds.text(label='Translation', font='obliqueLabelFont')
+        
         self.uiVars['transFunc_radioCollection'] = cmds.radioCollection()
         cmds.radioButton('World', label='World', select=False)
         cmds.radioButton('Local_Orientation', label='Local Orientation', select=True)
+        
         cmds.text(label='Rotation (Mirror only)', font='obliqueLabelFont')
+        
         self.uiVars['mirrorRot_radioCollection'] = cmds.radioCollection()
-        self.uiVars['mirrorRot_radioButton_behaviour'] = cmds.radioButton('Behaviour', label='Behaviour', select=True, enable=False)
-        self.uiVars['mirrorRot_radioButton_ori'] = cmds.radioButton('Orientation', label='Orientation', select=False, enable=False)
+        
+        self.uiVars['mirrorRot_radioButton_behaviour'] = cmds.radioButton('Behaviour', label='Behaviour', select=True,
+                                                                                                         enable=False)
+        self.uiVars['mirrorRot_radioButton_ori'] = cmds.radioButton('Orientation', label='Orientation', select=False,
+                                                                                                         enable=False)
+        
         # Set parent to the main column for the tab to create the 'Module Naming / Handle Colour' frame layout.
         cmds.setParent(self.uiVars['modules_Column'])
+        
         # Create the frame layout.
-        self.uiVars['moduleNaming_frameLayout'] = cmds.frameLayout(label='Module naming / Handle colour', font='boldLabelFont', borderStyle='etchedIn', collapsable=True, collapse=True)
-        # Create a row column layout to hold a text label with a text field in one row and then a text label with a color index slider in the next row.
-        self.uiVars['moduleNaming_rowColumn'] = cmds.rowColumnLayout(numberOfColumns=2, rowOffset=[(1, 'both', 2), (2, 'both', 2)], columnWidth=[(1, 140), (2, 245)])
+        self.uiVars['moduleNaming_frameLayout'] = cmds.frameLayout(label='Module naming / Handle colour', font='boldLabelFont',
+                                                                     borderStyle='etchedIn', collapsable=True, collapse=True)
+        
+        # Create a row column layout to hold a text label with a text field in one row and then a text label with a color
+        # index slider in the next row.
+        self.uiVars['moduleNaming_rowColumn'] = cmds.rowColumnLayout(numberOfColumns=2,
+                                                                     rowOffset=[(1, 'both', 2), (2, 'both', 2)],
+                                                                     columnWidth=[(1, 140), (2, 245)])
         cmds.text(label='User specified name')
+        
         self.uiVars['userSpecName_textField'] = cmds.textField(text='module', enable=True)
+        
         cmds.text(label='Handle Colour')
-        self.uiVars['handleColour_slider'] = cmds.colorIndexSliderGrp('__MRT_moduleHandleColour_IndexSliderGrp', minValue=1, maxValue=32, value=23, enable=True)
+        
+        self.uiVars['handleColour_slider'] = cmds.colorIndexSliderGrp('__MRT_moduleHandleColour_IndexSliderGrp', minValue=1,
+                                                                                          maxValue=32, value=23, enable=True)
 
-        self.createTabFrames.extend([self.uiVars['modules_frameLayout'], self.uiVars['creationOpt_frameLayout'], self.uiVars['nodeCompnt_frameLayout'], self.uiVars['proxyGeo_frameLayout'], self.uiVars['mirroring_frameLayout'], self.uiVars['moduleNaming_frameLayout']])
+        # Save frames for create tab.
+        self.createTabFrames.extend([self.uiVars['modules_frameLayout'], self.uiVars['creationOpt_frameLayout'],
+                                     self.uiVars['nodeCompnt_frameLayout'], self.uiVars['proxyGeo_frameLayout'],
+                                     self.uiVars['mirroring_frameLayout'], self.uiVars['moduleNaming_frameLayout']])
 
 
     def makeEditTabControls(self):
+        """
+        Create the tab layout contents for editing or working with scene modules. These include selecting and loading
+        module collections, viewing scene module list (sorted or by hierarchy), saving module(s) as module collections,
+        module renaming, deletion, duplication and module parenting operations.
+        """
     
         scrollWidth = self.width_Height[0] - 20
         
         self.uiVars['edit_Column'] = cmds.columnLayout(adjustableColumn=True, rowSpacing=3)
+        
+        
+        # List for module collections for loading, editing and deletion ---
 
         self.uiVars['loadedCollections_frameLayout'] = cmds.frameLayout(label='Module collections', font='boldLabelFont',
                                                                         collapsable=True, borderVisible=True,
@@ -3759,6 +3920,9 @@ class MRT_UI(object):
 
         cmds.setParent(self.uiVars['edit_Column'])
         
+        
+        # List of scene modules, module opertions ---
+        
         self.uiVars['sceneModules_frameLayout'] = cmds.frameLayout(label='Scene modules', font='boldLabelFont',
                                                                    collapsable=True, borderVisible=True, borderStyle='etchedIn',
                                                                    marginHeight=1, marginWidth=2, collapse=True)
@@ -3789,6 +3953,9 @@ class MRT_UI(object):
         cmds.button(label='-', recomputeSize=False, width=20, height=20, command=self.decreaseModuleListHeight)
         cmds.button(label='R', recomputeSize=False, width=20, height=20, command=self.resetListHeightForSceneModulesUI)
         cmds.setParent(self.uiVars['sceneModules_frameLayout'])
+        
+        
+        # Saving module collections --
         
         self.uiVars['moduleSaveColl_button'] = cmds.button(label='Save selected module(s) as a collection', enable=False,
                                                                     command=self.makeCollectionFromSceneTreeViewModulesUI)
@@ -3829,6 +3996,10 @@ class MRT_UI(object):
         
         cmds.setParent(self.uiVars['sceneModules_frameLayout'])
         cmds.separator()
+        
+        
+        # Module renaming, deletion and duplication --
+        
         self.uiVars['moduleEditFunc3_row'] = cmds.rowLayout(numberOfColumns=2, rowAttach=[(1, 'top', 0), (2, 'top', 0)],
                                                             columnWidth=[(1, 220), (2, 160)],
                                                             columnAttach=[(1, 'both', 3), (2, 'both', 3)])
@@ -3851,6 +4022,10 @@ class MRT_UI(object):
                                                             command=self.performModuleDuplicate_UI_wrapper)
 
         cmds.setParent(self.uiVars['edit_Column'])
+        
+        
+        # Module parenting --
+        
         self.uiVars['moduleParenting_frameLayout'] = cmds.frameLayout(label='Module parenting', font='boldLabelFont',
                                                                       collapsable=True, borderVisible=True,
                                                                       borderStyle='etchedIn', marginHeight=1, marginWidth=2,
@@ -3916,13 +4091,15 @@ class MRT_UI(object):
         self.uiVars['childSnap_button'] = cmds.button(label='Snap child root to parent', enable=False,
                                                                 command=self.performSnapChildToParent)
         
+        # Save frames under edit tab ---
+        
         self.editTabFrames.extend([self.uiVars['loadedCollections_frameLayout'], self.uiVars['sceneModules_frameLayout'],
                                                                              self.uiVars['moduleParenting_frameLayout']])
 
 
     def makeRigTabControls(self):
         """
-        Create the tab layout contents for rig controls. These function will create character from scene module(s)
+        Create the tab layout contents for rig controls. These functions will create character from scene module(s)
         and then modify it by applying control rigging and space switching.
         """
         scrollWidth = self.width_Height[0] - 20
@@ -4098,7 +4275,7 @@ class MRT_UI(object):
                                    self.uiVars['characterRigging_parentSwitching_frameLayout']])
 
 
-    def increaseModuleListHeight(self, args=None):
+    def increaseModuleListHeight(self, *args):
         """
         UI callback method to increment the height of scroll list for scene modules.
         """
@@ -4107,7 +4284,7 @@ class MRT_UI(object):
         cmds.scrollLayout(self.uiVars['moduleList_Scroll'], edit=True, height=height+48)
 
 
-    def decreaseModuleListHeight(self, args=None):
+    def decreaseModuleListHeight(self, *args):
         """
         UI callback method to decrement the height of scroll list for scene modules.
         """
@@ -4218,20 +4395,20 @@ class MRT_UI(object):
                                       self.uiVars['characterLayout_frameLayout']])
 
 
-    def loadCharAsReference(self, args=None):
+    def loadCharAsReference(self, *args):
         pass
         
 
-    def unloadRefCharFromScene(self, args=None):
+    def unloadRefCharFromScene(self, *args):
         pass
         
 
-    def reloadRefCharInScene(self, args=None):
+    def reloadRefCharInScene(self, *args):
         pass
     '''
 
 
-    def createModuleFromUI(self, args=None):
+    def createModuleFromUI(self, *args):
         """
         This method collects all the information from the 'Create' UI tab, and uses the "createModuleFromAttributes"
         from 'mrt_functions' to create a module.
@@ -4335,7 +4512,7 @@ class MRT_UI(object):
         self.clearChildModuleField()
 
 
-    def undoCreateModuleTool(self, args=None):
+    def undoCreateModuleTool(self, *args):
         """
         Undo a module creation, if the module is stored in self.modules.
         """
@@ -4512,7 +4689,7 @@ class MRT_UI(object):
         return True
 
 
-    def modifyModuleCreationOptions(self, args=None):
+    def modifyModuleCreationOptions(self, *args):
         """
         Sets the UI attributes for module creation, based on the selected module type for creation.
         This is a UI callback method when the module type radio button is selected.
@@ -4551,21 +4728,21 @@ class MRT_UI(object):
             self.updateNumNodesValue([])
 
 
-    def enableProxyGeoOptions(self, args=None):
+    def enableProxyGeoOptions(self, *args):
         """
         Enables the Proxy Geo UI options. UI callback method.
         """
         cmds.frameLayout(self.uiVars['proxyGeo_frameLayout'], edit=True, enable=True)
 
 
-    def disableProxyGeoOptions(self, args=None):
+    def disableProxyGeoOptions(self, *args):
         """
         Disables the Proxy Geo UI options. UI callback method.
         """
         cmds.frameLayout(self.uiVars['proxyGeo_frameLayout'], edit=True, enable=False, collapse=True)
 
 
-    def enableMirrorFunctions(self, args=None):
+    def enableMirrorFunctions(self, *args):
         """
         Enable the module mirroring options in the create UI tab. UI callback method.
         """
@@ -4574,7 +4751,7 @@ class MRT_UI(object):
         cmds.rowLayout(self.uiVars['proxyGeoFrame_secondRow'], edit=True, enable=True)
 
 
-    def disableMirrorFunctions(self, args=None):
+    def disableMirrorFunctions(self, *args):
         """
         Disables the module mirroring options in the create UI tab. UI callback method.
         """
@@ -4585,7 +4762,7 @@ class MRT_UI(object):
         cmds.radioButton(self.uiVars['proxyGeo_mirrorInstn_radioButton_off'], edit=True, select=True)
 
 
-    def updateModuleLengthValue(self, args=None):
+    def updateModuleLengthValue(self, *args):
         """
         Updates the module length value in the UI based on the number of module nodes and the type of
         module node type set in the create UI tab. UI callback method.
@@ -4621,7 +4798,7 @@ class MRT_UI(object):
             cmds.checkBox(self.uiVars['node_hierarchy_check'], edit=True, enable=True)
 
 
-    def updateNumNodesValue(self, args=None):
+    def updateNumNodesValue(self, *args):
         """
         Updates the number of module nodes in the UI based on the number of module nodes and the type of
         module node type set in the create UI tab. UI callback method.
@@ -4660,7 +4837,7 @@ class MRT_UI(object):
             cmds.checkBox(self.uiVars['node_hierarchy_check'], edit=True, enable=True)
 
 
-    def collapseAllUIframes(self, args=None):
+    def collapseAllUIframes(self, *args):
         """
         Called as a menu item under windows to collapse all frames under UI tabs.
         """
@@ -4675,7 +4852,7 @@ class MRT_UI(object):
                 pass
 
 
-    def expandAllUIframes(self, args=None):
+    def expandAllUIframes(self, *args):
         """
         Called as a menu item under windows to expand frames under the current UI tab.
         """
@@ -4697,7 +4874,7 @@ class MRT_UI(object):
                     cmds.frameLayout(frame, edit=True, collapse=False)
                     
 
-    def toggleElbowProxyTypeRadio(self, args=None):
+    def toggleElbowProxyTypeRadio(self, *args):
         stat = cmds.checkBox(self.uiVars['proxyGeoElbow_check'], query=True, value=True)
         if stat:
             cmds.rowLayout(self.uiVars['proxyElbowType_row'], edit=True, enable=True)
