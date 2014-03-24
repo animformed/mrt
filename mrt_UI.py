@@ -6,7 +6,7 @@
 #    Can be modified or copied for your own purpose. Please keep updating it for use with future versions
 #    of Maya. This was originally written for Maya 2011, and updated for 2013 and then for 2014.
 #
-#    Written by Himanish Bhattacharya 
+#    Written by Himanish Bhattacharya
 #
 # *************************************************************************************************************
 
@@ -153,21 +153,42 @@ class MRT_UI(object):
     Main UI class
     '''
     def __init__(self):
+    
+        # Save the current selection
+        selection = cmds.ls(selection=True)
+        
+        # Turn off undo
         cmds.undoInfo(stateWithoutFlush=False)
+
         # Dictionary to hold UI elements by key.
-        self.module_collectionList = {}
-        self.charTemplateList = {}
         self.uiVars = {}
+        
+        # To store main UI tab frameLayouts
         self.createTabFrames = []
         self.editTabFrames = []
         self.animateTabFrames = []
+        
+        # For storing the module collections and character template paths by key.
+        self.module_collectionList = {}
+        self.charTemplateList = {}
+        
+        # To store the selected module items in the scene modules treeView list.
         self.treeViewSelection_list = {}
-        self.controlRiggingOptionsList = {}
+        
+        # To store the control rigging properties / attributes for a character joint hierarchy.
+        self.controlRiggingAttributes = {}
+        
+        # To store the parent transform for control for parent switching (which is constrained).
         self.controlParentSwitchGrp = None
+        # To store the current parent targets.
         self.existingParentSwitchTargets = []
+        
+        # To store the id for the scriptJob which runs when MRT UI is closed (for cleanup).
         self.c_jobNum = None
+        
         # Dictionary to hold module creation queue.
         self.modules = {}
+        
         # Check if the main UI window exists; if true, delete it.
         for ui in ['mrt_UI_window',
                    'mrt_collectionDescription_input_UI_window',
@@ -195,21 +216,26 @@ class MRT_UI(object):
         self.width_Height = [400, 300]
         
         # Create the main window.
-        self.uiVars['window'] = cmds.window('mrt_UI_window', title='Modular Rigging Tools', \
+        self.uiVars['window'] = cmds.window('mrt_UI_window', title='Modular Rigging Tools',
                                             widthHeight=self.width_Height, resizeToFitChildren=True, maximizeButton=False)
+        
+        # Remove the main window from preferences.
         try:
             cmds.windowPref('mrt_UI_window', remove=True)
         except:
+            # For some reason, maya occasionally prompts the window element doesn't exist under windowPref. Not sure why.
             pass
+        
         # Create a menu bar under main window, with two menu elements, 'File' and 'Help'.
         cmds.menuBarLayout()
+        
         # The 'File' menu will have saving and loading file operations.
         self.uiVars['fileMenu_windowBar'] = cmds.menu(label='File')
-        self.uiVars['autoLoad_moduleCollection_check'] = \
-            cmds.menuItem(label='Auto-load settings for module collection(s)', command=self.autoLoadSettingsUIforCollections)
+        self.uiVars['autoLoad_moduleCollection_check'] = cmds.menuItem(label='Auto-load settings for module collection(s)',
+                                                                           command=self.autoLoadSettingsUIforCollections)
         cmds.menuItem(divider=True)
         self.uiVars['autoLoad_moduleCollection_selectDir'] = \
-            cmds.menuItem(label='Select directory for loading saved collection(s)', \
+            cmds.menuItem(label='Select directory for loading saved collection(s)',
                                     command=self.selectDirectoryForLoadingCollections)
         cmds.menuItem(optionBox=True, command=self.changeLoadCollectionDirectoryClearMode)
         cmds.menuItem(label='Select and load saved module collection(s)', command=self.loadSavedModuleCollections)
@@ -222,8 +248,9 @@ class MRT_UI(object):
         cmds.menuItem(label='Load saved character template(s)', command=self.loadSavedCharTemplates)
         cmds.menuItem(optionBox=True, command=self.changeLoadSettingsForCharTemplates)
         cmds.menuItem(divider=True)
-        ##cmds.menuItem(label='Exit', command=('cmds.deleteUI(\"'+self.uiVars['window']+'\")'))
+        # cmds.menuItem(label='Exit', command=('cmds.deleteUI(\"'+self.uiVars['window']+'\")')) # OR
         cmds.menuItem(label='Exit', command=partial(self.closeWindow, self.uiVars['window']))
+
         # The 'window' menu will contains basic UI window operations.
         cmds.menu(label='Window')
         cmds.menuItem(label='Collapse all frames', command=self.collapseAllUIframes)
@@ -236,8 +263,9 @@ class MRT_UI(object):
         cmds.menuItem(label='Delete all proxy geometry for selected module', command=self.deleteAllProxyGeoForModule)
         cmds.menuItem(label='Delete history on all proxy geometry', command=self.deleteHistoryAllProxyGeo)
         cmds.menuItem(label='Purge auto-collection files on disk', command=self.purgeAutoCollections)
-        cmds.menuItem(label='Create parent switch group for selected control handle', \
-                                                                        command=self.createParentSwitchGroupforControlHandle)
+        cmds.menuItem(label='Create parent switch group for selected control handle',
+                                command=self.createParentSwitchGroupforControlHandle)
+
         # The 'Help' menu will have general help options.
         cmds.menu(label='Help', helpMenu=True)
         cmds.menuItem(label='Documentation', \
@@ -277,7 +305,8 @@ class MRT_UI(object):
         
         # Edit the tab layout for the tab labels.
         cmds.tabLayout(self.uiVars['tabs'], edit=True, tabLabelIndex=([1, 'Create'], [2, 'Edit'], [3, 'Rig']))
-
+        
+        # Show the main window.
         cmds.showWindow(self.uiVars['window'])
 
         # DEPRECATED #
@@ -286,42 +315,47 @@ class MRT_UI(object):
         #                                                    area='left', content=self.uiVars['window'],
         #                                                    allowedArea=['left', 'right'])
 
-        # Remove the main window from preferences.
+        # Reset UI prefernces
         self.resetListHeightForSceneModulesUI()
         self.updateListForSceneModulesInUI()
         self.selectModuleInTreeViewUIfromViewport()
         self.createUIutilityScriptJobs()
+        
+        # Get the default paths for saving / loading UI preferences
         self.autoCollections_path = \
                            cmds.internalVar(userScriptDir=True)+'MRT/module_collections/auto-generated_character_collections'
         self.ui_preferences_path = cmds.internalVar(userScriptDir=True)+'MRT/mrt_uiPrefs'
         self.module_collectionList_path = cmds.internalVar(userScriptDir=True)+'MRT/mrt_collectionList'
         self.charTemplateList_path = cmds.internalVar(userScriptDir=True)+'MRT/mrt_charTemplateList'
+
+        # Load the preferences for loading module collections and character templates
         try:
             ui_preferences_file = open(self.ui_preferences_path, 'rb')
             ui_preferences = cPickle.load(ui_preferences_file)
             ui_preferences_file.close()
+        
         except IOError:
             ui_preferences_file = open(self.ui_preferences_path, 'wb')
             ui_preferences = {}
-            ui_preferences['startDirectoryForCollectionSave'] = \
-                                               cmds.internalVar(userScriptDir=True)+'MRT/module_collections/user_collections'
-            ui_preferences['defaultStartDirectoryForCollectionSave'] = \
-                                               cmds.internalVar(userScriptDir=True)+'MRT/module_collections/user_collections'
-            ui_preferences['directoryForAutoLoadingCollections'] = \
-                                               cmds.internalVar(userScriptDir=True)+'MRT/module_collections/user_collections'
-            ui_preferences['defaultDirectoryForAutoLoadingCollections'] = \
-                                               cmds.internalVar(userScriptDir=True)+'MRT/module_collections/user_collections'
-            ui_preferences['lastDirectoryForLoadingCollections'] = \
-                                               cmds.internalVar(userScriptDir=True)+'MRT/module_collections/user_collections'
-            ui_preferences['defaultLastDirectoryForLoadingCollections'] = \
-                                               cmds.internalVar(userScriptDir=True)+'MRT/module_collections/user_collections'
-            ui_preferences['directoryForSavingCharacterTemplates'] = \
-                                               cmds.internalVar(userScriptDir=True)+'MRT/character_templates'
-            ui_preferences['defaultDirectoryForSavingCharacterTemplates'] = \
-                                               cmds.internalVar(userScriptDir=True)+'MRT/character_templates'
+            ui_preferences['startDirectoryForCollectionSave'] =
+                                    cmds.internalVar(userScriptDir=True)+'MRT/module_collections/user_collections'
+            ui_preferences['defaultStartDirectoryForCollectionSave'] =
+                                    cmds.internalVar(userScriptDir=True)+'MRT/module_collections/user_collections'
+            ui_preferences['directoryForAutoLoadingCollections'] =
+                                    cmds.internalVar(userScriptDir=True)+'MRT/module_collections/user_collections'
+            ui_preferences['defaultDirectoryForAutoLoadingCollections'] =
+                                    cmds.internalVar(userScriptDir=True)+'MRT/module_collections/user_collections'
+            ui_preferences['lastDirectoryForLoadingCollections'] =
+                                    cmds.internalVar(userScriptDir=True)+'MRT/module_collections/user_collections'
+            ui_preferences['defaultLastDirectoryForLoadingCollections'] =
+                                    cmds.internalVar(userScriptDir=True)+'MRT/module_collections/user_collections'
+            ui_preferences['directoryForSavingCharacterTemplates'] =
+                                    cmds.internalVar(userScriptDir=True)+'MRT/character_templates'
+            ui_preferences['defaultDirectoryForSavingCharacterTemplates'] =
+                                    cmds.internalVar(userScriptDir=True)+'MRT/character_templates'
             ui_preferences['directoryForCharacterTemplates'] = cmds.internalVar(userScriptDir=True)+'MRT/character_templates'
-            ui_preferences['defaultDirectoryForCharacterTemplates'] = \
-                                               cmds.internalVar(userScriptDir=True)+'MRT/character_templates'
+            ui_preferences['defaultDirectoryForCharacterTemplates'] =
+                                    cmds.internalVar(userScriptDir=True)+'MRT/character_templates'
             ui_preferences['loadCharTemplateClearModeStatus'] = True
             ui_preferences['loadNewCharTemplatesToCurrentList'] = True
             ui_preferences['autoLoadPreviousCharTemplateListAtStartupStatus'] = True
@@ -331,6 +365,8 @@ class MRT_UI(object):
             ui_preferences['loadCollectionClearModeStatus'] = True
             cPickle.dump(ui_preferences, ui_preferences_file, cPickle.HIGHEST_PROTOCOL)
             ui_preferences_file.close()
+
+        # Load the module collections using the preferences
         try:
             module_collectionList_file = open(self.module_collectionList_path, 'rb')
             module_collectionList = cPickle.load(module_collectionList_file)
@@ -345,11 +381,14 @@ class MRT_UI(object):
             module_collectionList_file = open(self.module_collectionList_path, 'wb')
             cPickle.dump(module_collectionList, module_collectionList_file, cPickle.HIGHEST_PROTOCOL)
             module_collectionList_file.close()
+
         except IOError:
             module_collectionList = {}
             module_collectionList_file = open(self.module_collectionList_path, 'wb')
             cPickle.dump(module_collectionList, module_collectionList_file, cPickle.HIGHEST_PROTOCOL)
             module_collectionList_file.close()
+
+        # Load the character templates using the preferences
         try:
             charTemplateList_file = open(self.charTemplateList_path, 'rb')
             charTemplateList = cPickle.load(charTemplateList_file)
@@ -364,60 +403,28 @@ class MRT_UI(object):
             charTemplateList_file = open(self.charTemplateList_path, 'wb')
             cPickle.dump(charTemplateList, charTemplateList_file, cPickle.HIGHEST_PROTOCOL)
             charTemplateList_file.close()
+
         except IOError:
             charTemplateList = {}
             charTemplateList_file = open(self.charTemplateList_path, 'wb')
             cPickle.dump(charTemplateList, charTemplateList_file, cPickle.HIGHEST_PROTOCOL)
             charTemplateList_file.close()
-        selection = cmds.ls(selection=True)
+
+        # Re-select
         if selection:
             cmds.select(selection)
+
+        # Turn on undo
         cmds.undoInfo(stateWithoutFlush=True)
-
-    def createParentSwitchGroupforControlHandle(self, *args):
-        selection = cmds.ls(selection=True)
-        if selection:
-            selection = selection[-1]
-        else:
-            return
-        if re.match('^MRT_character[A-Za-z0-9]*__\w+_handle$', selection):
-            transformParent = cmds.listRelatives(selection, parent=True)
-            if transformParent:
-                if re.match(selection+'_grp', transformParent[0]):
-                    cmds.warning('MRT Error: The selected control handle already has parent switch group. Skipping')
-                    return
-        else:
-            cmds.warning('MRT Error: Invalid selection. Please select a valid control handle')
-            return
-
-        characterName = selection.partition('__')[0].partition('MRT_character')[2]
-        selectionName = selection.partition('__')[2]
-        selectionUserSpecName = re.split('_[A-Z]', selectionName)[0]
-        rootJoint = 'MRT_character%s__%s_root_node_transform'%(characterName, selectionUserSpecName)
-
-        # Create the group node which will receive the constraints from parent transforms.
-        parentSwitch_grp = cmds.group(empty=True, name=selection + '_parentSwitch_grp')
-        tempConstraint = cmds.parentConstraint(selection, parentSwitch_grp, maintainOffset=False)[0]
-        cmds.delete(tempConstraint)
-        # Add custom attributes to the group node, and create a child transform to contain the main transform
-        # (for which the parent switch group is being created).
-        cmds.addAttr(selection, attributeType='enum', longName='targetParents', enumName=' ', keyable=True)
-        cmds.setAttr(selection+'.targetParents', lock=True)
-        cmds.addAttr(parentSwitch_grp, dataType='string', longName='parentTargetList', keyable=False)
-        cmds.setAttr(parentSwitch_grp+'.parentTargetList', 'None', type='string', lock=True)
-        transform_grp = cmds.duplicate(parentSwitch_grp, parentOnly=True, name=selection+'_grp')[0]
-        transformParent = cmds.listRelatives(selection, parent=True)
-        if transformParent:
-            cmds.parent(parentSwitch_grp, transformParent[0], absolute=True)
-        cmds.parent(transform_grp, parentSwitch_grp, absolute=True)
-        cmds.parent(selection, transform_grp, absolute=True)
-        controlContainer = cmds.container(selection, query=True, findContainer=True)
-        mfunc.addNodesToContainer(controlContainer, [parentSwitch_grp, transform_grp])
+        
 
     def display_mrt_issues(self, *args):
-    
+        '''
+        First things first. Keep a record of current issues with MRT, displayable to the user.
+        Not sure why I didn't use a txt source haha. Meh, too bad. But you do what you gotta do ;)
+        '''
         printString1 = ' Known Issues with Modular Rigging Tools for Maya' \
-            '\n ------------------------------------------------'
+                       '\n ------------------------------------------------'
         
         printString2 = '\n\n 1. If \'Mirror Instancing\' option is used for proxy geometry while creating mirrored modules,' \
             '\n it will yield mirrored geometry with opposing face normals after creating a character. Maya will issue' \
@@ -487,34 +494,57 @@ class MRT_UI(object):
                                                                             enableBackground=True, height=400, wordWrap=False)
         cmds.showWindow(self.uiVars['displayMrtIssuesWindow'])
 
+
+
+    ####   TOP MENU ITEM METHODS   ####
+    
+
     def display_mrt_about(self, *args):
+        '''
+        Display MRT dev stats
+        '''
         printString1 = '\n\t\t\tModular Rigging Tools v1.0\n\t\t\tfor Maya 2011 - 2013'
-        printString2 = '\n\n\tWritten by Himanish Bhattacharya' \
+        printString2 = '\n\n\tWritten by Himanish Bhattacharya' \   # Heh, showoff
             '\n\thimanish@animformed.net' \
             '\n\n\t________________________________________________' \
             '\n\n\tFor annoyances or bugs, contact me at, bugs@animformed.net\n'
         try:
             cmds.deleteUI('mrt_about_UI_window')
         except:
+            # It's time they put an end to this.
             pass
         self.uiVars['displayMrtAboutWindow'] = cmds.window('mrt_about_UI_window', title='About', maximizeButton=False, \
                                                                                                             sizeable=False)
         try:
             cmds.windowPref(self.uiVars['displayMrtAboutWindow'], remove=True)
         except:
+            # I agrreee.
             pass
+        
         self.uiVars['displayMrtAbout_columnLayout'] = cmds.columnLayout()
         cmds.text(label=printString1, font='boldLabelFont')
         cmds.text(label=printString2)
         cmds.showWindow(self.uiVars['displayMrtAboutWindow'])
 
+
     def closeWindow(self, windowName, *args):
+        '''
+        I know, but this way it's just a one word callback.
+        '''
         cmds.deleteUI(windowName)
 
+
     def openWebPage(self, urlString, *args):
+        '''
+        Just like it says.
+        '''
         webbrowser.open(urlString)
 
+
     def createUIutilityScriptJobs(self):
+        '''
+        Run helper scriptJobs for MRT UI events.
+        '''
         mainWin = self.uiVars['window']
         cmds.scriptJob(event=['SelectionChanged', self.toggleEditMenuButtonsOnModuleSelection], parent=mainWin)
         cmds.scriptJob(event=['DagObjectCreated', self.updateListForSceneModulesInUI], parent=mainWin)
@@ -530,9 +560,16 @@ class MRT_UI(object):
         cmds.scriptJob(event=['SelectionChanged', self.viewControlRigOptionsOnHierarchySelection], parent=mainWin)
         self.c_jobNum = cmds.scriptJob(uiDeleted=[mainWin, partial(mfunc.cleanup_MRT_actions, self.c_jobNum)])
 
+
     def purgeAutoCollections(self, *args):
-        autoCollectionFiles = filter(lambda fileName:re.match('^character__[0-9]*\.mrtmc$', fileName), \
-                                                                                    os.listdir(self.autoCollections_path))
+        '''
+        Removes all auto module collection files auto generated by MRT. An auto collection file 
+        is used by MRT to revert a character back to scene modules.
+        '''
+        # Get all files
+        autoCollectionFiles = filter(lambda fileName:re.match('^character__[0-9]*\.mrtmc$', fileName),
+                                                                os.listdir(self.autoCollections_path))
+        # Remove them.
         if len(autoCollectionFiles):
             for item in autoCollectionFiles:
                 itemPath = self.autoCollections_path + '/' + item
@@ -541,7 +578,13 @@ class MRT_UI(object):
         else:
             sys.stderr.write('No auto-collection file(s) found.\n')
 
+
     def deleteSelectedProxyGeo(self, *args):
+        '''
+        Deletes selected module proxy geometry, if it's valid. This doesn't delete
+        all proxy geometry, only the ones that are selected. A module may have multiple 
+        proxy geo transfroms.
+        '''
         selection = cmds.ls(selection=True)
         moduleProxies = []
         check = False
@@ -560,7 +603,11 @@ class MRT_UI(object):
         if not check:
             cmds.warning('MRT Error: Please select a module proxy geometry.')
 
+
     def deleteAllProxyGeoForModule(self, *args):
+        '''
+        Deletes all proxy geometry for selected module(s).
+        '''
         modules = []
         selection = cmds.ls(selection=True)
         if selection:
@@ -581,7 +628,12 @@ class MRT_UI(object):
         else:
             cmds.warning('MRT Error: Please select a module.')
 
+
     def deleteHistoryAllProxyGeo(self, *args):
+        '''
+        Deletes construction history on all module proxy geometry in the scene. The
+        history may be a result of a user modification of module proxy geometry.
+        '''
         proxyGrpList = []
         all_transforms = cmds.ls(type='transform')
         for transform in all_transforms:
@@ -593,11 +645,18 @@ class MRT_UI(object):
         else:
             cmds.warning('MRT Error: No module proxy geometry found.')
 
+
     def swapHingeNodeRootEndHandlePos(self, *args):
+        '''
+        Used to swap the positions of the start and end handles for a hinge module. This
+        can be used to quickly reverse the hierarchy of the node chain for the module.
+        '''
         selection = cmds.ls(selection=True)
+        
         if not selection:
             sys.stderr.write('Please select a hinge node module.\n')
             return
+        
         if selection:
             selection.reverse()
             selection = selection[0]
@@ -618,13 +677,11 @@ class MRT_UI(object):
                 for item in [namespaceInfo[0]+':root_node_transform_control', \
                              namespaceInfo[0]+':end_node_transform_control', \
                              namespaceInfo[0]+':node_1_transform_control']:
-                    cmds.evalDeferred(partial(self.deferredSelectionUpdate, item), lowestPriority=True)
+                    cmds.evalDeferred(partial(cmds.select, item), lowestPriority=True)
             else:
                 sys.stderr.write('Please select a hinge node module.\n')
                 return
 
-    def deferredSelectionUpdate(self, selection):
-        cmds.select(selection, replace=True)
 
     def autoLoadSettingsUIforCollections(self, *args):
         def setAutoLoadSettingsValues(*args):
@@ -679,6 +736,7 @@ class MRT_UI(object):
         cmds.text(label='')
         cmds.showWindow(self.uiVars['autoLoadSettingsUIwindow'])
 
+
     def changeLoadCollectionListClearMode(self, *args):
         def loadCollectionsFromSettingsWindow(*args):
             try:
@@ -728,6 +786,7 @@ class MRT_UI(object):
         cmds.setParent(self.uiVars['loadCollectionClearModeWindowColumn'])
         cmds.text(label='')
         cmds.showWindow(self.uiVars['loadCollectionClearModeWindow'])
+
 
     def changeLoadCollectionDirectoryClearMode(self, *args):
         def loadCollectionsFromSettingsWindow(*args):
@@ -3109,7 +3168,7 @@ class MRT_UI(object):
             cmds.showWindow(self.uiVars['displayCtrlRigOptionsWindow'])
 
     def displayControlRiggingOptions(self, rootJoint, customHierarchyTreeListString=None):
-        self.controlRiggingOptionsList = {}
+        self.controlRiggingAttributes = {}
         cmds.textScrollList(self.uiVars['c_rig_txScList'], edit=True, height=32, removeAll=True)
         if rootJoint:
             mp_klasses = []
@@ -3156,15 +3215,15 @@ class MRT_UI(object):
                             print '## MRT message: Multiple user control rigging classes (%s) found for selected joint hierarchy. ##\n## Using \"%s\" control class for rigging options. ##'%(', '.join(mp_klasses), (className))
                         else:
                             print '## MRT message: Custom user control rigging class found for selected joint hierarchy. ##\n## Using \"%s\" control class for rigging options. ##'%(className)
-            self.controlRiggingOptionsList['__klass__'] = '%s'%(className)
+            self.controlRiggingAttributes['__klass__'] = '%s'%(className)
             funcList = eval('[item for item in dir(mrt_controlRig.%s) if not re.search(\'__\', item)]'%(className))
             funcNameList = eval('[item.partition(\'apply\')[2].replace(\'_\', \' \') for item in dir(mrt_controlRig.%s) if re.search(\'^apply[A-Z]\', item)]'%(className))
             for (funcName, func) in zip(funcNameList, funcList):
-                self.controlRiggingOptionsList[funcName] = func
+                self.controlRiggingAttributes[funcName] = func
 
-        if self.controlRiggingOptionsList:
-            self.controlRiggingOptionsList['__rootJoint__'] = rootJoint
-            appendFuncList = [item for item in self.controlRiggingOptionsList if item.find('__') == -1]
+        if self.controlRiggingAttributes:
+            self.controlRiggingAttributes['__rootJoint__'] = rootJoint
+            appendFuncList = [item for item in self.controlRiggingAttributes if item.find('__') == -1]
             atRigList = cmds.getAttr(rootJoint+'.rigLayers')
             if atRigList != 'None':
                 atRigList = atRigList.split(',')
@@ -3199,7 +3258,7 @@ class MRT_UI(object):
             cmds.warning('MRT Error: Referenced object selected. Aborting.')
             return
         selectFunc = cmds.textScrollList(self.uiVars['c_rig_txScList'], query=True, selectItem=True)[-1]
-        hierarchyRoot = self.controlRiggingOptionsList['__rootJoint__']
+        hierarchyRoot = self.controlRiggingAttributes['__rootJoint__']
         rigLayers = cmds.getAttr(hierarchyRoot+'.rigLayers')
         if rigLayers != 'None':
             rigLayers = rigLayers.split(',')
@@ -3207,10 +3266,10 @@ class MRT_UI(object):
                 if selectFunc == layer:
                     cmds.warning('MRT Error: The control rig is already attached. Skipping.')
                     return
-        controlClass = self.controlRiggingOptionsList['__klass__']
+        controlClass = self.controlRiggingAttributes['__klass__']
         characterName = selection.partition('__')[0].partition('MRT_character')[2]
         controlRigInst = eval('mrt_controlRig.%s(characterName, hierarchyRoot)'%controlClass)
-        controlRigApplyFunc = self.controlRiggingOptionsList[selectFunc]
+        controlRigApplyFunc = self.controlRiggingAttributes[selectFunc]
         eval('controlRigInst.%s()'%controlRigApplyFunc)
         del controlRigInst
         if isinstance(rigLayers, list):
@@ -3235,8 +3294,8 @@ class MRT_UI(object):
             return
         ctrlRigLayerName = cmds.textScrollList(self.uiVars['c_rig_attachedRigs_txScList'], query=True, 
         																								selectItem=True)[-1]
-        ctrlRigLayer = self.controlRiggingOptionsList[ctrlRigLayerName].partition('apply')[2]
-        hierarchyRoot = self.controlRiggingOptionsList['__rootJoint__']
+        ctrlRigLayer = self.controlRiggingAttributes[ctrlRigLayerName].partition('apply')[2]
+        hierarchyRoot = self.controlRiggingAttributes['__rootJoint__']
         characterName = hierarchyRoot.partition('__')[0].partition('MRT_character')[2]
         userSpecName = re.split('_root_node_transform', hierarchyRoot)[0].partition('__')[2]
         # Change the rig layer attribute on root joint for the character hierarchy
@@ -3662,6 +3721,46 @@ class MRT_UI(object):
         else:
             cmds.button(self.uiVars['c_rig_prntSwitch_RemoveAll'], edit=True, enable=False)
 
+    
+    def createParentSwitchGroupforControlHandle(self, *args):
+        selection = cmds.ls(selection=True)
+        if selection:
+            selection = selection[-1]
+        else:
+            return
+        if re.match('^MRT_character[A-Za-z0-9]*__\w+_handle$', selection):
+            transformParent = cmds.listRelatives(selection, parent=True)
+            if transformParent:
+                if re.match(selection+'_grp', transformParent[0]):
+                    cmds.warning('MRT Error: The selected control handle already has parent switch group. Skipping')
+                    return
+        else:
+            cmds.warning('MRT Error: Invalid selection. Please select a valid control handle')
+            return
+
+        characterName = selection.partition('__')[0].partition('MRT_character')[2]
+        selectionName = selection.partition('__')[2]
+        selectionUserSpecName = re.split('_[A-Z]', selectionName)[0]
+        rootJoint = 'MRT_character%s__%s_root_node_transform'%(characterName, selectionUserSpecName)
+
+        # Create the group node which will receive the constraints from parent transforms.
+        parentSwitch_grp = cmds.group(empty=True, name=selection + '_parentSwitch_grp')
+        tempConstraint = cmds.parentConstraint(selection, parentSwitch_grp, maintainOffset=False)[0]
+        cmds.delete(tempConstraint)
+        # Add custom attributes to the group node, and create a child transform to contain the main transform
+        # (for which the parent switch group is being created).
+        cmds.addAttr(selection, attributeType='enum', longName='targetParents', enumName=' ', keyable=True)
+        cmds.setAttr(selection+'.targetParents', lock=True)
+        cmds.addAttr(parentSwitch_grp, dataType='string', longName='parentTargetList', keyable=False)
+        cmds.setAttr(parentSwitch_grp+'.parentTargetList', 'None', type='string', lock=True)
+        transform_grp = cmds.duplicate(parentSwitch_grp, parentOnly=True, name=selection+'_grp')[0]
+        transformParent = cmds.listRelatives(selection, parent=True)
+        if transformParent:
+            cmds.parent(parentSwitch_grp, transformParent[0], absolute=True)
+        cmds.parent(transform_grp, parentSwitch_grp, absolute=True)
+        cmds.parent(selection, transform_grp, absolute=True)
+        controlContainer = cmds.container(selection, query=True, findContainer=True)
+        mfunc.addNodesToContainer(controlContainer, [parentSwitch_grp, transform_grp])
 
 
     def create_update_parentSwitchTargetsForControl(self, *args):
