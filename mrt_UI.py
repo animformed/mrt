@@ -504,7 +504,7 @@ class MRT_UI(object):
         Display MRT dev stats
         '''
         printString1 = '\n\t\t\tModular Rigging Tools v1.0\n\t\t\tfor Maya 2011 - 2013'
-        printString2 = '\n\n\tWritten by Himanish Bhattacharya' \   # Heh, showoff
+        printString2 = '\n\n\tWritten by Himanish Bhattacharya' \
             '\n\thimanish@animformed.net' \
             '\n\n\t________________________________________________' \
             '\n\n\tFor annoyances or bugs, contact me at, bugs@animformed.net\n'
@@ -684,7 +684,15 @@ class MRT_UI(object):
 
 
     def autoLoadSettingsUIforCollections(self, *args):
+        '''
+        Shows the auto load settings for module collections. It has two preferences,
+        "Preserve and load current list at next startup" and "Load new saved collection(s) to current list".
+        The first option loads the current module collection(s) next time MRT UI is restarted. The second option
+        adds any new module collection saved to disk to the list.
+        '''
         def setAutoLoadSettingsValues(*args):
+            # I'm defining a local function here since it'll be used only within
+            # the scope of "autoLoadSettingsUIforCollections".
             ui_preferences_file = open(self.ui_preferences_path, 'rb')
             ui_preferences = cPickle.load(ui_preferences_file)
             ui_preferences_file.close()
@@ -700,27 +708,38 @@ class MRT_UI(object):
             ui_preferences_file = open(self.ui_preferences_path, 'wb')
             cPickle.dump(ui_preferences, ui_preferences_file, cPickle.HIGHEST_PROTOCOL)
             ui_preferences_file.close()
+        
+        # Close the preferences window if open
         try:
             cmds.deleteUI('mrt_autoLoadSettingsUI_window')
         except:
             pass
-        self.uiVars['autoLoadSettingsUIwindow'] = cmds.window('mrt_autoLoadSettingsUI_window', \
-                                                                    title='Auto-load settings for module collections', \
-                                                                    width=90, maximizeButton=False, sizeable=False)
+        
+        # Create the preferences window
+        self.uiVars['autoLoadSettingsUIwindow'] = cmds.window('mrt_autoLoadSettingsUI_window',
+                                                               title='Auto-load settings for module collections',
+                                                               width=90, maximizeButton=False, sizeable=False)
         try:
             cmds.windowPref('mrt_autoLoadSettingsUI_window', remove=True)
         except:
             pass
+
+        # Main window column
         self.uiVars['autoLoadSettingsWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
+        
         cmds.text(label='')
+
+        # Get the default preferences
         ui_preferences_file = open(self.ui_preferences_path, 'rb')
         ui_preferences = cPickle.load(ui_preferences_file)
         ui_preferences_file.close()
         loadAtStartup = ui_preferences['autoLoadPreviousCollectionListAtStartupStatus']
         loadNewCollections = ui_preferences['autoLoadNewSavedModuleCollectionToListStatus']
+
+        # Create the checkboxes for setting the preferences. Load the previous preferred values.
         cmds.rowLayout(numberOfColumns=1, columnAttach=([1, 'left', 57]))
-        self.uiVars['autoLoadPreviousCollectionListAtStartup_checkBox'] = \
-            cmds.checkBox(label='Preserve and load current list at next startup', value=loadAtStartup, \
+        self.uiVars['autoLoadPreviousCollectionListAtStartup_checkBox'] =
+            cmds.checkBox(label='Preserve and load current list at next startup', value=loadAtStartup,
                                                                                 changeCommand=setAutoLoadSettingsValues)
         cmds.setParent(self.uiVars['autoLoadSettingsWindowColumn'])
         cmds.rowLayout(numberOfColumns=1, columnAttach=([1, 'both', 60]), rowAttach=([1, 'top', 5]))
@@ -728,17 +747,27 @@ class MRT_UI(object):
             cmds.checkBox(label='Load new saved collection(s) to current list', value=loadNewCollections, \
                                                                                 changeCommand=setAutoLoadSettingsValues)
         cmds.setParent(self.uiVars['autoLoadSettingsWindowColumn'])
-        cmds.text(label='')
-        cmds.rowLayout(numberOfColumns=1, columnAttach=([1, 'left', 120]))
 
+        cmds.text(label='')
+
+        # Create button to close window
+        cmds.rowLayout(numberOfColumns=1, columnAttach=([1, 'left', 120]))
         cmds.button(label='Close', width=120, command=partial(self.closeWindow, self.uiVars['autoLoadSettingsUIwindow']))
         cmds.setParent(self.uiVars['autoLoadSettingsWindowColumn'])
         cmds.text(label='')
+
+        # Show the window
         cmds.showWindow(self.uiVars['autoLoadSettingsUIwindow'])
 
 
     def changeLoadCollectionListClearMode(self, *args):
+        '''
+        This function is called when a user selects the option box for "Select and load saved module collection(s)"
+        from the "File" menu. It sets the preference, "Clear current collection list before loading" for
+        module collections(s).
+        '''
         def loadCollectionsFromSettingsWindow(*args):
+            # Called to load module collection(s) into the UI
             try:
                 cmds.deleteUI('mrt_loadCollectionClearMode_setting_UI_window')
             except:
@@ -746,6 +775,7 @@ class MRT_UI(object):
             self.loadSavedModuleCollections()
 
         def setLoadCollectionClearModeValue(*args):
+            # Saves the current preference set for clearing the current module collection(s) before loading.
             value = cmds.checkBox(self.uiVars['loadCollectionClearMode_checkBox'], query=True, value=True)
             ui_preferences_file = open(self.ui_preferences_path, 'rb')
             ui_preferences = cPickle.load(ui_preferences_file)
@@ -754,42 +784,66 @@ class MRT_UI(object):
             ui_preferences_file = open(self.ui_preferences_path, 'wb')
             cPickle.dump(ui_preferences, ui_preferences_file, cPickle.HIGHEST_PROTOCOL)
             ui_preferences_file.close()
+        
+        # Close the preferences window if open
         try:
             cmds.deleteUI('mrt_loadCollectionClearMode_setting_UI_window')
         except:
             pass
-        self.uiVars['loadCollectionClearModeWindow'] = cmds.window('mrt_loadCollectionClearMode_setting_UI_window',  \
-                                                                        title='Load module collections selectively', \
-                                                                        height=50, maximizeButton=False, sizeable=False)
+        
+        # Create the preferences window
+        self.uiVars['loadCollectionClearModeWindow'] = cmds.window('mrt_loadCollectionClearMode_setting_UI_window',
+                                                                    title='Load module collections selectively',
+                                                                    height=50, maximizeButton=False, sizeable=False)
         try:
             cmds.windowPref('mrt_loadCollectionClearMode_setting_UI_window', remove=True)
         except:
             pass
+        
+        # Main window column
         self.uiVars['loadCollectionClearModeWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
+        
         cmds.text(label='')
-        cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=40, width=330, \
+        
+        cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=40, width=330,
                                                                                              marginWidth=5, marginHeight=5)
+                                                                                             
         cmds.rowLayout(numberOfColumns=1, columnAttach=([1, 'left', 55]), rowAttach=([1, 'top', 0]))
+        
+        # Get the default preferences
         ui_preferences_file = open(self.ui_preferences_path, 'rb')
         ui_preferences = cPickle.load(ui_preferences_file)
         ui_preferences_file.close()
         value = ui_preferences['loadCollectionClearModeStatus']
+        
+        # Create the checkbox for setting the preference for clearing current module collection list before loading
+        # new module collection(s) to the list.
         self.uiVars['loadCollectionClearMode_checkBox'] = \
-            cmds.checkBox(label='Clear current collection list before loading', value=value, \
+            cmds.checkBox(label='Clear current collection list before loading', value=value,
                                                                             changeCommand=setLoadCollectionClearModeValue)
         cmds.setParent(self.uiVars['loadCollectionClearModeWindowColumn'])
         cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 38], [2, 'left', 30]))
         cmds.button(label='Load collection(s)', width=130, command=loadCollectionsFromSettingsWindow)
 
-        cmds.button(label='Close', width=90, command=partial(self.closeWindow, \
-                                                                        self.uiVars['loadCollectionClearModeWindow']))
+        # Create button to close window
+        cmds.button(label='Close', width=90, command=partial(self.closeWindow, self.uiVars['loadCollectionClearModeWindow']))
         cmds.setParent(self.uiVars['loadCollectionClearModeWindowColumn'])
+        
         cmds.text(label='')
+        
+        # Show the window
         cmds.showWindow(self.uiVars['loadCollectionClearModeWindow'])
 
 
+
     def changeLoadCollectionDirectoryClearMode(self, *args):
+        '''
+        This function is called when a user selects the option box for "Select directory for loading saved collection(s)"
+        from the "File" menu. It sets the preference, "Clear current collection list before loading" for
+        module collections(s).
+        '''
         def loadCollectionsFromSettingsWindow(*args):
+            # Called to load module collection(s) from a directory
             try:
                 cmds.deleteUI('mrt_loadCollectionDirectoryClearMode_setting_UI_window')
             except:
@@ -797,6 +851,8 @@ class MRT_UI(object):
             self.selectDirectoryForLoadingCollections()
 
         def setLoadCollectionDirectoryClearModeValue(*args):
+            # Saves the current preference set for clearing the current module collection(s) before loading
+            # module collections(s) from a directory.
             value = cmds.checkBox(self.uiVars['loadCollectionDirectoryClearMode_checkBox'], query=True, value=True)
             ui_preferences_file = open(self.ui_preferences_path, 'rb')
             ui_preferences = cPickle.load(ui_preferences_file)
@@ -805,10 +861,14 @@ class MRT_UI(object):
             ui_preferences_file = open(self.ui_preferences_path, 'wb')
             cPickle.dump(ui_preferences, ui_preferences_file, cPickle.HIGHEST_PROTOCOL)
             ui_preferences_file.close()
+        
+        # Close the preferences window if open
         try:
             cmds.deleteUI('mrt_loadCollectionDirectoryClearMode_setting_UI_window')
         except:
             pass
+        
+        # Create the preferences window
         self.uiVars['loadCollectionDirectoryClearModeWindow'] = \
             cmds.window('mrt_loadCollectionDirectoryClearMode_setting_UI_window', \
                          title='Load module collections from directory', height=50, maximizeButton=False, sizeable=False)
@@ -816,15 +876,25 @@ class MRT_UI(object):
             cmds.windowPref('mrt_loadCollectionDirectoryClearMode_setting_UI_window', remove=True)
         except:
             pass
+        
+        # Main window column
         self.uiVars['loadCollectionDirectoryClearModeWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
+        
         cmds.text(label='')
-        cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=40, width=350, \
-                                                                                               marginWidth=5, marginHeight=5)
+        
+        cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=40, width=350,
+                                                                                            marginWidth=5, marginHeight=5)
+                                                                                            
         cmds.rowLayout(numberOfColumns=1, columnAttach=([1, 'left', 62]), rowAttach=([1, 'top', 0]))
+        
+        # Get the default preferences
         ui_preferences_file = open(self.ui_preferences_path, 'rb')
         ui_preferences = cPickle.load(ui_preferences_file)
         value = ui_preferences['loadCollectionDirectoryClearModeStatus']
         ui_preferences_file.close()
+        
+        # Create the checkbox for setting the preference for clearing current module collection list before loading
+        # new module collection(s) from a directory to the list.
         self.uiVars['loadCollectionDirectoryClearMode_checkBox'] = \
             cmds.checkBox(label='Clear current collection list before loading', value=value, \
                                                                     changeCommand=setLoadCollectionDirectoryClearModeValue)
@@ -832,13 +902,484 @@ class MRT_UI(object):
         cmds.setParent(self.uiVars['loadCollectionDirectoryClearModeWindowColumn'])
         cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 22], [2, 'left', 14]))
         cmds.button(label='Load collection(s) from directory', width=200, command=loadCollectionsFromSettingsWindow)
-
+        
+        # Create button to close window
         cmds.button(label='Close', width=90, command=partial(self.closeWindow, \
                                                                 self.uiVars['loadCollectionDirectoryClearModeWindow']))
         cmds.setParent(self.uiVars['loadCollectionDirectoryClearModeWindowColumn'])
         cmds.text(label='')
+        
+        # Show the window
         cmds.showWindow(self.uiVars['loadCollectionDirectoryClearModeWindow'])
 
+
+    def selectDirectoryForLoadingCollections(self, *args):
+        '''
+        Called when the menu item under the "File" menu, "Select directory for loading saved collection(s)"
+        is selected. This loads module collection(s) from a directory on the disk.
+        '''
+        # Get the previous directory path which was used to load module collections
+        ui_preferences_file = open(self.ui_preferences_path, 'rb')
+        ui_preferences = cPickle.load(ui_preferences_file)
+        ui_preferences_file.close()
+        startDir = ui_preferences['directoryForAutoLoadingCollections']
+        
+        # If the previous directory path doesn't exist, use the default "user_collections" path under MRT
+        if not os.path.exists(startDir):
+            startDir = ui_preferences['defaultDirectoryForAutoLoadingCollections']
+        
+        # Load the module collection files under the directory
+        fileFilter = 'MRT Module Collection Files (*.mrtmc)'
+        directoryPath = cmds.fileDialog2(caption='Select directory for loading module collections', okCaption='Select',
+                                                fileFilter=fileFilter, startingDirectory=startDir, fileMode=2, dialogStyle=2)
+        
+        # If a valid directory path is selected, load collections from it
+        if directoryPath:
+        
+            # Save the directory path as a preference
+            ui_preferences['directoryForAutoLoadingCollections'] = directoryPath[0]
+            
+            # Get the preference to clear current module collection list
+            value = ui_preferences['loadCollectionDirectoryClearModeStatus']
+            mrtmc_files = []
+            for file in os.listdir(directoryPath[0]):
+                if fnmatch.fnmatch(file, '*mrtmc'):
+                    mrtmc_files.append('%s/%s'%(directoryPath[0], file))
+            self.loadModuleCollectionsForUI(mrtmc_files, value)
+        
+        # Save the directory preference
+        ui_preferences_file = open(self.ui_preferences_path, 'wb')
+        cPickle.dump(ui_preferences, ui_preferences_file, cPickle.HIGHEST_PROTOCOL)
+        ui_preferences_file.close()
+
+
+    def loadSavedModuleCollections(self, *args):
+        '''
+        Called when the menu item under the "File" menu, "Select and load saved module collection(s)"
+        is selected. This loads selected module collection file(s) from the disk.
+        '''
+        # Get the last directory accessed for selecting module collection files(s)
+        ui_preferences_file = open(self.ui_preferences_path, 'rb')
+        ui_preferences = cPickle.load(ui_preferences_file)
+        ui_preferences_file.close()
+        startDir = ui_preferences['lastDirectoryForLoadingCollections']
+        
+        # If the previous directory path doesn't exist, use the default "user_collections" path under MRT
+        if not os.path.exists(startDir):
+            startDir = ui_preferences['defaultLastDirectoryForLoadingCollections']
+        fileFilter = 'MRT Module Collection Files (*.mrtmc)'
+        mrtmc_files = cmds.fileDialog2(caption='Select module collection files(s) for loading', okCaption='Load',
+                                                fileFilter=fileFilter, startingDirectory=startDir, fileMode=4, dialogStyle=2)
+        if not mrtmc_files:
+            return
+        
+        # Load the selected module collection files, with the preference to clear the current module collection list
+        value = ui_preferences['loadCollectionClearModeStatus']
+        self.loadModuleCollectionsForUI(mrtmc_files, value)
+        
+        # Save the current directory used to access module collection files(s)
+        directory = mrtmc_files[0].rpartition('/')[0]
+        ui_preferences['lastDirectoryForLoadingCollections'] = directory
+        ui_preferences_file = open(self.ui_preferences_path, 'wb')
+        cPickle.dump(ui_preferences, ui_preferences_file, cPickle.HIGHEST_PROTOCOL)
+        ui_preferences_file.close()
+
+
+    def loadModuleCollectionsForUI(self, moduleCollectionFileList, clearCurrentList=False):
+        '''
+        Loads the passed-in module collection list into the MRT UI. It also clears the current module
+        collection list if needed.
+        '''
+        # Remove all contents of the module collection scroll list.
+        cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, height=32, removeAll=True)
+        
+        # Clear old module collection list record, conditionally.
+        if clearCurrentList:
+            self.module_collectionList = {}
+        
+        # If module collection list is passed-in, re-build the module collection scroll list.
+        if len(moduleCollectionFileList):
+            for collection in moduleCollectionFileList:
+            
+                # Get the collection name suitable for the list from the collection file name.
+                collectionName = re.split(r'\/|\\', collection)[-1].rpartition('.')[0]
+                
+                # Skip if a collection file exists.
+                if collection in self.module_collectionList.values():
+                    continue
+                
+                # If the collection name exist in the list, add a numerical suffix to it
+                # Example:
+                # collectionName
+                # collectionName (2)
+                if collectionName in self.module_collectionList:
+                    suffix = mfunc.findHighestCommonTextScrollListNameSuffix(collectionName, self.module_collectionList.keys())
+                    suffix = suffix + 1
+                    collectionName = '%s (%s)'%(collectionName, suffix)
+                
+                # Save the collection name as a key with its collection file as value
+                self.module_collectionList[collectionName] = collection
+            
+            # Get the height for the module collection scroll list
+            scrollHeight = len(self.module_collectionList) * 20
+            if scrollHeight > 200:
+                scrollHeight = 200
+            if scrollHeight == 20:
+                scrollHeight = 40
+
+            # Add the module collection names to the module collection scroll list
+            for collectionName in sorted(self.module_collectionList):
+                cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, enable=True,
+                                                    height=scrollHeight, append=collectionName, font='plainLabelFont',
+                                                                                selectCommand=self.printCollectionInfoForUI)
+            # Select the first item
+            cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, selectIndexedItem=1)
+            self.printCollectionInfoForUI()
+        
+        # If module collection list is valid, save it, and enable UI buttons for installing, editing,
+        # and deletion of module collection(s) from the UI scroll list.
+        if len(self.module_collectionList):
+            module_collectionList_file = open(self.module_collectionList_path, 'rb')
+            module_collectionList = cPickle.load(module_collectionList_file)
+            module_collectionList_file.close()
+            for key in copy.copy(module_collectionList):
+                module_collectionList.pop(key)
+            for (key, value) in enumerate(self.module_collectionList.values()):
+                module_collectionList[str(key)] = value
+            module_collectionList_file = open(self.module_collectionList_path, 'wb')
+            cPickle.dump(module_collectionList, module_collectionList_file, cPickle.HIGHEST_PROTOCOL)
+            module_collectionList_file.close()
+            # Enable buttons
+            cmds.button(self.uiVars['loadedCollections_button_install'], edit=True, enable=True)
+            cmds.button(self.uiVars['loadedCollections_button_edit'], edit=True, enable=True)
+            cmds.button(self.uiVars['loadedCollections_button_delete'], edit=True, enable=True)
+
+        # If no module collection is to be loaded
+        if not len(self.module_collectionList):
+        
+            # Clear the saved module collection data
+            module_collectionList_file = open(self.module_collectionList_path, 'wb')
+            cPickle.dump({}, module_collectionList_file, cPickle.HIGHEST_PROTOCOL)
+            module_collectionList_file.close()
+            
+            # Clear the module collection scroll list
+            cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, enable=False, height=32,
+                                                    append=['              < no module collection(s) loaded >'],
+                                                                                                font='boldLabelFont')
+            # Clear module collection info field
+            cmds.scrollField(self.uiVars['collectionDescrp_scrollField'], edit=True, text='< no collection info >',
+                                                                           font='obliqueLabelFont', editable=False,
+                                                                                                        height=32)
+            # Disable buttons for installing, editing and deletion of module collection(s)
+            cmds.button(self.uiVars['loadedCollections_button_install'], edit=True, enable=False)
+            cmds.button(self.uiVars['loadedCollections_button_edit'], edit=True, enable=False)
+            cmds.button(self.uiVars['loadedCollections_button_delete'], edit=True, enable=False)
+
+
+    def printCollectionInfoForUI(self):
+        '''
+        Prints the module collection info for a selected item in the module collection scroll list
+        in the module collection description field in the UI.
+        '''
+        # Get the current selected module collection name
+        selectedItem = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, selectItem=True)[0]
+        
+        # Get its module collection file
+        collectionFile = self.module_collectionList[selectedItem]
+        
+        # Get the module collection description from the module collection file
+        if os.path.exists(collectionFile):
+            # Get the module collection data
+            collectionFileObj_file = open(collectionFile, 'rb')
+            collectionFileObj = cPickle.load(collectionFileObj_file)
+            collectionFileObj_file.close()
+            collectionDescrp = collectionFileObj['collectionDescrp']    # Module collection description
+            
+            # If description is valid, print it in the module collection description field
+            infoScrollheight = 32
+            if re.match('\w+', collectionDescrp):
+                if len(collectionDescrp) > 60:
+                    infoScrollheight = (len(collectionDescrp)/40.0) * 16
+                if collectionDescrp.endswith('\n'):
+                    infoScrollheight += 16
+                if infoScrollheight > 64:
+                    infoScrollheight = 64
+                if infoScrollheight < 33:
+                    infoScrollheight = 32
+            
+                # Print it
+                cmds.scrollField(self.uiVars['collectionDescrp_scrollField'], edit=True, text=collectionDescrp,
+                                                                          font='smallPlainLabelFont', height=infoScrollheight)
+            else:
+                # Invalid module collection description
+                cmds.scrollField(self.uiVars['collectionDescrp_scrollField'], edit=True,
+                                      text='< no valid collection info >', font='obliqueLabelFont', editable=False, height=32)
+            return True
+            
+        else:
+            # If the module collection file for the selected module collection name is not found, remove it from
+            # the module collection scroll list
+            cmds.warning('MRT Error: Module collection error. \
+                                    The selected module collection file, "%s" cannot be found on disk.' % (collectionFile))
+            
+            # Remove it from module collection scroll list
+            cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, removeItem=selectedItem)
+            
+            # Remove it from module collection records
+            self.module_collectionList.pop(selectedItem)
+            
+            # Remove it from saved module collection list data
+            module_collectionList_file = open(self.module_collectionList_path, 'rb')
+            module_collectionList = cPickle.load(module_collectionList_file)
+            module_collectionList_file.close()
+            for key in copy.copy(module_collectionList):
+                if module_collectionList[key] == collectionFile:
+                    module_collectionList.pop(key)
+                    break
+            module_collectionList_file = open(self.module_collectionList_path, 'wb')
+            cPickle.dump(module_collectionList, module_collectionList_file, cPickle.HIGHEST_PROTOCOL)
+            module_collectionList_file.close()
+            
+            # Reset the module collection description field
+            cmds.scrollField(self.uiVars['collectionDescrp_scrollField'], edit=True, text='< no collection info >',
+                                                                        font='obliqueLabelFont', editable=False, height=32)
+            
+            # Check and update the module collection list, if it contains any item(s) after removal
+            allItems = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, allItems=True)
+            if not allItems:
+                cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, enable=False, height=32,
+                                                            append=['              < no module collection(s) loaded >'],
+                                                                                                    font='boldLabelFont')
+            # Disable buttons for installing, editing and deletion of module collection(s)
+            cmds.button(self.uiVars['loadedCollections_button_install'], edit=True, enable=False)
+            cmds.button(self.uiVars['loadedCollections_button_edit'], edit=True, enable=False)
+            cmds.button(self.uiVars['loadedCollections_button_delete'], edit=True, enable=False)
+            
+            return False
+
+
+    def deleteSelectedModuleCollection(self, *args):
+        def deleteModuleCollection(deleteFromDisk=False, *args):
+            cmds.deleteUI('mrt_deleteCollection_UI_window')
+            selectedItem = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, \
+                                                                                                          selectItem=True)[0]
+            collectionFile = self.module_collectionList[selectedItem]
+            cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, removeItem=selectedItem)
+
+            self.module_collectionList.pop(selectedItem)
+            module_collectionList_file = open(self.module_collectionList_path, 'rb')
+            module_collectionList = cPickle.load(module_collectionList_file)
+            module_collectionList_file.close()
+            for key in copy.copy(module_collectionList):
+                if module_collectionList[key] == collectionFile:
+                    module_collectionList.pop(key)
+                    break
+            module_collectionList_file = open(self.module_collectionList_path, 'wb')
+            cPickle.dump(module_collectionList, module_collectionList_file, cPickle.HIGHEST_PROTOCOL)
+            module_collectionList_file.close()
+            if deleteFromDisk:
+                os.remove(collectionFile)
+            allItems = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, allItems=True) or []
+            if len(allItems):
+                scrollHeight = len(allItems)* 20
+                if scrollHeight > 200:
+                    scrollHeight = 200
+                if scrollHeight == 20:
+                    scrollHeight = 40
+                cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, height=scrollHeight)
+                cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, selectIndexedItem=1)
+                self.printCollectionInfoForUI()
+            else:
+                cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, enable=False, height=32, \
+                                            append=['              < no module collection(s) loaded >'], font='boldLabelFont')
+                cmds.scrollField(self.uiVars['collectionDescrp_scrollField'], edit=True, text='< no collection info >', \
+                                                                           font='obliqueLabelFont', editable=False, height=32)
+                cmds.button(self.uiVars['loadedCollections_button_install'], edit=True, enable=False)
+                cmds.button(self.uiVars['loadedCollections_button_edit'], edit=True, enable=False)
+                cmds.button(self.uiVars['loadedCollections_button_delete'], edit=True, enable=False)
+
+        validItem = self.printCollectionInfoForUI()
+        if not validItem:
+            return
+        try:
+            cmds.deleteUI('mrt_deleteCollection_UI_window')
+        except:
+            pass
+        self.uiVars['deleteCollectionWindow'] = cmds.window('mrt_deleteCollection_UI_window', \
+                                                       title='Delete module collection', maximizeButton=False, sizeable=False)
+        try:
+            cmds.windowPref('mrt_deleteCollection_UI_window', remove=True)
+        except:
+            pass
+        cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90, width=220, \
+                                                                                             marginWidth=20, marginHeight=15)
+        cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 0], [2, 'left', 20]))
+        cmds.button(label='From disk', width=90, command=partial(deleteModuleCollection, True))
+        cmds.button(label='Remove from list', width=120, command=deleteModuleCollection)
+        cmds.showWindow(self.uiVars['deleteCollectionWindow'])
+
+
+    def installSelectedModuleCollectionToScene(self, *args, autoInstallFile=None):
+        if not autoInstallFile:
+            validItem = self.printCollectionInfoForUI()
+            if not validItem:
+                return
+            selectedItem = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, \
+                                                                                                          selectItem=True)[0]
+            collectionFile = self.module_collectionList[selectedItem]
+        if autoInstallFile:
+            collectionFile = autoInstallFile
+        mrtmc_fObject_file = open(collectionFile, 'rb')
+        mrtmc_fObject = cPickle.load(mrtmc_fObject_file)
+        mrtmc_fObject_file.close()
+        currentNamespace = cmds.namespaceInfo(currentNamespace=True)
+        cmds.namespace(setNamespace=':')
+        cmds.namespace(addNamespace='MRT_tempNamespaceForImport')
+        cmds.namespace(setNamespace='MRT_tempNamespaceForImport')
+        tempFilePath = collectionFile.rpartition('.mrtmc')[0]+'_temp.ma'
+        tempFile_fObject = open(tempFilePath, 'w')
+        for i in range(1, len(mrtmc_fObject)):
+            tempFile_fObject.write(mrtmc_fObject['collectionData_line_'+str(i)])
+        tempFile_fObject.close()
+        del mrtmc_fObject
+        cmds.file(tempFilePath, i=True, type="mayaAscii", prompt=False, ignoreVersion=True)
+        os.remove(tempFilePath)
+        # Get the names in the temporary namespace.
+        namesInTemp = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
+        # Filter the module names from the temporary namespace.
+        namespacesInTemp = []
+        for name in namesInTemp:
+            namespacesInTemp.append(name.partition(':')[2])
+        # Get the module names in the root namespace, if any.
+        cmds.namespace(setNamespace=':')
+        moduleNamespaces = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
+        if moduleNamespaces:
+            # Get the user specified names of the module names, if any.
+            userSpecNamesForSceneModules = mfunc.returnModuleUserSpecNames(moduleNamespaces)[1]
+            # Get the user specified names of the modules in the temporary namespaces.
+            userSpecNamesInTemp = mfunc.returnModuleUserSpecNames(namespacesInTemp)
+            cmds.namespace(setNamespace='MRT_tempNamespaceForImport')
+            allUserSpecNames = set(userSpecNamesInTemp[1] + userSpecNamesForSceneModules)
+        # If there're existing modules in the scene, check and rename module(s) in the temporary namespaces to resolve name clashes.
+            for (name, userSpecName) in zip(userSpecNamesInTemp[0], userSpecNamesInTemp[1]):
+                if userSpecName in userSpecNamesForSceneModules:
+                    underscore_search = '_'
+                    if re.match('^\w+_[0-9]*$', userSpecName):
+                        underscore_search = re.findall('_*', userSpecName)
+                        underscore_search.reverse()
+                        for item in underscore_search:
+                            if '_' in item:
+                                underscore_search = item
+                                break
+                        userSpecNameBase = userSpecName.rpartition(underscore_search)[0]
+                    else:
+                        userSpecNameBase = userSpecName
+                    suffix = mfunc.findHighestNumSuffix(userSpecNameBase, list(allUserSpecNames))
+                    newUserSpecName = '{0}{1}{2}'.format(userSpecName, underscore_search, suffix+1)
+                    namespace = '%s__%s'%(name, userSpecName)
+                    newNamespace = '%s__%s'%(name, newUserSpecName)
+                    cmds.namespace(addNamespace=newNamespace)
+                    cmds.namespace(moveNamespace=[':MRT_tempNamespaceForImport:'+namespace, \
+                                                                                ':MRT_tempNamespaceForImport:'+newNamespace])
+                    cmds.namespace(removeNamespace=namespace)
+                    allUserSpecNames.add(newUserSpecName)
+                    if cmds.attributeQuery('mirrorModuleNamespace', \
+                                            node=':MRT_tempNamespaceForImport:'+newNamespace+':moduleGrp', exists=True):
+                        mirrorModuleNamespace = \
+                            cmds.getAttr(':MRT_tempNamespaceForImport:'+newNamespace+':moduleGrp.mirrorModuleNamespace')
+                        cmds.lockNode(':MRT_tempNamespaceForImport:'+mirrorModuleNamespace+':module_container', \
+                                                                                           lock=False, lockUnpublished=False)
+                        cmds.setAttr(':MRT_tempNamespaceForImport:'+mirrorModuleNamespace+':moduleGrp.mirrorModuleNamespace', \
+                                                                                                newNamespace, type='string')
+                        cmds.lockNode(':MRT_tempNamespaceForImport:'+mirrorModuleNamespace+':module_container', lock=True, \
+                                                                                                        lockUnpublished=True)
+        cmds.namespace(setNamespace=':')
+        cmds.namespace(moveNamespace=['MRT_tempNamespaceForImport', ':'], force=True)
+        cmds.namespace(removeNamespace='MRT_tempNamespaceForImport')
+        cmds.namespace(setNamespace=currentNamespace)
+        self.clearParentModuleField()
+        self.clearChildModuleField()
+
+
+    def editSelectedModuleCollectionDescriptionFromUI(self, *args):
+        def editDescriptionForSelectedModuleCollection(collectionDescription, *args):
+            cancelEditCollectionNoDescpErrorWindow()
+            selectedItem = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, \
+                                                                                                        selectItem=True)[0]
+            collectionFile = self.module_collectionList[selectedItem]
+            collectionFileObj_file = open(collectionFile, 'rb')
+            collectionFileObj = cPickle.load(collectionFileObj_file)
+            collectionFileObj_file.close()
+            collectionFileObj['collectionDescrp'] = collectionDescription
+            collectionFileObj_file = open(collectionFile, 'wb')
+            cPickle.dump(collectionFileObj, collectionFileObj_file, cPickle.HIGHEST_PROTOCOL)
+            collectionFileObj_file.close()
+            self.printCollectionInfoForUI()
+
+        def cancelEditCollectionNoDescpErrorWindow(*args):
+            cmds.deleteUI(self.uiVars['editCollectionDescpWindow'])
+            try:
+                cmds.deleteUI(self.uiVars['editCollectionNoDescpErrorWindow'])
+            except:
+                pass
+        def checkEditDescriptionForSelectedModuleCollection(*args):
+            collectionDescription = cmds.scrollField(self.uiVars['editCollectionDescpWindowScrollField'], \
+                                                                                                    query=True, text=True)
+            if collectionDescription == '':
+                self.uiVars['editCollectionNoDescpErrorWindow'] = \
+                    cmds.window('mrt_editCollection_noDescpError_UI_window', title='Module collection warning', \
+                                                                                     maximizeButton=False, sizeable=False)
+                try:
+                    cmds.windowPref('mrt_editCollection_noDescpError_UI_window', remove=True)
+                except:
+                    pass
+                cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90, \
+                                                                                width=220, marginWidth=20, marginHeight=15)
+                cmds.text(label='Are you sure you want to continue with an empty description?')
+                cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 55], [2, 'left', 20]), \
+                                                                                  rowAttach=([1, 'top', 8], [2, 'top', 8]))
+                cmds.button(label='Continue', width=90, \
+                                        command=partial(editDescriptionForSelectedModuleCollection, collectionDescription))
+                cmds.button(label='Cancel', width=90, command=cancelEditCollectionNoDescpErrorWindow)
+                cmds.showWindow(self.uiVars['editCollectionNoDescpErrorWindow'])
+            else:
+                editDescriptionForSelectedModuleCollection(collectionDescription)
+        validItem = self.printCollectionInfoForUI()
+        if not validItem:
+            return
+        try:
+            cmds.deleteUI('mrt_collectionDescription_edit_UI_window')
+        except:
+            pass
+        self.uiVars['editCollectionDescpWindow'] = cmds.window('mrt_collectionDescription_edit_UI_window', \
+                                     title='Module collection description', height=150, maximizeButton=False, sizeable=False)
+        try:
+            cmds.windowPref('mrt_collectionDescription_edit_UI_window', remove=True)
+        except:
+            pass
+        self.uiVars['editCollectionDescpWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
+        cmds.text(label='')
+        cmds.text('Enter new description for module collection', align='center', font='boldLabelFont')
+        cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=75, width=320, \
+                                                                                              marginWidth=5, marginHeight=10)
+        selectedItem = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, selectItem=True)[0]
+        collectionFile = self.module_collectionList[selectedItem]
+        collectionFileObj_file = open(collectionFile, 'rb')
+        collectionFileObj = cPickle.load(collectionFileObj_file)
+        currentDescriptionText = collectionFileObj['collectionDescrp']
+        collectionFileObj_file.close()
+        self.uiVars['editCollectionDescpWindowScrollField'] = cmds.scrollField(preventOverride=True, wordWrap=True, \
+                                                                                                 text=currentDescriptionText)
+        cmds.setParent(self.uiVars['editCollectionDescpWindowColumn'])
+        cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 34], [2, 'left', 26]))
+        cmds.button(label='Save description', width=130, command=checkEditDescriptionForSelectedModuleCollection)
+
+        cmds.button(label='Cancel', width=90, command=partial(self.closeWindow, self.uiVars['editCollectionDescpWindow']))
+        cmds.setParent(self.uiVars['editCollectionDescpWindowColumn'])
+        cmds.text(label='')
+        cmds.showWindow(self.uiVars['editCollectionDescpWindow'])
+        
+        
     def loadSavedCharTemplates(self, *args):
         ui_preferences_file = open(self.ui_preferences_path, 'rb')
         ui_preferences = cPickle.load(ui_preferences_file)
@@ -857,6 +1398,7 @@ class MRT_UI(object):
         ui_preferences_file = open(self.ui_preferences_path, 'wb')
         cPickle.dump(ui_preferences, ui_preferences_file, cPickle.HIGHEST_PROTOCOL)
         ui_preferences_file.close()
+
 
     def changeLoadSettingsForCharTemplates(self, *args):
         def setCharTemplateLoadSettingsValues(*args):
@@ -928,6 +1470,7 @@ class MRT_UI(object):
         cmds.text(label='')
         cmds.showWindow(self.uiVars['charTemplateLoadSettingsUIwindow'])
 
+
     def loadCharTemplatesForUI(self, charTemplatesFileList, clearCurrentList=False):
         cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, height=32, removeAll=True)
         if clearCurrentList:
@@ -983,6 +1526,7 @@ class MRT_UI(object):
             cmds.button(self.uiVars['charTemplate_button_import'], edit=True, enable=False)
             cmds.button(self.uiVars['charTemplate_button_edit'], edit=True, enable=False)
             cmds.button(self.uiVars['charTemplate_button_delete'], edit=True, enable=False)
+
 
     def printCharTemplateInfoForUI(self, *args):
         selectedItem = cmds.textScrollList(self.uiVars['charTemplates_txScList'], query=True, selectItem=True)[0]
@@ -1200,371 +1744,6 @@ class MRT_UI(object):
         cmds.button(label='Remove from list', width=120, command=deleteCharTemplate)
         cmds.showWindow(self.uiVars['deleteCharTemplateWindow'])
 
-    def selectDirectoryForLoadingCollections(self, *args):
-        ui_preferences_file = open(self.ui_preferences_path, 'rb')
-        ui_preferences = cPickle.load(ui_preferences_file)
-        ui_preferences_file.close()
-        startDir = ui_preferences['directoryForAutoLoadingCollections']
-        if not os.path.exists(startDir):
-            startDir = ui_preferences['defaultDirectoryForAutoLoadingCollections']
-        fileFilter = 'MRT Module Collection Files (*.mrtmc)'
-        directoryPath = cmds.fileDialog2(caption='Select directory for loading module collections', okCaption='Select', \
-                                                fileFilter=fileFilter, startingDirectory=startDir, fileMode=2, dialogStyle=2)
-        if directoryPath:
-            ui_preferences['directoryForAutoLoadingCollections'] = directoryPath[0]
-            value = ui_preferences['loadCollectionDirectoryClearModeStatus']
-            mrtmc_files = []
-            for file in os.listdir(directoryPath[0]):
-                if fnmatch.fnmatch(file, '*mrtmc'):
-                    mrtmc_files.append('%s/%s'%(directoryPath[0], file))
-            self.loadModuleCollectionsForUI(mrtmc_files, value)
-        ui_preferences_file = open(self.ui_preferences_path, 'wb')
-        cPickle.dump(ui_preferences, ui_preferences_file, cPickle.HIGHEST_PROTOCOL)
-        ui_preferences_file.close()
-
-    def loadSavedModuleCollections(self, *args):
-        ui_preferences_file = open(self.ui_preferences_path, 'rb')
-        ui_preferences = cPickle.load(ui_preferences_file)
-        ui_preferences_file.close()
-        startDir = ui_preferences['lastDirectoryForLoadingCollections']
-        if not os.path.exists(startDir):
-            startDir = ui_preferences['defaultLastDirectoryForLoadingCollections']
-        fileFilter = 'MRT Module Collection Files (*.mrtmc)'
-        mrtmc_files = cmds.fileDialog2(caption='Select module collection files(s) for loading', okCaption='Load', \
-                                                fileFilter=fileFilter, startingDirectory=startDir, fileMode=4, dialogStyle=2)
-        if not mrtmc_files:
-            return
-        value = ui_preferences['loadCollectionClearModeStatus']
-        self.loadModuleCollectionsForUI(mrtmc_files, value)
-        directory = mrtmc_files[0].rpartition('/')[0]
-        ui_preferences['lastDirectoryForLoadingCollections'] = directory
-        ui_preferences_file = open(self.ui_preferences_path, 'wb')
-        cPickle.dump(ui_preferences, ui_preferences_file, cPickle.HIGHEST_PROTOCOL)
-        ui_preferences_file.close()
-
-    def loadModuleCollectionsForUI(self, moduleCollectionFileList, clearCurrentList=False):
-        cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, height=32, removeAll=True)
-        if clearCurrentList:
-            self.module_collectionList = {}
-        if len(moduleCollectionFileList):
-            for collection in moduleCollectionFileList:
-                collectionName = re.split(r'\/|\\', collection)[-1].rpartition('.')[0]
-                if collection in self.module_collectionList.values():
-                    continue
-                if collectionName in self.module_collectionList:
-                    suffix = mfunc.findHighestCommonTextScrollListNameSuffix(collectionName, self.module_collectionList.keys())
-                    suffix = suffix + 1
-                    collectionName = '%s (%s)'%(collectionName, suffix)
-                self.module_collectionList[collectionName] = collection
-            scrollHeight = len(self.module_collectionList) * 20
-            if scrollHeight > 200:
-                scrollHeight = 200
-            if scrollHeight == 20:
-                scrollHeight = 40
-            for collectionName in sorted(self.module_collectionList):
-                cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, enable=True, \
-                height=scrollHeight, append=collectionName, font='plainLabelFont', selectCommand=self.printCollectionInfoForUI)
-            cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, selectIndexedItem=1)
-            self.printCollectionInfoForUI()
-        if len(self.module_collectionList):
-            module_collectionList_file = open(self.module_collectionList_path, 'rb')
-            module_collectionList = cPickle.load(module_collectionList_file)
-            module_collectionList_file.close()
-            for key in copy.copy(module_collectionList):
-                module_collectionList.pop(key)
-            for (key, value) in enumerate(self.module_collectionList.values()):
-                module_collectionList[str(key)] = value
-            module_collectionList_file = open(self.module_collectionList_path, 'wb')
-            cPickle.dump(module_collectionList, module_collectionList_file, cPickle.HIGHEST_PROTOCOL)
-            module_collectionList_file.close()
-            cmds.button(self.uiVars['loadedCollections_button_install'], edit=True, enable=True)
-            cmds.button(self.uiVars['loadedCollections_button_edit'], edit=True, enable=True)
-            cmds.button(self.uiVars['loadedCollections_button_delete'], edit=True, enable=True)
-        if not len(self.module_collectionList):
-            module_collectionList_file = open(self.module_collectionList_path, 'rb')
-            module_collectionList = cPickle.load(module_collectionList_file)
-            module_collectionList_file.close()
-            for key in copy.copy(module_collectionList):
-                module_collectionList.pop(key)
-            module_collectionList_file = open(self.module_collectionList_path, 'wb')
-            cPickle.dump(module_collectionList, module_collectionList_file, cPickle.HIGHEST_PROTOCOL)
-            module_collectionList_file.close()
-            cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, enable=False, height=32, \
-                                            append=['              < no module collection(s) loaded >'], font='boldLabelFont')
-            cmds.scrollField(self.uiVars['collectionDescrp_scrollField'], edit=True, text='< no collection info >', \
-                                                                           font='obliqueLabelFont', editable=False, height=32)
-            cmds.button(self.uiVars['loadedCollections_button_install'], edit=True, enable=False)
-            cmds.button(self.uiVars['loadedCollections_button_edit'], edit=True, enable=False)
-            cmds.button(self.uiVars['loadedCollections_button_delete'], edit=True, enable=False)
-
-    def printCollectionInfoForUI(self):
-        selectedItem = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, selectItem=True)[0]
-        collectionFile = self.module_collectionList[selectedItem]
-        if os.path.exists(collectionFile):
-            collectionFileObj_file = open(collectionFile, 'rb')
-            collectionFileObj = cPickle.load(collectionFileObj_file)
-            collectionFileObj_file.close()
-            collectionDescrp = collectionFileObj['collectionDescrp']
-            infoScrollheight = 32
-            if re.match('\w+', collectionDescrp):
-                if len(collectionDescrp) > 60:
-                    infoScrollheight = (len(collectionDescrp)/40.0) * 16
-                if collectionDescrp.endswith('\n'):
-                    infoScrollheight += 16
-                if infoScrollheight > 64:
-                    infoScrollheight = 64
-                if infoScrollheight < 33:
-                    infoScrollheight = 32
-                cmds.scrollField(self.uiVars['collectionDescrp_scrollField'], edit=True, text=collectionDescrp, \
-                                                                          font='smallPlainLabelFont', height=infoScrollheight)
-            else:
-                cmds.scrollField(self.uiVars['collectionDescrp_scrollField'], edit=True, \
-                                      text='< no valid collection info >', font='obliqueLabelFont', editable=False, height=32)
-            return True
-        else:
-            cmds.warning('MRT Error: Module collection error. \
-                                         The selected module collection file, "%s" cannot be found on disk.'%(collectionFile))
-            cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, removeItem=selectedItem)
-            self.module_collectionList.pop(selectedItem)
-            module_collectionList_file = open(self.module_collectionList_path, 'rb')
-            module_collectionList = cPickle.load(module_collectionList_file)
-            module_collectionList_file.close()
-            for key in copy.copy(module_collectionList):
-                if module_collectionList[key] == collectionFile:
-                    module_collectionList.pop(key)
-                    break
-            module_collectionList_file = open(self.module_collectionList_path, 'wb')
-            cPickle.dump(module_collectionList, module_collectionList_file, cPickle.HIGHEST_PROTOCOL)
-            module_collectionList_file.close()
-            cmds.scrollField(self.uiVars['collectionDescrp_scrollField'], edit=True, text='< no collection info >', \
-                                                                           font='obliqueLabelFont', editable=False, height=32)
-            allItems = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, allItems=True)
-            if not allItems:
-                cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, enable=False, height=32, \
-                                            append=['              < no module collection(s) loaded >'], font='boldLabelFont')
-            cmds.button(self.uiVars['loadedCollections_button_install'], edit=True, enable=False)
-            cmds.button(self.uiVars['loadedCollections_button_edit'], edit=True, enable=False)
-            cmds.button(self.uiVars['loadedCollections_button_delete'], edit=True, enable=False)
-            return False
-
-    def deleteSelectedModuleCollection(self, *args):
-        def deleteModuleCollection(deleteFromDisk=False, *args):
-            cmds.deleteUI('mrt_deleteCollection_UI_window')
-            selectedItem = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, \
-                                                                                                          selectItem=True)[0]
-            collectionFile = self.module_collectionList[selectedItem]
-            cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, removeItem=selectedItem)
-
-            self.module_collectionList.pop(selectedItem)
-            module_collectionList_file = open(self.module_collectionList_path, 'rb')
-            module_collectionList = cPickle.load(module_collectionList_file)
-            module_collectionList_file.close()
-            for key in copy.copy(module_collectionList):
-                if module_collectionList[key] == collectionFile:
-                    module_collectionList.pop(key)
-                    break
-            module_collectionList_file = open(self.module_collectionList_path, 'wb')
-            cPickle.dump(module_collectionList, module_collectionList_file, cPickle.HIGHEST_PROTOCOL)
-            module_collectionList_file.close()
-            if deleteFromDisk:
-                os.remove(collectionFile)
-            allItems = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, allItems=True) or []
-            if len(allItems):
-                scrollHeight = len(allItems)* 20
-                if scrollHeight > 200:
-                    scrollHeight = 200
-                if scrollHeight == 20:
-                    scrollHeight = 40
-                cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, height=scrollHeight)
-                cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, selectIndexedItem=1)
-                self.printCollectionInfoForUI()
-            else:
-                cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, enable=False, height=32, \
-                                            append=['              < no module collection(s) loaded >'], font='boldLabelFont')
-                cmds.scrollField(self.uiVars['collectionDescrp_scrollField'], edit=True, text='< no collection info >', \
-                                                                           font='obliqueLabelFont', editable=False, height=32)
-                cmds.button(self.uiVars['loadedCollections_button_install'], edit=True, enable=False)
-                cmds.button(self.uiVars['loadedCollections_button_edit'], edit=True, enable=False)
-                cmds.button(self.uiVars['loadedCollections_button_delete'], edit=True, enable=False)
-
-        validItem = self.printCollectionInfoForUI()
-        if not validItem:
-            return
-        try:
-            cmds.deleteUI('mrt_deleteCollection_UI_window')
-        except:
-            pass
-        self.uiVars['deleteCollectionWindow'] = cmds.window('mrt_deleteCollection_UI_window', \
-                                                       title='Delete module collection', maximizeButton=False, sizeable=False)
-        try:
-            cmds.windowPref('mrt_deleteCollection_UI_window', remove=True)
-        except:
-            pass
-        cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90, width=220, \
-                                                                                             marginWidth=20, marginHeight=15)
-        cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 0], [2, 'left', 20]))
-        cmds.button(label='From disk', width=90, command=partial(deleteModuleCollection, True))
-        cmds.button(label='Remove from list', width=120, command=deleteModuleCollection)
-        cmds.showWindow(self.uiVars['deleteCollectionWindow'])
-
-    def installSelectedModuleCollectionToScene(self, *args, autoInstallFile=None):
-        if not autoInstallFile:
-            validItem = self.printCollectionInfoForUI()
-            if not validItem:
-                return
-            selectedItem = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, \
-                                                                                                          selectItem=True)[0]
-            collectionFile = self.module_collectionList[selectedItem]
-        if autoInstallFile:
-            collectionFile = autoInstallFile
-        mrtmc_fObject_file = open(collectionFile, 'rb')
-        mrtmc_fObject = cPickle.load(mrtmc_fObject_file)
-        mrtmc_fObject_file.close()
-        currentNamespace = cmds.namespaceInfo(currentNamespace=True)
-        cmds.namespace(setNamespace=':')
-        cmds.namespace(addNamespace='MRT_tempNamespaceForImport')
-        cmds.namespace(setNamespace='MRT_tempNamespaceForImport')
-        tempFilePath = collectionFile.rpartition('.mrtmc')[0]+'_temp.ma'
-        tempFile_fObject = open(tempFilePath, 'w')
-        for i in range(1, len(mrtmc_fObject)):
-            tempFile_fObject.write(mrtmc_fObject['collectionData_line_'+str(i)])
-        tempFile_fObject.close()
-        del mrtmc_fObject
-        cmds.file(tempFilePath, i=True, type="mayaAscii", prompt=False, ignoreVersion=True)
-        os.remove(tempFilePath)
-        # Get the names in the temporary namespace.
-        namesInTemp = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
-        # Filter the module names from the temporary namespace.
-        namespacesInTemp = []
-        for name in namesInTemp:
-            namespacesInTemp.append(name.partition(':')[2])
-        # Get the module names in the root namespace, if any.
-        cmds.namespace(setNamespace=':')
-        moduleNamespaces = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
-        if moduleNamespaces:
-            # Get the user specified names of the module names, if any.
-            userSpecNamesForSceneModules = mfunc.returnModuleUserSpecNames(moduleNamespaces)[1]
-            # Get the user specified names of the modules in the temporary namespaces.
-            userSpecNamesInTemp = mfunc.returnModuleUserSpecNames(namespacesInTemp)
-            cmds.namespace(setNamespace='MRT_tempNamespaceForImport')
-            allUserSpecNames = set(userSpecNamesInTemp[1] + userSpecNamesForSceneModules)
-        # If there're existing modules in the scene, check and rename module(s) in the temporary namespaces to resolve name clashes.
-            for (name, userSpecName) in zip(userSpecNamesInTemp[0], userSpecNamesInTemp[1]):
-                if userSpecName in userSpecNamesForSceneModules:
-                    underscore_search = '_'
-                    if re.match('^\w+_[0-9]*$', userSpecName):
-                        underscore_search = re.findall('_*', userSpecName)
-                        underscore_search.reverse()
-                        for item in underscore_search:
-                            if '_' in item:
-                                underscore_search = item
-                                break
-                        userSpecNameBase = userSpecName.rpartition(underscore_search)[0]
-                    else:
-                        userSpecNameBase = userSpecName
-                    suffix = mfunc.findHighestNumSuffix(userSpecNameBase, list(allUserSpecNames))
-                    newUserSpecName = '{0}{1}{2}'.format(userSpecName, underscore_search, suffix+1)
-                    namespace = '%s__%s'%(name, userSpecName)
-                    newNamespace = '%s__%s'%(name, newUserSpecName)
-                    cmds.namespace(addNamespace=newNamespace)
-                    cmds.namespace(moveNamespace=[':MRT_tempNamespaceForImport:'+namespace, \
-                                                                                ':MRT_tempNamespaceForImport:'+newNamespace])
-                    cmds.namespace(removeNamespace=namespace)
-                    allUserSpecNames.add(newUserSpecName)
-                    if cmds.attributeQuery('mirrorModuleNamespace', \
-                                            node=':MRT_tempNamespaceForImport:'+newNamespace+':moduleGrp', exists=True):
-                        mirrorModuleNamespace = \
-                            cmds.getAttr(':MRT_tempNamespaceForImport:'+newNamespace+':moduleGrp.mirrorModuleNamespace')
-                        cmds.lockNode(':MRT_tempNamespaceForImport:'+mirrorModuleNamespace+':module_container', \
-                                                                                           lock=False, lockUnpublished=False)
-                        cmds.setAttr(':MRT_tempNamespaceForImport:'+mirrorModuleNamespace+':moduleGrp.mirrorModuleNamespace', \
-                                                                                                newNamespace, type='string')
-                        cmds.lockNode(':MRT_tempNamespaceForImport:'+mirrorModuleNamespace+':module_container', lock=True, \
-                                                                                                        lockUnpublished=True)
-        cmds.namespace(setNamespace=':')
-        cmds.namespace(moveNamespace=['MRT_tempNamespaceForImport', ':'], force=True)
-        cmds.namespace(removeNamespace='MRT_tempNamespaceForImport')
-        cmds.namespace(setNamespace=currentNamespace)
-        self.clearParentModuleField()
-        self.clearChildModuleField()
-
-    def editSelectedModuleCollectionDescriptionFromUI(self, *args):
-        def editDescriptionForSelectedModuleCollection(collectionDescription, *args):
-            cancelEditCollectionNoDescpErrorWindow()
-            selectedItem = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, \
-                                                                                                        selectItem=True)[0]
-            collectionFile = self.module_collectionList[selectedItem]
-            collectionFileObj_file = open(collectionFile, 'rb')
-            collectionFileObj = cPickle.load(collectionFileObj_file)
-            collectionFileObj_file.close()
-            collectionFileObj['collectionDescrp'] = collectionDescription
-            collectionFileObj_file = open(collectionFile, 'wb')
-            cPickle.dump(collectionFileObj, collectionFileObj_file, cPickle.HIGHEST_PROTOCOL)
-            collectionFileObj_file.close()
-            self.printCollectionInfoForUI()
-
-        def cancelEditCollectionNoDescpErrorWindow(*args):
-            cmds.deleteUI(self.uiVars['editCollectionDescpWindow'])
-            try:
-                cmds.deleteUI(self.uiVars['editCollectionNoDescpErrorWindow'])
-            except:
-                pass
-        def checkEditDescriptionForSelectedModuleCollection(*args):
-            collectionDescription = cmds.scrollField(self.uiVars['editCollectionDescpWindowScrollField'], \
-                                                                                                    query=True, text=True)
-            if collectionDescription == '':
-                self.uiVars['editCollectionNoDescpErrorWindow'] = \
-                    cmds.window('mrt_editCollection_noDescpError_UI_window', title='Module collection warning', \
-                                                                                     maximizeButton=False, sizeable=False)
-                try:
-                    cmds.windowPref('mrt_editCollection_noDescpError_UI_window', remove=True)
-                except:
-                    pass
-                cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90, \
-                                                                                width=220, marginWidth=20, marginHeight=15)
-                cmds.text(label='Are you sure you want to continue with an empty description?')
-                cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 55], [2, 'left', 20]), \
-                                                                                  rowAttach=([1, 'top', 8], [2, 'top', 8]))
-                cmds.button(label='Continue', width=90, \
-                                        command=partial(editDescriptionForSelectedModuleCollection, collectionDescription))
-                cmds.button(label='Cancel', width=90, command=cancelEditCollectionNoDescpErrorWindow)
-                cmds.showWindow(self.uiVars['editCollectionNoDescpErrorWindow'])
-            else:
-                editDescriptionForSelectedModuleCollection(collectionDescription)
-        validItem = self.printCollectionInfoForUI()
-        if not validItem:
-            return
-        try:
-            cmds.deleteUI('mrt_collectionDescription_edit_UI_window')
-        except:
-            pass
-        self.uiVars['editCollectionDescpWindow'] = cmds.window('mrt_collectionDescription_edit_UI_window', \
-                                     title='Module collection description', height=150, maximizeButton=False, sizeable=False)
-        try:
-            cmds.windowPref('mrt_collectionDescription_edit_UI_window', remove=True)
-        except:
-            pass
-        self.uiVars['editCollectionDescpWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
-        cmds.text(label='')
-        cmds.text('Enter new description for module collection', align='center', font='boldLabelFont')
-        cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=75, width=320, \
-                                                                                              marginWidth=5, marginHeight=10)
-        selectedItem = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, selectItem=True)[0]
-        collectionFile = self.module_collectionList[selectedItem]
-        collectionFileObj_file = open(collectionFile, 'rb')
-        collectionFileObj = cPickle.load(collectionFileObj_file)
-        currentDescriptionText = collectionFileObj['collectionDescrp']
-        collectionFileObj_file.close()
-        self.uiVars['editCollectionDescpWindowScrollField'] = cmds.scrollField(preventOverride=True, wordWrap=True, \
-                                                                                                 text=currentDescriptionText)
-        cmds.setParent(self.uiVars['editCollectionDescpWindowColumn'])
-        cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 34], [2, 'left', 26]))
-        cmds.button(label='Save description', width=130, command=checkEditDescriptionForSelectedModuleCollection)
-
-        cmds.button(label='Cancel', width=90, command=partial(self.closeWindow, self.uiVars['editCollectionDescpWindow']))
-        cmds.setParent(self.uiVars['editCollectionDescpWindowColumn'])
-        cmds.text(label='')
-        cmds.showWindow(self.uiVars['editCollectionDescpWindow'])
 
     def putShelfButtonForUI(self, *args):
         currentTab = cmds.tabLayout('ShelfLayout', query=True, selectTab=True)
