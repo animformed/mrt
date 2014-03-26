@@ -1161,8 +1161,7 @@ class MRT_UI(object):
     def deleteSelectedModuleCollection(self, *args):
         def deleteModuleCollection(deleteFromDisk=False, *args):
             cmds.deleteUI('mrt_deleteCollection_UI_window')
-            selectedItem = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, \
-                                                                                                          selectItem=True)[0]
+            selectedItem = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, selectItem=True)[0]
             collectionFile = self.module_collectionList[selectedItem]
             cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, removeItem=selectedItem)
 
@@ -1190,10 +1189,13 @@ class MRT_UI(object):
                 cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, selectIndexedItem=1)
                 self.printCollectionInfoForUI()
             else:
-                cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, enable=False, height=32, \
-                                            append=['              < no module collection(s) loaded >'], font='boldLabelFont')
-                cmds.scrollField(self.uiVars['collectionDescrp_scrollField'], edit=True, text='< no collection info >', \
-                                                                           font='obliqueLabelFont', editable=False, height=32)
+                cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, enable=False, height=32,
+                                                        append=['              < no module collection(s) loaded >'],
+                                                                                                font='boldLabelFont')
+                                                                                                
+                cmds.scrollField(self.uiVars['collectionDescrp_scrollField'], edit=True, text='< no collection info >',
+                                                                                font='obliqueLabelFont', editable=False,
+                                                                                                                height=32)
                 cmds.button(self.uiVars['loadedCollections_button_install'], edit=True, enable=False)
                 cmds.button(self.uiVars['loadedCollections_button_edit'], edit=True, enable=False)
                 cmds.button(self.uiVars['loadedCollections_button_delete'], edit=True, enable=False)
@@ -1205,14 +1207,15 @@ class MRT_UI(object):
             cmds.deleteUI('mrt_deleteCollection_UI_window')
         except:
             pass
-        self.uiVars['deleteCollectionWindow'] = cmds.window('mrt_deleteCollection_UI_window', \
-                                                       title='Delete module collection', maximizeButton=False, sizeable=False)
+        self.uiVars['deleteCollectionWindow'] = cmds.window('mrt_deleteCollection_UI_window',
+                                                                    title='Delete module collection',
+                                                                            maximizeButton=False, sizeable=False)
         try:
             cmds.windowPref('mrt_deleteCollection_UI_window', remove=True)
         except:
             pass
-        cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90, width=220, \
-                                                                                             marginWidth=20, marginHeight=15)
+        cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90,
+                                                                            width=220, marginWidth=20, marginHeight=15)
         cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 0], [2, 'left', 20]))
         cmds.button(label='From disk', width=90, command=partial(deleteModuleCollection, True))
         cmds.button(label='Remove from list', width=120, command=deleteModuleCollection)
@@ -1224,8 +1227,7 @@ class MRT_UI(object):
             validItem = self.printCollectionInfoForUI()
             if not validItem:
                 return
-            selectedItem = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, \
-                                                                                                          selectItem=True)[0]
+            selectedItem = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, selectItem=True)[0]
             collectionFile = self.module_collectionList[selectedItem]
         if autoInstallFile:
             collectionFile = autoInstallFile
