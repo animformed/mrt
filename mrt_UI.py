@@ -1159,13 +1159,26 @@ class MRT_UI(object):
 
 
     def deleteSelectedModuleCollection(self, *args):
+        '''
+        Deletes a selected module collection from the module collection list in the MRT UI.
+        '''
         def deleteModuleCollection(deleteFromDisk=False, *args):
+            # This definition will be used only within the scope of deleteSelectedModuleCollection
+            
+            # If the module collection is to be deleted, close the window
             cmds.deleteUI('mrt_deleteCollection_UI_window')
+            
+            # Remove the module collection name from the UI scroll list
             selectedItem = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, selectItem=True)[0]
-            collectionFile = self.module_collectionList[selectedItem]
             cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, removeItem=selectedItem)
-
+            
+            # Get its collection file
+            collectionFile = self.module_collectionList[selectedItem]
+            
+            # Remove it from module collection records
             self.module_collectionList.pop(selectedItem)
+            
+            # Remove it from saved module collection list data, save the new list
             module_collectionList_file = open(self.module_collectionList_path, 'rb')
             module_collectionList = cPickle.load(module_collectionList_file)
             module_collectionList_file.close()
@@ -1176,9 +1189,16 @@ class MRT_UI(object):
             module_collectionList_file = open(self.module_collectionList_path, 'wb')
             cPickle.dump(module_collectionList, module_collectionList_file, cPickle.HIGHEST_PROTOCOL)
             module_collectionList_file.close()
+            
+            # Remove the module collection from disk if specified
             if deleteFromDisk:
                 os.remove(collectionFile)
+            
+            # After removing the module collection name from the UI, check for item(s) in the module
+            # collection scroll list
             allItems = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, allItems=True) or []
+            
+            # If item(s) are found, re-build the scroll list
             if len(allItems):
                 scrollHeight = len(allItems)* 20
                 if scrollHeight > 200:
@@ -1188,7 +1208,9 @@ class MRT_UI(object):
                 cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, height=scrollHeight)
                 cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, selectIndexedItem=1)
                 self.printCollectionInfoForUI()
+    
             else:
+                # If not item is found, reset and disable the module collection scroll list with its buttons
                 cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, enable=False, height=32,
                                                         append=['              < no module collection(s) loaded >'],
                                                                                                 font='boldLabelFont')
@@ -1199,14 +1221,19 @@ class MRT_UI(object):
                 cmds.button(self.uiVars['loadedCollections_button_install'], edit=True, enable=False)
                 cmds.button(self.uiVars['loadedCollections_button_edit'], edit=True, enable=False)
                 cmds.button(self.uiVars['loadedCollections_button_delete'], edit=True, enable=False)
-
+    
+        # Check if the selected module collection is valid, meaning if it exists on disk.
         validItem = self.printCollectionInfoForUI()
         if not validItem:
             return
+        
+        # Delete the remove module collection window, if it exists.
         try:
             cmds.deleteUI('mrt_deleteCollection_UI_window')
         except:
             pass
+
+        # Create the delete module collection window.
         self.uiVars['deleteCollectionWindow'] = cmds.window('mrt_deleteCollection_UI_window',
                                                                     title='Delete module collection',
                                                                             maximizeButton=False, sizeable=False)
@@ -1214,8 +1241,13 @@ class MRT_UI(object):
             cmds.windowPref('mrt_deleteCollection_UI_window', remove=True)
         except:
             pass
+
+        # Create the main layout
         cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90,
                                                                             width=220, marginWidth=20, marginHeight=15)
+
+        # Create two buttons under a row, to delete the selected module collection from disk or to
+        # remove the module collection frpm the UI scroll list only.
         cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 0], [2, 'left', 20]))
         cmds.button(label='From disk', width=90, command=partial(deleteModuleCollection, True))
         cmds.button(label='Remove from list', width=120, command=deleteModuleCollection)
@@ -1223,46 +1255,75 @@ class MRT_UI(object):
 
 
     def installSelectedModuleCollectionToScene(self, *args, autoInstallFile=None):
-        if not autoInstallFile:
+        '''
+        Performs installation of a selected module collection from the module collection scroll list
+        into the maya scene. It also accepts an auto-collection file, which is auto generated by MRT
+        while creating a character from scene modules (It's used by MRT to revert a character back 
+        to its scene modules).
+        '''
+        # If an auto-install module collection file is passed, use it.
+        if autoInstallFile:
+            collectionFile = autoInstallFile
+        else:
+            # Get the selected module collection name from the UI scroll list and its
+            # associated file.
             validItem = self.printCollectionInfoForUI()
             if not validItem:
                 return
             selectedItem = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, selectItem=True)[0]
             collectionFile = self.module_collectionList[selectedItem]
-        if autoInstallFile:
-            collectionFile = autoInstallFile
-        mrtmc_fObject_file = open(collectionFile, 'rb')
-        mrtmc_fObject = cPickle.load(mrtmc_fObject_file)
-        mrtmc_fObject_file.close()
-        currentNamespace = cmds.namespaceInfo(currentNamespace=True)
+
+        # Create and set a temporary namespace to work with module installations from collection file.
+        currentNamespace = cmds.namespaceInfo(currentNamespace=True)    # Save current namespace
         cmds.namespace(setNamespace=':')
         cmds.namespace(addNamespace='MRT_tempNamespaceForImport')
         cmds.namespace(setNamespace='MRT_tempNamespaceForImport')
+
+        # Read the module collection file data.
+        mrtmc_fObject_file = open(collectionFile, 'rb')
+        mrtmc_fObject = cPickle.load(mrtmc_fObject_file)
+        mrtmc_fObject_file.close()
+        
+        # Write a temporary maya scene file which will be used to import scene modules.
         tempFilePath = collectionFile.rpartition('.mrtmc')[0]+'_temp.ma'
         tempFile_fObject = open(tempFilePath, 'w')
+
+        # Write content to the maya scene file with the data from the module collection file.
         for i in range(1, len(mrtmc_fObject)):
             tempFile_fObject.write(mrtmc_fObject['collectionData_line_'+str(i)])
         tempFile_fObject.close()
+
+        # Remove reference to the module collection file object (for garbage collection)
         del mrtmc_fObject
+
+        # Import the scene module from the temporary maya scene file
         cmds.file(tempFilePath, i=True, type="mayaAscii", prompt=False, ignoreVersion=True)
-        os.remove(tempFilePath)
-        # Get the names in the temporary namespace.
+        os.remove(tempFilePath) # Delete the maya scene file after import
+
+        # Get the MRT module names in the current temporary namespace.
         namesInTemp = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
+
         # Filter the module names from the temporary namespace.
         namespacesInTemp = []
         for name in namesInTemp:
             namespacesInTemp.append(name.partition(':')[2])
+
         # Get the module names in the root namespace, if any.
         cmds.namespace(setNamespace=':')
         moduleNamespaces = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
+
         if moduleNamespaces:
+        
             # Get the user specified names of the module names, if any.
             userSpecNamesForSceneModules = mfunc.returnModuleUserSpecNames(moduleNamespaces)[1]
-            # Get the user specified names of the modules in the temporary namespaces.
+            
+            # Get the user specified names of the modules in the temporary namespace.
             userSpecNamesInTemp = mfunc.returnModuleUserSpecNames(namespacesInTemp)
             cmds.namespace(setNamespace='MRT_tempNamespaceForImport')
             allUserSpecNames = set(userSpecNamesInTemp[1] + userSpecNamesForSceneModules)
-        # If there're existing modules in the scene, check and rename module(s) in the temporary namespaces to resolve name clashes.
+            
+            # If there're existing modules in the scene, check and rename module(s) in the temporary namespace
+            # to resolve name conflicts.
             for (name, userSpecName) in zip(userSpecNamesInTemp[0], userSpecNamesInTemp[1]):
                 if userSpecName in userSpecNamesForSceneModules:
                     underscore_search = '_'
@@ -1276,109 +1337,177 @@ class MRT_UI(object):
                         userSpecNameBase = userSpecName.rpartition(underscore_search)[0]
                     else:
                         userSpecNameBase = userSpecName
+                    
                     suffix = mfunc.findHighestNumSuffix(userSpecNameBase, list(allUserSpecNames))
                     newUserSpecName = '{0}{1}{2}'.format(userSpecName, underscore_search, suffix+1)
                     namespace = '%s__%s'%(name, userSpecName)
                     newNamespace = '%s__%s'%(name, newUserSpecName)
                     cmds.namespace(addNamespace=newNamespace)
-                    cmds.namespace(moveNamespace=[':MRT_tempNamespaceForImport:'+namespace, \
-                                                                                ':MRT_tempNamespaceForImport:'+newNamespace])
+                    
+                    # Rename the module with the temporary namespace, and remove the old namespace.
+                    cmds.namespace(moveNamespace=[':MRT_tempNamespaceForImport:'+namespace,
+                                                                            ':MRT_tempNamespaceForImport:'+newNamespace])
                     cmds.namespace(removeNamespace=namespace)
                     allUserSpecNames.add(newUserSpecName)
-                    if cmds.attributeQuery('mirrorModuleNamespace', \
+                    
+                    # If its mirror module exists, rename it as well.
+                    if cmds.attributeQuery('mirrorModuleNamespace',
                                             node=':MRT_tempNamespaceForImport:'+newNamespace+':moduleGrp', exists=True):
+                        
                         mirrorModuleNamespace = \
                             cmds.getAttr(':MRT_tempNamespaceForImport:'+newNamespace+':moduleGrp.mirrorModuleNamespace')
-                        cmds.lockNode(':MRT_tempNamespaceForImport:'+mirrorModuleNamespace+':module_container', \
-                                                                                           lock=False, lockUnpublished=False)
-                        cmds.setAttr(':MRT_tempNamespaceForImport:'+mirrorModuleNamespace+':moduleGrp.mirrorModuleNamespace', \
-                                                                                                newNamespace, type='string')
-                        cmds.lockNode(':MRT_tempNamespaceForImport:'+mirrorModuleNamespace+':module_container', lock=True, \
-                                                                                                        lockUnpublished=True)
+                        
+                        cmds.lockNode(':MRT_tempNamespaceForImport:'+mirrorModuleNamespace+':module_container',
+                                                                                        lock=False, lockUnpublished=False)
+                                                                                        
+                        cmds.setAttr(':MRT_tempNamespaceForImport:'+mirrorModuleNamespace+':moduleGrp.mirrorModuleNamespace',
+                                                                                            newNamespace, type='string')
+                        cmds.lockNode(':MRT_tempNamespaceForImport:'+mirrorModuleNamespace+':module_container', lock=True,
+                                                                                                    lockUnpublished=True)
+        # After renaming the new module for the current scene, move them from the
+        # temporary namespace into the root namespace.
         cmds.namespace(setNamespace=':')
         cmds.namespace(moveNamespace=['MRT_tempNamespaceForImport', ':'], force=True)
+
+        # Remove the temporary namespace
         cmds.namespace(removeNamespace='MRT_tempNamespaceForImport')
+
+        # Set the saved namespace
         cmds.namespace(setNamespace=currentNamespace)
+
+        # Update UI fields
         self.clearParentModuleField()
         self.clearChildModuleField()
 
 
     def editSelectedModuleCollectionDescriptionFromUI(self, *args):
+        '''
+        Edits the module collection description for a selected module collection from the
+        UI module collection scroll list.
+        '''
         def editDescriptionForSelectedModuleCollection(collectionDescription, *args):
+            # Performs / updates the changes to the module collection description
+            # from the UI field to the module collection file.
+            
+            # Close the edit module collection descrption window
             cancelEditCollectionNoDescpErrorWindow()
-            selectedItem = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, \
-                                                                                                        selectItem=True)[0]
+            
+            # Get the current selected module collection name from UI scroll list
+            selectedItem = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, selectItem=True)[0]
+            
+            # Get the corresponding module collection file
             collectionFile = self.module_collectionList[selectedItem]
+            
+            # Get module collection data from the file
             collectionFileObj_file = open(collectionFile, 'rb')
             collectionFileObj = cPickle.load(collectionFileObj_file)
             collectionFileObj_file.close()
+            
+            # Update the module collection description for the data wnd write it
             collectionFileObj['collectionDescrp'] = collectionDescription
             collectionFileObj_file = open(collectionFile, 'wb')
             cPickle.dump(collectionFileObj, collectionFileObj_file, cPickle.HIGHEST_PROTOCOL)
             collectionFileObj_file.close()
+            
+            # Update the UI
             self.printCollectionInfoForUI()
-
+        
         def cancelEditCollectionNoDescpErrorWindow(*args):
+            # Closes the edit module collection description window
             cmds.deleteUI(self.uiVars['editCollectionDescpWindow'])
             try:
                 cmds.deleteUI(self.uiVars['editCollectionNoDescpErrorWindow'])
             except:
                 pass
+    
         def checkEditDescriptionForSelectedModuleCollection(*args):
-            collectionDescription = cmds.scrollField(self.uiVars['editCollectionDescpWindowScrollField'], \
-                                                                                                    query=True, text=True)
+            # Checks the new module collection description for saving / updating
+            # Get the description
+            collectionDescription = cmds.scrollField(self.uiVars['editCollectionDescpWindowScrollField'],
+                                                                                        query=True, text=True)
             if collectionDescription == '':
+                # If no description is entered, create a warning window before proceeding
                 self.uiVars['editCollectionNoDescpErrorWindow'] = \
-                    cmds.window('mrt_editCollection_noDescpError_UI_window', title='Module collection warning', \
-                                                                                     maximizeButton=False, sizeable=False)
+                    cmds.window('mrt_editCollection_noDescpError_UI_window', title='Module collection warning',
+                                                                                maximizeButton=False, sizeable=False)
+                # Remove the window from UI preferences
                 try:
                     cmds.windowPref('mrt_editCollection_noDescpError_UI_window', remove=True)
                 except:
                     pass
-                cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90, \
+                
+                # Main layout
+                cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90,
                                                                                 width=220, marginWidth=20, marginHeight=15)
+                                                                                
+                # Give the user a choice to save the module collection description with
+                # an empty value
                 cmds.text(label='Are you sure you want to continue with an empty description?')
-                cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 55], [2, 'left', 20]), \
-                                                                                  rowAttach=([1, 'top', 8], [2, 'top', 8]))
-                cmds.button(label='Continue', width=90, \
+                cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 55], [2, 'left', 20]),
+                                                                        rowAttach=([1, 'top', 8], [2, 'top', 8]))
+                cmds.button(label='Continue', width=90,
                                         command=partial(editDescriptionForSelectedModuleCollection, collectionDescription))
                 cmds.button(label='Cancel', width=90, command=cancelEditCollectionNoDescpErrorWindow)
+                
+                # Show the window for warning
                 cmds.showWindow(self.uiVars['editCollectionNoDescpErrorWindow'])
             else:
+                # Proceed saving with the new module collection description
                 editDescriptionForSelectedModuleCollection(collectionDescription)
+        
+        # Check if the selected module collection is valid.
         validItem = self.printCollectionInfoForUI()
         if not validItem:
             return
+        
+        # Close the edit module collection description window if open
         try:
             cmds.deleteUI('mrt_collectionDescription_edit_UI_window')
         except:
             pass
+        
+        # Create the module collection description window
         self.uiVars['editCollectionDescpWindow'] = cmds.window('mrt_collectionDescription_edit_UI_window', \
                                      title='Module collection description', height=150, maximizeButton=False, sizeable=False)
+        
+        # Remove the window from UI preference
         try:
             cmds.windowPref('mrt_collectionDescription_edit_UI_window', remove=True)
         except:
             pass
+
+        # Main column
         self.uiVars['editCollectionDescpWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
+
+        # Create the layout for the module collection description field
         cmds.text(label='')
         cmds.text('Enter new description for module collection', align='center', font='boldLabelFont')
-        cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=75, width=320, \
-                                                                                              marginWidth=5, marginHeight=10)
+
+        cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=75,
+                                                                            width=320, marginWidth=5, marginHeight=10)
+        # Get the current module collection description from its file
         selectedItem = cmds.textScrollList(self.uiVars['moduleCollection_txScList'], query=True, selectItem=True)[0]
         collectionFile = self.module_collectionList[selectedItem]
         collectionFileObj_file = open(collectionFile, 'rb')
         collectionFileObj = cPickle.load(collectionFileObj_file)
         currentDescriptionText = collectionFileObj['collectionDescrp']
         collectionFileObj_file.close()
-        self.uiVars['editCollectionDescpWindowScrollField'] = cmds.scrollField(preventOverride=True, wordWrap=True, \
-                                                                                                 text=currentDescriptionText)
+
+        # Create the field for module collection description and set its value with the current description
+        self.uiVars['editCollectionDescpWindowScrollField'] = cmds.scrollField(preventOverride=True, wordWrap=True,
+                                                                                            text=currentDescriptionText)
+
+        # Create the layout and its button for updating the module collection description from the field
         cmds.setParent(self.uiVars['editCollectionDescpWindowColumn'])
         cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 34], [2, 'left', 26]))
         cmds.button(label='Save description', width=130, command=checkEditDescriptionForSelectedModuleCollection)
-
         cmds.button(label='Cancel', width=90, command=partial(self.closeWindow, self.uiVars['editCollectionDescpWindow']))
+
+        # Set to the main UI column
         cmds.setParent(self.uiVars['editCollectionDescpWindowColumn'])
         cmds.text(label='')
+
+        # Show the edit module collection description window
         cmds.showWindow(self.uiVars['editCollectionDescpWindow'])
         
         
