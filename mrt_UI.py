@@ -1512,19 +1512,33 @@ class MRT_UI(object):
         
         
     def loadSavedCharTemplates(self, *args):
+        '''
+        Performs selective loading of character template files on disk into the MRT UI.
+        '''
+        # Get the previous directory accessed, saved as a preference
         ui_preferences_file = open(self.ui_preferences_path, 'rb')
         ui_preferences = cPickle.load(ui_preferences_file)
         ui_preferences_file.close()
         startDir = ui_preferences['directoryForCharacterTemplates']
+        
+        # If the saved directory doesn't exist on the disk, use the default directory under MRT/character_templates
         if not os.path.exists(startDir):
             startDir = ui_preferences['defaultDirectoryForCharacterTemplates']
+        
+        # Get the selected character template files from the user
         fileFilter = 'MRT Character Template Files (*.mrtct)'
-        mrtct_files = cmds.fileDialog2(caption='Load character template(s)', fileFilter=fileFilter, okCaption='Load', \
+        mrtct_files = cmds.fileDialog2(caption='Load character template(s)', fileFilter=fileFilter, okCaption='Load',
                                                                       startingDirectory=startDir, fileMode=4, dialogStyle=2)
         if mrtct_files == None:
             return
+        
+        # Get the preference if the currently loaded character template files in the UI needs to be cleared.
         clearStatus = ui_preferences['loadCharTemplateClearModeStatus']
+        
+        # Load the new character template files into the UI
         self.loadCharTemplatesForUI(mrtct_files, clearStatus)
+        
+        # Get the directory used for selecting character template files, save it as a preference
         ui_preferences['directoryForCharacterTemplates'] = mrtct_files[0].rpartition('/')[0]
         ui_preferences_file = open(self.ui_preferences_path, 'wb')
         cPickle.dump(ui_preferences, ui_preferences_file, cPickle.HIGHEST_PROTOCOL)
@@ -1532,101 +1546,161 @@ class MRT_UI(object):
 
 
     def changeLoadSettingsForCharTemplates(self, *args):
+        '''
+        Modifies the load settings for character templates into MRT UI.
+        '''
         def setCharTemplateLoadSettingsValues(*args):
+            # Load the preferences
             ui_preferences_file = open(self.ui_preferences_path, 'rb')
             ui_preferences = cPickle.load(ui_preferences_file)
             ui_preferences_file.close()
+            
+            # Get the current preferences
             clearListStatus = cmds.checkBox(self.uiVars['clearCharTemplateListOnLoad_checkBox'], query=True, value=True)
-            loadPreviousListAtStartup = cmds.checkBox(self.uiVars['charTemplateLoadAtStartup_checkBox'], query=True, \
-                                                                                                                  value=True)
-            loadNewTemplatesToList = cmds.checkBox(self.uiVars['newCharTemplateLoadToList_checkBox'], query=True, \
-                                                                                                                  value=True)
+            loadPreviousListAtStartup = cmds.checkBox(self.uiVars['charTemplateLoadAtStartup_checkBox'], query=True,
+                                                                                                            value=True)
+            loadNewTemplatesToList = cmds.checkBox(self.uiVars['newCharTemplateLoadToList_checkBox'], query=True,
+                                                                                                            value=True)
+            # Set the current preference for clearing the current template list
             ui_preferences['loadCharTemplateClearModeStatus'] = clearListStatus
+            # Set the current preference for loading the current template list at next MRT startup
             ui_preferences['autoLoadPreviousCharTemplateListAtStartupStatus'] = loadPreviousListAtStartup
+            # Set the current preference for loading new templates to list
             ui_preferences['loadNewCharTemplatesToCurrentList'] = loadNewTemplatesToList
+            
+            # Save these preferences
             ui_preferences_file = open(self.ui_preferences_path, 'wb')
             cPickle.dump(ui_preferences, ui_preferences_file, cPickle.HIGHEST_PROTOCOL)
             ui_preferences_file.close()
+        
         def loadTemplatesFromSettingsWindow(*args):
+            # Load the templates
             try:
                 cmds.deleteUI('mrt_charTemplateLoadSettingsUI_window')
             except:
                 pass
             self.loadSavedCharTemplates()
+            
+        # Close the preferences window
         try:
             cmds.deleteUI('mrt_charTemplateLoadSettingsUI_window')
         except:
             pass
-        self.uiVars['charTemplateLoadSettingsUIwindow'] = cmds.window('mrt_charTemplateLoadSettingsUI_window', \
+
+        # Create the preference window
+        self.uiVars['charTemplateLoadSettingsUIwindow'] = cmds.window('mrt_charTemplateLoadSettingsUI_window',
                          title='Settings for loading character templates(s)', width=90, maximizeButton=False, sizeable=False)
         try:
             cmds.windowPref('mrt_charTemplateLoadSettingsUI_window', remove=True)
         except:
             pass
+
+        # Main column
         self.uiVars['charTemplateLoadSettingsWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
+
         cmds.text(label='')
+
+        # Get the saved preferences
         ui_preferences_file = open(self.ui_preferences_path, 'rb')
         ui_preferences = cPickle.load(ui_preferences_file)
         ui_preferences_file.close()
+
+        # Preference to clear current template list for loading new character templates
         clearListStatus = ui_preferences['loadCharTemplateClearModeStatus']
+
+        # Load current character template list at next MRT startup
         loadPreviousListAtStartup = ui_preferences['autoLoadPreviousCharTemplateListAtStartupStatus']
+
+        # Add new character templates to the current list
         loadNewTemplatesToList = ui_preferences['loadNewCharTemplatesToCurrentList']
+
+        # Create a layout and buttons to set the preferences
         cmds.rowLayout(numberOfColumns=1, columnAttach=([1, 'left', 57]))
-        
         self.uiVars['charTemplateLoadAtStartup_checkBox'] = \
-            cmds.checkBox(label='Preserve and load current list at next startup', value=loadPreviousListAtStartup, \
-                                                                             changeCommand=setCharTemplateLoadSettingsValues)
+            cmds.checkBox(label='Preserve and load current list at next startup', value=loadPreviousListAtStartup,
+                                                                    changeCommand=setCharTemplateLoadSettingsValues)
         cmds.setParent(self.uiVars['charTemplateLoadSettingsWindowColumn'])
+
         cmds.rowLayout(numberOfColumns=1, columnAttach=([1, 'both', 60]), rowAttach=([1, 'top', 5]))
-        
         self.uiVars['newCharTemplateLoadToList_checkBox'] = \
-            cmds.checkBox(label='Load new saved templates(s) to current list', value=loadNewTemplatesToList, \
-                                                                             changeCommand=setCharTemplateLoadSettingsValues)
-
+            cmds.checkBox(label='Load new saved templates(s) to current list', value=loadNewTemplatesToList,
+                                                                    changeCommand=setCharTemplateLoadSettingsValues)
         cmds.setParent(self.uiVars['charTemplateLoadSettingsWindowColumn'])
+
         cmds.rowLayout(numberOfColumns=1, columnAttach=([1, 'left', 65]), rowAttach=([1, 'top', 5]))
-
         self.uiVars['clearCharTemplateListOnLoad_checkBox'] = \
-            cmds.checkBox(label='Clear current template list before loading', value=clearListStatus, \
-                                                                             changeCommand=setCharTemplateLoadSettingsValues)
-
+            cmds.checkBox(label='Clear current template list before loading', value=clearListStatus,
+                                                                    changeCommand=setCharTemplateLoadSettingsValues)
         cmds.setParent(self.uiVars['charTemplateLoadSettingsWindowColumn'])
+
+
         cmds.text(label='')
+
+        # Load Templates
         cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 58], [2, 'left', 30]))
         cmds.button(label='Load templates(s)', width=130, command=loadTemplatesFromSettingsWindow)
-
-        cmds.button(label='Close', width=90, command=partial(self.closeWindow, \
-                                                                       self.uiVars['charTemplateLoadSettingsUIwindow']))
+        cmds.button(label='Close', width=90, command=partial(self.closeWindow,
+                                                  self.uiVars['charTemplateLoadSettingsUIwindow']))
+        # Set to the main columns
         cmds.setParent(self.uiVars['charTemplateLoadSettingsWindowColumn'])
         cmds.text(label='')
         cmds.showWindow(self.uiVars['charTemplateLoadSettingsUIwindow'])
 
 
     def loadCharTemplatesForUI(self, charTemplatesFileList, clearCurrentList=False):
+        '''
+        Loads passed-in character templaes into the MRT UI. It also takes an argument if the current 
+        character template list is to be cleared.
+        '''
+        # Remove the items from the current template scroll list
         cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, height=32, removeAll=True)
+        
+        # Clear the current character template record list
         if clearCurrentList:
             self.charTemplateList = {}
+        
+        # If character template list is passed-in, re-build the character template scroll list.
         if len(charTemplatesFileList):
             for template in charTemplatesFileList:
+            
+                # Get the character template name suitable for the list from the template file name.
                 templateName = re.split(r'\/|\\', template)[-1].rpartition('.')[0]
+                
+                # Skip if a template file exists in the list values.
                 if template in self.charTemplateList.values():
                     continue
+                
+                # If the template name exist in the list, add a numerical suffix to it
+                # Example:
+                # templateName
+                # templateName (2)
                 if templateName in self.charTemplateList:
                     suffix = mfunc.findHighestCommonTextScrollListNameSuffix(templateName, self.charTemplateList.keys())
                     suffix = suffix + 1
                     templateName = '%s (%s)'%(templateName, suffix)
+                
+                # Save the template name as a key with its template file as value
                 self.charTemplateList[templateName] = template
+                
+            # Get the height for the character template scroll list
             scrollHeight = len(self.charTemplateList) * 20
             if scrollHeight > 200:
                 scrollHeight = 200
             if scrollHeight == 20:
                 scrollHeight = 40
+                
+            # Add the character template names to the module collection scroll list
             for templateName in sorted(self.charTemplateList):
-                cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, enable=True, \
-                                    height=scrollHeight, append=templateName, font='plainLabelFont', \
+                cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, enable=True,
+                                    height=scrollHeight, append=templateName, font='plainLabelFont',
                                     selectCommand=self.printCharTemplateInfoForUI)
+            
+            # Select the first item
             cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, selectIndexedItem=1)
             self.printCharTemplateInfoForUI()
+        
+        # If character template list is valid, save it, and enable UI buttons for importing, editing,
+        # and deletion of character template(s) from the UI scroll list.
         if len(self.charTemplateList):
             charTemplateList_file = open(self.charTemplateList_path, 'rb')
             charTemplateList = cPickle.load(charTemplateList_file)
@@ -1638,22 +1712,29 @@ class MRT_UI(object):
             charTemplateList_file = open(self.charTemplateList_path, 'wb')
             cPickle.dump(charTemplateList, charTemplateList_file, cPickle.HIGHEST_PROTOCOL)
             charTemplateList_file.close()
+            # Enable buttons
             cmds.button(self.uiVars['charTemplate_button_import'], edit=True, enable=True)
             cmds.button(self.uiVars['charTemplate_button_edit'], edit=True, enable=True)
             cmds.button(self.uiVars['charTemplate_button_delete'], edit=True, enable=True)
+
+        # If no character template is to be loaded
         if not len(self.charTemplateList):
-            charTemplateList_file = open(self.charTemplateList_path, 'rb')
-            charTemplateList = cPickle.load(charTemplateList_file)
-            charTemplateList_file.close()
-            for key in copy.copy(charTemplateList):
-                charTemplateList.pop(key)
+        
+            # Clear the saved character template data
             charTemplateList_file = open(self.charTemplateList_path, 'wb')
-            cPickle.dump(charTemplateList, charTemplateList_file, cPickle.HIGHEST_PROTOCOL)
+            cPickle.dump({}, charTemplateList_file, cPickle.HIGHEST_PROTOCOL)
             charTemplateList_file.close()
-            cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, enable=False, \
-                                height=32, append=['              < no character template(s) loaded >'], font='boldLabelFont')
-            cmds.scrollField(self.uiVars['charTemplateDescrp_scrollField'], edit=True, \
-                             text='< no collection info >', font='obliqueLabelFont', editable=False, height=32)
+            
+            # Clear the character template scroll list
+            cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, enable=False,
+                                    height=32, append=['              < no character template(s) loaded >'],
+                                                                                        font='boldLabelFont')
+            # Clear character template info field
+            cmds.scrollField(self.uiVars['charTemplateDescrp_scrollField'], edit=True,
+                                            text='< no collection info >', font='obliqueLabelFont',
+                                                                            editable=False, height=32)
+                                                                            
+            # Disable buttons for importing, editing and deletion of character template(s)
             cmds.button(self.uiVars['charTemplate_button_import'], edit=True, enable=False)
             cmds.button(self.uiVars['charTemplate_button_edit'], edit=True, enable=False)
             cmds.button(self.uiVars['charTemplate_button_delete'], edit=True, enable=False)
