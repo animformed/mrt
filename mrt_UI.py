@@ -1210,7 +1210,7 @@ class MRT_UI(object):
                 self.printCollectionInfoForUI()
     
             else:
-                # If not item is found, reset and disable the module collection scroll list with its buttons
+                # If no item is found, reset and disable the module collection scroll list with its buttons
                 cmds.textScrollList(self.uiVars['moduleCollection_txScList'], edit=True, enable=False, height=32,
                                                         append=['              < no module collection(s) loaded >'],
                                                                                                 font='boldLabelFont')
@@ -1441,7 +1441,7 @@ class MRT_UI(object):
                                                                                 width=220, marginWidth=20, marginHeight=15)
                                                                                 
                 # Give the user a choice to save the module collection description with
-                # an empty value
+                # an empty value (Please don't be lazy like this haha)
                 cmds.text(label='Are you sure you want to continue with an empty description?')
                 cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 55], [2, 'left', 20]),
                                                                         rowAttach=([1, 'top', 8], [2, 'top', 8]))
@@ -1741,13 +1741,25 @@ class MRT_UI(object):
 
 
     def printCharTemplateInfoForUI(self, *args):
+        '''
+        Prints the character template info for a selected item in the character template scroll list
+        in the character template description field in the UI.
+        '''
+        # Get the current selected character template name
         selectedItem = cmds.textScrollList(self.uiVars['charTemplates_txScList'], query=True, selectItem=True)[0]
+        
+        # Get its template file
         templateFile = self.charTemplateList[selectedItem]
+        
+        # Get the character template description from its template file
         if os.path.exists(templateFile):
+            # Get the character template data
             templateFileObj = open(templateFile, 'rb')
             templateFileData = cPickle.load(templateFileObj)
             templateFileObj.close()
-            templateDescrp = templateFileData['templateDescription']
+            templateDescrp = templateFileData['templateDescription']    # Character template description
+            
+            # If description is valid, print it in the character template description field
             infoScrollheight = 32
             if re.match('\w+', templateDescrp):
                 if len(templateDescrp) > 60:
@@ -1758,18 +1770,28 @@ class MRT_UI(object):
                     infoScrollheight = 64
                 if infoScrollheight < 33:
                     infoScrollheight = 32
-                cmds.scrollField(self.uiVars['charTemplateDescrp_scrollField'], edit=True, text=templateDescrp, \
+                
+                # Print it
+                cmds.scrollField(self.uiVars['charTemplateDescrp_scrollField'], edit=True, text=templateDescrp,
                                                                         font='smallPlainLabelFont', height=infoScrollheight)
             else:
-                cmds.scrollField(self.uiVars['charTemplateDescrp_scrollField'], edit=True, text='< no template info >', \
-                                                                          font='obliqueLabelFont', editable=False, height=32)
+                # Invalid character template description
+                cmds.scrollField(self.uiVars['charTemplateDescrp_scrollField'], edit=True, text='< no template info >',
+                                                                        font='obliqueLabelFont', editable=False, height=32)
             return True
         else:
-            cmds.warning('MRT Error: Character template error. The selected character template file, "%s" cannot be found \
-                                                                                                    on disk.'%(templateFile))
+            # If the character template file for the selected character template name is not found, remove it from
+            # the character template scroll list
+            cmds.warning('MRT Error: Character template error. The selected character template file, "%s" cannot be found' \
+                                                                                                'on disk.' % (templateFile))
                                                                                                     
+            # Remove it from character template scroll list
             cmds.textScrollList(self.uiVars['charTemplateDescrp_scrollField'], edit=True, removeItem=selectedItem)
+            
+            # Remove it from character template records
             self.charTemplateList.pop(selectedItem)
+            
+            # Remove it from saved character template list data
             charTemplateList_file = open(self.charTemplateList_path, 'rb')
             charTemplateList = cPickle.load(charTemplateList_file)
             charTemplateList_file.close()
@@ -1780,131 +1802,231 @@ class MRT_UI(object):
             charTemplateList_file = open(self.charTemplateList_path, 'wb')
             cPickle.dump(charTemplateList, charTemplateList_file, cPickle.HIGHEST_PROTOCOL)
             charTemplateList_file.close()
-            cmds.scrollField(self.uiVars['charTemplateDescrp_scrollField'], edit=True, text='< no template info >', \
-                                                                          font='obliqueLabelFont', editable=False, height=32)
+            
+            # Reset the character template description field
+            cmds.scrollField(self.uiVars['charTemplateDescrp_scrollField'], edit=True, text='< no template info >',
+                                                                        font='obliqueLabelFont', editable=False, height=32)
+                                                                        
+            # Check and update the character template list, if it contains any item(s) after removal
             allItems = cmds.textScrollList(self.uiVars['charTemplates_txScList'], query=True, allItems=True)
             if not allItems:
-                cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, enable=False, height=32, \
-                                          append=['              < no character template(s) loaded >'], font='boldLabelFont')
+                cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, enable=False, height=32,
+                                                append=['              < no character template(s) loaded >'],
+                                                                                        font='boldLabelFont')
+                    
+            # Disable buttons for importing, editing and deletion of character template(s)
             cmds.button(self.uiVars['charTemplate_button_import'], edit=True, enable=False)
             cmds.button(self.uiVars['charTemplate_button_edit'], edit=True, enable=False)
             cmds.button(self.uiVars['charTemplate_button_delete'], edit=True, enable=False)
+            
             return False
 
+
     def importSelectedCharTemplate(self, *args):
+        '''
+        Imports a selected character template from the character template scroll list
+        into the maya scene.
+        '''
+        # Save the current namespace, set to root.
         namespace = cmds.namespaceInfo(currentNamespace=True)
         cmds.namespace(setNamespace=':')
+        
+        # Check if a character exists in the current scene, skip importing if true.
         transforms = cmds.ls(type='transform')
         for transform in transforms:
             characterName = re.findall('^MRT_character(\D+)__mainGrp$', transform)
             if characterName:
-                cmds.warning('MRT Error: The character "%s" exists in the scene. \
-                                                                    Unable to import a template.'%(characterName[0]))
+                cmds.warning('MRT Error: The character "%s" exists in the scene. '  \
+                                                                    'Unable to import a template.' % (characterName[0]))
                 return
+        
+        # Skip importing if module(s) exist in the scene.
         moduleContainers = [item for item in cmds.ls(type='container') if mfunc.stripMRTNamespace(item)]
         if moduleContainers:
-            cmds.warning('MRT Error: Module(s) were found in the scene; cannot import a character template. \
+            cmds.warning('MRT Error: Module(s) were found in the scene; cannot import a character template. '   \
                                                                                 Try importing it in a new scene.')
             return
+
+        # Get the selected character template
         selectedItem = cmds.textScrollList(self.uiVars['charTemplates_txScList'], query=True, selectItem=True)[0]
+        
+        # Get the associated character template, read its data.
         templateFile = self.charTemplateList[selectedItem]
         templateFileObj = open(templateFile, 'rb')
         templateFileData = cPickle.load(templateFileObj)
         templateFileObj.close()
+        
+        # Write a temporary maya scene file which will be used to import the character template.
         tempFilePath = templateFile.rpartition('.mrtct')[0]+'_temp.ma'
         tempFileObj = open(tempFilePath, 'w')
+        
+        # Write content to the maya scene file with the data from the character template file.
         for i in range(1, len(templateFileData)):
             tempFileObj.write(templateFileData['templateData_line_'+str(i)])
         tempFileObj.close()
+        
+        # Remove reference to the character template file object (for garbage collection)
         del templateFileData
+        
+        # Import the character template from the temporary maya scene file
         cmds.file(tempFilePath, i=True, type='mayaAscii', prompt=False, ignoreVersion=True)
+        
+        # Delete the maya scene file after import
         os.remove(tempFilePath)
 
+
     def editSelectedCharTemplateDescriptionFromUI(self, *args):
+        '''
+        Edits the character template description for a selected character template from the
+        UI character template scroll list.
+        '''
         def editDescriptionForSelectedCharTemplate(templateDescription, *args):
+            # Performs / updates the changes to the character template description
+            # from the UI field to the character template file.
+            
+            # Close the edit character template descrption window
             cancelEditCharTemplateNoDescrpErrorWindow()
-            selectedItem = cmds.textScrollList(self.uiVars['charTemplates_txScList'], query=True, \
-                                                                                                    selectItem=True)[0]
+            
+            # Get the current selected character template name from UI scroll list
+            selectedItem = cmds.textScrollList(self.uiVars['charTemplates_txScList'], query=True, selectItem=True)[0]
+            
+            # Get the corresponding character template file
             templateFile = self.charTemplateList[selectedItem]
+            
+            # Get character template data from the file
             templateFileObj = open(templateFile, 'rb')
             templateFileData = cPickle.load(templateFileObj)
             templateFileObj.close()
+            
+            # Update the character template description for the data wnd write it
             templateFileData['templateDescription'] = templateDescription
             templateFileObj = open(templateFile, 'wb')
             cPickle.dump(templateFileData, templateFileObj, cPickle.HIGHEST_PROTOCOL)
             templateFileObj.close()
+            
+            # Update the UI
             self.printCharTemplateInfoForUI()
+            
         def cancelEditCharTemplateNoDescrpErrorWindow(*args):
+            # Closes the edit character template description window
             cmds.deleteUI(self.uiVars['editCharTemplateDescrpWindow'])
             try:
                 cmds.deleteUI(self.uiVars['editCharTemplateNoDescrpErrorWindow'])
             except:
                 pass
+                
         def checkEditDescriptionForSelectedCharTemplate(*args):
-            templateDescription = cmds.scrollField(self.uiVars['editCharTemplateDescrpWindowScrollField'], \
-                                                                                                       query=True, text=True)
+            # Checks the new character template description for saving / updating
+            # Get the description
+            templateDescription = cmds.scrollField(self.uiVars['editCharTemplateDescrpWindowScrollField'],
+                                                                                                query=True, text=True)
             if templateDescription == '':
-            
+                # If no description is entered, create a warning window before proceeding
                 self.uiVars['editCharTemplateNoDescrpErrorWindow'] = \
-                    cmds.window('mrt_editCharTemplate_noDescrpError_UI_window', title='Character template warning', \
-                                                                                        maximizeButton=False, sizeable=False)
+                    cmds.window('mrt_editCharTemplate_noDescrpError_UI_window', title='Character template warning',
+                                                                                    maximizeButton=False, sizeable=False)
+                # Remove the window from UI preferences
                 try:
                     cmds.windowPref('mrt_editCharTemplate_noDescrpError_UI_window', remove=True)
                 except:
                     pass
-                cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90, \
-                                                                                  width=220, marginWidth=20, marginHeight=15)
+                    
+                # Main layout
+                cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90,
+                                                                            width=220, marginWidth=20, marginHeight=15)
+                
+                # Give the user a choice to save the character template description with
+                # an empty value
                 cmds.text(label='Are you sure you want to continue with an empty description?')
-                cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 55], [2, 'left', 20]), \
-                                                                                    rowAttach=([1, 'top', 8], [2, 'top', 8]))
-                cmds.button(label='Continue', width=90, \
-                                                command=partial(editDescriptionForSelectedCharTemplate, templateDescription))
+                cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 55], [2, 'left', 20]),
+                                                                            rowAttach=([1, 'top', 8], [2, 'top', 8]))
+                cmds.button(label='Continue', width=90,
+                                        command=partial(editDescriptionForSelectedCharTemplate, templateDescription))
                 cmds.button(label='Cancel', width=90, command=cancelEditCharTemplateNoDescrpErrorWindow)
+                
+                # Show the window for warning
                 cmds.showWindow(self.uiVars['editCharTemplateNoDescrpErrorWindow'])
             else:
+                # Proceed saving with the new character template description
                 editDescriptionForSelectedCharTemplate(templateDescription)
+                
+        # Check if the selected character template is valid.
         validItem = self.printCharTemplateInfoForUI()
         if not validItem:
             return
+            
+        # Close the edit character template description window if open
         try:
             cmds.deleteUI('mrt_charTemplateDescription_edit_UI_window')
         except:
             pass
-        self.uiVars['editCharTemplateDescrpWindow'] = cmds.window('mrt_charTemplateDescription_edit_UI_window', \
-                                    title='Character template description', height=150, maximizeButton=False, sizeable=False)
+            
+        # Create the character template description window
+        self.uiVars['editCharTemplateDescrpWindow'] = cmds.window('mrt_charTemplateDescription_edit_UI_window',
+                                title='Character template description', height=150, maximizeButton=False, sizeable=False)
+                         
+        # Remove the window from UI preference
         try:
             cmds.windowPref('mrt_charTemplateDescription_edit_UI_window', remove=True)
         except:
             pass
+            
+        # Main column
         self.uiVars['editCharTemplateDescrpWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
+        
+        # Create the layout for the character template description field
         cmds.text(label='')
         cmds.text('Enter new description for character template', align='center', font='boldLabelFont')
-        cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=75, width=320, \
+        cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=75, width=320,
                                                                                               marginWidth=5, marginHeight=10)
+                         
+        # Get the current character template description from its file
         selectedItem = cmds.textScrollList(self.uiVars['charTemplates_txScList'], query=True, selectItem=True)[0]
         templateFile = self.charTemplateList[selectedItem]
         templateFileObj = open(templateFile, 'rb')
         templateFileData = cPickle.load(templateFileObj)
         currentDescriptionText = templateFileData['templateDescription']
         templateFileObj.close()
-        self.uiVars['editCharTemplateDescrpWindowScrollField'] = cmds.scrollField(preventOverride=True, wordWrap=True, \
-                                                                                                 text=currentDescriptionText)
+        
+        # Create the field for character template description and set its value with the current description
+        self.uiVars['editCharTemplateDescrpWindowScrollField'] = cmds.scrollField(preventOverride=True, wordWrap=True,
+                                                                                              text=currentDescriptionText)
+                         
+        # Create the layout and its button for updating the character template description from the field
         cmds.setParent(self.uiVars['editCharTemplateDescrpWindowColumn'])
         cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 34], [2, 'left', 26]))
         cmds.button(label='Save description', width=130, command=checkEditDescriptionForSelectedCharTemplate)
-
         cmds.button(label='Cancel', width=90, command=partial(self.closeWindow, self.uiVars['editCharTemplateDescrpWindow']))
+        
+        # Set to the main UI column
         cmds.setParent(self.uiVars['editCharTemplateDescrpWindowColumn'])
         cmds.text(label='')
+        
+        # Show the edit character template description window
         cmds.showWindow(self.uiVars['editCharTemplateDescrpWindow'])
 
+
     def deleteSelectedCharTemplate(self, *args):
+        '''
+        Deletes a selected character template from the character template list in the MRT UI.
+        '''
         def deleteCharTemplate(deleteFromDisk=False, *args):
+            # This definition will be used only within the scope of deleteSelectedCharTemplate
+            
+            # If the character template is to be deleted, close the window
             cmds.deleteUI('mrt_deleteCharTemplate_UI_window')
+            
+            # Remove the character template name from the UI scroll list
             selectedItem = cmds.textScrollList(self.uiVars['charTemplates_txScList'], query=True, selectItem=True)[0]
-            templateFile = self.charTemplateList[selectedItem]
             cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, removeItem=selectedItem)
+            
+            # Get its collection file
+            templateFile = self.charTemplateList[selectedItem]
+            
+            # Remove it from character template records
             self.charTemplateList.pop(selectedItem)
+            
+            # Remove it from saved character template list data, save the new list
             charTemplateList_file = open(self.charTemplateList_path, 'rb')
             charTemplateList = cPickle.load(charTemplateList_file)
             charTemplateList_file.close()
@@ -1915,9 +2037,16 @@ class MRT_UI(object):
             charTemplateList_file = open(self.charTemplateList_path, 'wb')
             cPickle.dump(charTemplateList, charTemplateList_file, cPickle.HIGHEST_PROTOCOL)
             charTemplateList_file.close()
+            
+            # Remove the character template from disk if specified
             if deleteFromDisk:
                 os.remove(templateFile)
+                
+            # After removing the character template name from the UI, check for item(s) in the module
+            # collection scroll list
             allItems = cmds.textScrollList(self.uiVars['charTemplates_txScList'], query=True, allItems=True) or []
+            
+            # If item(s) are found, re-build the scroll list
             if len(allItems):
                 scrollHeight = len(allItems)* 20
                 if scrollHeight > 100:
@@ -1928,29 +2057,40 @@ class MRT_UI(object):
                 cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, selectIndexedItem=1)
                 self.printCharTemplateInfoForUI()
             else:
-                cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, enable=False, \
+                # If no item is found, reset and disable the character template scroll list with its buttons
+                cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, enable=False,
                                 height=32, append=['              < no character template(s) loaded >'], font='boldLabelFont')
-                cmds.scrollField(self.uiVars['charTemplateDescrp_scrollField'], edit=True, text='< no template info >', \
+                cmds.scrollField(self.uiVars['charTemplateDescrp_scrollField'], edit=True, text='< no template info >',
                                                                            font='obliqueLabelFont', editable=False, height=32)
                 cmds.button(self.uiVars['charTemplate_button_import'], edit=True, enable=False)
                 cmds.button(self.uiVars['charTemplate_button_edit'], edit=True, enable=False)
                 cmds.button(self.uiVars['charTemplate_button_delete'], edit=True, enable=False)
 
+        # Check if the selected character template is valid, meaning if it exists on disk.
         validItem = self.printCharTemplateInfoForUI()
         if not validItem:
             return
+            
+        # Delete the remove character template window, if it exists.
         try:
             cmds.deleteUI('mrt_deleteCharTemplate_UI_window')
         except:
             pass
-        self.uiVars['deleteCharTemplateWindow'] = cmds.window('mrt_deleteCharTemplate_UI_window', \
+        self.uiVars['deleteCharTemplateWindow'] = cmds.window('mrt_deleteCharTemplate_UI_window',
                                                      title='Delete character template', maximizeButton=False, sizeable=False)
+        
+        # Create the delete character template window.
         try:
             cmds.windowPref('mrt_deleteCharTemplate_UI_window', remove=True)
         except:
             pass
-        cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90, width=220, \
+            
+        # Create the main layout
+        cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90, width=220,
                                                                                               marginWidth=20, marginHeight=15)
+        
+        # Create two buttons under a row, to delete the selected character template from disk or to
+        # remove the character template frpm the UI scroll list only.
         cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 0], [2, 'left', 20]))
         cmds.button(label='From disk', width=90, command=partial(deleteCharTemplate, True))
         cmds.button(label='Remove from list', width=120, command=deleteCharTemplate)
@@ -1958,19 +2098,36 @@ class MRT_UI(object):
 
 
     def putShelfButtonForUI(self, *args):
+        '''
+        Puts a shelf button for MRT on the current maya shelf
+        '''
+        # Get the current tab under maya shelf
         currentTab = cmds.tabLayout('ShelfLayout', query=True, selectTab=True)
+        
+        # Get its shelf buttons
         shelfTabButtons = cmds.shelfLayout(currentTab, query=True, childArray=True)
+        
+        # Check if the MRT button exists, return if true.
         if shelfTabButtons:
             for button in shelfTabButtons:
                 annotation = cmds.shelfButton(button, query=True, annotation=True)
                 if annotation == 'Modular Rigging Tools':
                     return
+        
+        # Else, put the shelf button on the current shelf tab
         imagePath = cmds.internalVar(userScriptDir=True)+'MRT/mrt_shelfLogo.png'
         cmds.shelfButton(annotation='Modular Rigging Tools', commandRepeatable=True,
                          image1=imagePath, parent=currentTab, sourceType='mel', command='MRT')
 
+
     def selectModuleInTreeViewUIfromViewport(self):
+        '''
+        Highlights an item in the scene module list in the MRT UI, if a valid module is selected
+        in the maya viewport.
+        '''
         cmds.undoInfo(stateWithoutFlush=False)
+        
+        # Update the treeView module selection record, remove any modules(s) that are not actively selected
         active_UI_selection = {}
         selection = mel.eval("ls -sl -type dagNode")
         if selection == None:
@@ -1979,36 +2136,64 @@ class MRT_UI(object):
             for item in copy.copy(self.treeViewSelection_list):
                 if not item in selection:
                     self.treeViewSelection_list.pop(item)
+                    
+        # Filter selection for module(s) and add to record
         if selection != None:
             for select in selection:
                 namespaceInfo = mfunc.stripMRTNamespace(select)
                 if namespaceInfo != None:
                     moduleNamespace = namespaceInfo[0]
                     self.treeViewSelection_list[select] = moduleNamespace
+        
+        # Clear all highlight selection
         cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, clearSelection=True)
+        
+        # Highlight selected module(s) in the scene module list treeView
         if len(self.treeViewSelection_list):
             for item in self.treeViewSelection_list:
                 if item in selection:
                     active_UI_selection[item] = self.treeViewSelection_list[item]
             for item in active_UI_selection:
                 cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, selectItem=[active_UI_selection[item], 1])
-        else:
-            # This clears the selection
-            self.updateListForSceneModulesInUI()
+        #else:
+            # This clears the selection highlight(s)
+            #self.updateListForSceneModulesInUI()
         cmds.undoInfo(stateWithoutFlush=True)
 
+
     def updateListForSceneModulesInUI_runIdle(self, *args):
+        '''
+        Delays the update for scene module list re-build at CPU idle time.
+        (Useful for testing purposes, you may need it. I'm not calling this right now).
+        '''
         cmds.evalDeferred(self.updateListForSceneModulesInUI, lowestPriority=True)
 
+
     def toggleSceneModuleListSortTypeFromUI(self, *args):
+        '''
+        Triggers sorting / updating for scene module list in the MRT UI, based on the preference
+        set by user scene module(s) to sort by 'Hierarchy' or 'Alphabetically'.
+        '''
+        # Save the current selection, updating changes it.
         selection = cmds.ls(selection=True)
+        
+        # Update scene module list.
         self.updateListForSceneModulesInUI()
+        
+        # Re-select
         if selection:
             cmds.select(selection, replace=True)
 
+
     def resetListHeightForSceneModulesUI(self, *args):
+        '''
+        Resets the height of the scene module list treeView based on the number of modules.
+        '''
+        # Get the scene modules
         sceneNamespaces = cmds.namespaceInfo(listOnlyNamespaces=True)
         MRT_namespaces = mfunc.returnMRT_Namespaces(sceneNamespaces)
+        
+        # Set the height for the treeeView and its parent layout
         if MRT_namespaces != None:
             treeLayoutHeight = len(MRT_namespaces) * 22
             if treeLayoutHeight > 200:
@@ -2016,47 +2201,83 @@ class MRT_UI(object):
             cmds.scrollLayout(self.uiVars['moduleList_Scroll'], edit=True, height=treeLayoutHeight+8)
             cmds.frameLayout(self.uiVars['moduleList_fLayout'], edit=True, height=treeLayoutHeight)
 
+
     def updateListForSceneModulesInUI(self, *args):
+        '''
+        Main procedure for performing all updates to the scene module list in the MRT UI.
+        '''
         cmds.undoInfo(stateWithoutFlush=False)
+        
+        # Get the selection, if none, clear the record for module(s)
         selection = mel.eval("ls -sl -type dagNode")
+        
         if selection == None:
             self.treeViewSelection_list = {}
+        
+        # Get the module(s) in the current scene
         currentNamespace = cmds.namespaceInfo(currentNamespace=True)
         cmds.namespace(setNamespace=':')
         sceneNamespaces = cmds.namespaceInfo(listOnlyNamespaces=True)
         MRT_namespaces = mfunc.returnMRT_Namespaces(sceneNamespaces)
+        
+        # Clear the scene module treeView list
         cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, removeAll=True)
+        
         listNames = {}
-
+        
+        # If scene module(s) are found,
         if MRT_namespaces != None:
+        
+            # Enable treeView and its parent layout (disabled at MRT startup)
             cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, enable=True)
             cmds.rowLayout(self.uiVars['sortModuleList_row'], edit=True, enable=True)
+            
+            # For every scene module
             for name in MRT_namespaces:
+            
+                # Get the user specified name
                 userSpecifiedName = name.partition('__')[2]
+                
+                # Get the module type from its name
                 moduleType = name.partition('__')[0].partition('_')[2].partition('Node')[0]
+                
+                # Get the mirrored module (if it's a mirrored module pair)
                 if cmds.attributeQuery('mirrorModuleNamespace', node=name+':moduleGrp', exists=True):
                     mirrorModuleNamespace = cmds.getAttr(name+':moduleGrp.mirrorModuleNamespace')
                 else:
                     mirrorModuleNamespace = None
+                    
+                # Collect the module name attributes per module (to be displayed in the module list)
                 listNames[userSpecifiedName] = [name, moduleType, mirrorModuleNamespace]
+            
+            # Get the height for the scene module scroll list (with treeView)
             defTreeLayoutHeight = cmds.frameLayout(self.uiVars['moduleList_fLayout'], query=True, height=True)
             treeLayoutHeight = len(MRT_namespaces) * 22
             if defTreeLayoutHeight > treeLayoutHeight:
                 treeLayoutHeight = defTreeLayoutHeight
-
+            
+            # Set the heights for module list layouts (containing treeView)
             cmds.scrollLayout(self.uiVars['moduleList_Scroll'], edit=True, height=treeLayoutHeight+8)
             cmds.frameLayout(self.uiVars['moduleList_fLayout'], edit=True, height=treeLayoutHeight)
+            
+            # Get the current module list sort type
             listStatus = cmds.radioCollection(self.uiVars['sortModuleList_radioColl'], query=True, select=True)
 
+            # Create / update the module list based on sort type
             if listStatus == 'Alphabetically':
+            
                 for name in sorted(listNames):
-                    if _maya_version >=2013:
                     
+                    # For maya > 2012, the treeView now accepts python UI callbacks.
+                    if _maya_version >=2013:
+                        
+                        # Add the module name to the treeView, set callbacks
                         cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, numberOfButtons=3,
                                       addItem=(listNames[name][0], ''),
                                       selectionChangedCommand=moduleSelectionFromTreeViewCallback,
                                       editLabelCommand=processItemRenameForTreeViewListCallback)
-                                      
+                        
+                        # If proxy geometry for the module is found, enable/set the proxy geo buttons
                         if cmds.objExists(listNames[name][0]+':proxyGeometryGrp'):
                             cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
                                           buttonTextIcon=([listNames[name][0], 1, 'V'],
@@ -2078,6 +2299,7 @@ class MRT_UI(object):
                                                          [listNames[name][0], 2, 'Proxy geometry visibility'],
                                                          [listNames[name][0], 3, 'Reference proxy geometry']))
                         else:
+                            # If no proxy geometry, only enable/set button for module visibility.
                             cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
                                           buttonTextIcon=[listNames[name][0], 1, 'V'],
                                           buttonStyle=[listNames[name][0], 1, '2StateButton'],
@@ -2088,11 +2310,13 @@ class MRT_UI(object):
                                                         [listNames[name][0], 3, 0]),
                                           buttonTooltip=[listNames[name][0], 1, 'Module visibility'])
                     else:
+                        # For maya < 2013, use MEL UI callbacks
                         cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, numberOfButtons=3,
                                       addItem=(listNames[name][0], ''),
                                       selectionChangedCommand='moduleSelectionFromTreeViewCallback',
                                       editLabelCommand='processItemRenameForTreeViewListCallback')
-                                      
+                        
+                        # If proxy geometry for the module is found, enable/set the proxy geo buttons
                         if cmds.objExists(listNames[name][0]+':proxyGeometryGrp'):
                         
                             cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
@@ -2115,6 +2339,7 @@ class MRT_UI(object):
                                                          [listNames[name][0], 2, 'Proxy geometry visibility'],
                                                          [listNames[name][0], 3, 'Reference proxy geometry']))
                         else:
+                            # If no proxy geometry, only enable/set button for module visibility.
                             cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
                                           buttonTextIcon=[listNames[name][0], 1, 'V'],
                                           buttonStyle=[listNames[name][0], 1, '2StateButton'],
@@ -2135,40 +2360,46 @@ class MRT_UI(object):
                                       displayLabel=[listNames[name][0], name],
                                       displayLabelSuffix=[listNames[name][0], ' (%s node mirror module)'%listNames[name][1]],
                                       fontFace=[listNames[name][0], 2])
-                            
+                         
+                # After creating the treeView items for scene modules,
+                # set their button states / attributes, based on
                 for name in sorted(listNames):
-                    v_state = cmds.getAttr(listNames[name][0]+':moduleGrp.visibility')
-                    
+
+                    # Set the colour for proxy geo visibility / selection toggle buttons
                     if cmds.objExists(listNames[name][0]+':proxyGeometryGrp'):
+                        # If proxy geo exist for the module, set the default button colours
                         cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
                                       buttonTransparencyColor=([listNames[name][0], 1, 0.85, 0.66, 0.27],
                                                                [listNames[name][0], 2, 0.57, 0.66, 1.0],
                                                                [listNames[name][0], 3, 0.42, 0.87, 1.0]))
-                                                               
+                         
+                        # If the proxy geometry is visible, set its button colour / state
                         p_state = cmds.getAttr(listNames[name][0]+':proxyGeometryGrp.visibility')
-                        r_state = cmds.getAttr(listNames[name][0]+':proxyGeometryGrp.overrideDisplayType')
-                        
                         if p_state == 0:
                             cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
                                           buttonTransparencyColor=[listNames[name][0], 2, 0.65, 0.71, 0.90],
                                           buttonState=[listNames[name][0], 2, 'buttonUp'])
+                         
+                        # If the proxy geometry is non-selectable, set its button colour / state
+                        r_state = cmds.getAttr(listNames[name][0]+':proxyGeometryGrp.overrideDisplayType')
                         if r_state == 0:
                             cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
                                           buttonTransparencyColor=[listNames[name][0], 3, 0.68, 0.85, 0.90],
                                           buttonState=[listNames[name][0], 3, 'buttonUp'])
-                        if v_state == 0:
-                            cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
-                                          buttonTransparencyColor=[listNames[name][0], 1, 0.71, 0.66, 0.56],
-                                          buttonState=[listNames[name][0], 1, 'buttonUp'])
                     else:
+                        # If no proxy geo exists for the module, set the default button colours
                         cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
                                       buttonTransparencyColor=([listNames[name][0], 1, 0.85, 0.66, 0.27],
                                                                [listNames[name][0], 2, 0.39, 0.39, 0.39],
                                                                [listNames[name][0], 3, 0.39, 0.39, 0.39]))
-                        if v_state == 0:
-                            cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
-                                          buttonTransparencyColor=[listNames[name][0], 1, 0.71, 0.66, 0.56],
-                                          buttonState=[listNames[name][0], 1, 'buttonUp'])
+                    # Get if the module is visible
+                    v_state = cmds.getAttr(listNames[name][0]+':moduleGrp.visibility')
+                    
+                    if v_state == 0:
+                        # Set the button colour/state if associated module is hidden
+                        cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
+                                      buttonTransparencyColor=[listNames[name][0], 1, 0.71, 0.66, 0.56],
+                                      buttonState=[listNames[name][0], 1, 'buttonUp'])
 
             if listStatus == 'By_hierarchy':
                 parentTraverseForModules = {}
@@ -2311,6 +2542,7 @@ class MRT_UI(object):
 
         cmds.namespace(setNamespace=currentNamespace)
         cmds.undoInfo(stateWithoutFlush=True)
+
 
     def makeCollectionFromSceneTreeViewModulesUI(self, *args, allModules=False, auto=None):
         # NESTED_DEF_1 #
