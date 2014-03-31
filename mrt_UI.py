@@ -2223,6 +2223,7 @@ class MRT_UI(object):
         # Clear the scene module treeView list
         cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, removeAll=True)
         
+        # To collect the module name attributes per module (to be displayed in the module list)
         listNames = {}
         
         # If scene module(s) are found,
@@ -2247,7 +2248,7 @@ class MRT_UI(object):
                 else:
                     mirrorModuleNamespace = None
                     
-                # Collect the module name attributes per module (to be displayed in the module list)
+                # Collect the module name attributes
                 listNames[userSpecifiedName] = [name, moduleType, mirrorModuleNamespace]
             
             # Get the height for the scene module scroll list (with treeView)
@@ -2267,6 +2268,10 @@ class MRT_UI(object):
             if listStatus == 'Alphabetically':
             
                 for name in sorted(listNames):
+                    
+                    # Segregate treeView callback setup based on maya version.
+                    # If you don't want to support older maya versions, remove the checks and additional lines
+                    # below as necessary.
                     
                     # For maya > 2012, the treeView now accepts python UI callbacks.
                     if _maya_version >=2013:
@@ -2361,77 +2366,57 @@ class MRT_UI(object):
                                       displayLabelSuffix=[listNames[name][0], ' (%s node mirror module)'%listNames[name][1]],
                                       fontFace=[listNames[name][0], 2])
                          
-                # After creating the treeView items for scene modules,
-                # set their button states / attributes, based on
-                for name in sorted(listNames):
 
-                    # Set the colour for proxy geo visibility / selection toggle buttons
-                    if cmds.objExists(listNames[name][0]+':proxyGeometryGrp'):
-                        # If proxy geo exist for the module, set the default button colours
-                        cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
-                                      buttonTransparencyColor=([listNames[name][0], 1, 0.85, 0.66, 0.27],
-                                                               [listNames[name][0], 2, 0.57, 0.66, 1.0],
-                                                               [listNames[name][0], 3, 0.42, 0.87, 1.0]))
-                         
-                        # If the proxy geometry is visible, set its button colour / state
-                        p_state = cmds.getAttr(listNames[name][0]+':proxyGeometryGrp.visibility')
-                        if p_state == 0:
-                            cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
-                                          buttonTransparencyColor=[listNames[name][0], 2, 0.65, 0.71, 0.90],
-                                          buttonState=[listNames[name][0], 2, 'buttonUp'])
-                         
-                        # If the proxy geometry is non-selectable, set its button colour / state
-                        r_state = cmds.getAttr(listNames[name][0]+':proxyGeometryGrp.overrideDisplayType')
-                        if r_state == 0:
-                            cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
-                                          buttonTransparencyColor=[listNames[name][0], 3, 0.68, 0.85, 0.90],
-                                          buttonState=[listNames[name][0], 3, 'buttonUp'])
-                    else:
-                        # If no proxy geo exists for the module, set the default button colours
-                        cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
-                                      buttonTransparencyColor=([listNames[name][0], 1, 0.85, 0.66, 0.27],
-                                                               [listNames[name][0], 2, 0.39, 0.39, 0.39],
-                                                               [listNames[name][0], 3, 0.39, 0.39, 0.39]))
-                    # Get if the module is visible
-                    v_state = cmds.getAttr(listNames[name][0]+':moduleGrp.visibility')
-                    
-                    if v_state == 0:
-                        # Set the button colour/state if associated module is hidden
-                        cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
-                                      buttonTransparencyColor=[listNames[name][0], 1, 0.71, 0.66, 0.56],
-                                      buttonState=[listNames[name][0], 1, 'buttonUp'])
-
-            if listStatus == 'By_hierarchy':
+            if listStatus == 'By_hierarchy':    # To sort/show module list by hierarchy
+                
+                # To collect modules with their number of traversed parent modules as keys
                 parentTraverseForModules = {}
+                
+                # Go through each module and collect their parent modules (all).
                 for namespace in MRT_namespaces:
                     parentTraverseLength = mfunc.traverseParentModules(namespace)
                     parentTraverseLength = parentTraverseLength[1]
+                    
+                    # Collect module(s) with their hierarchy levels (number of parent modules).
+                    # Store the hierarchy level as key with the module's user specified name as value.
                     if not parentTraverseLength in parentTraverseForModules:
                         parentTraverseForModules[parentTraverseLength] = [namespace.partition('__')[2]]
                     else:
+                        # Append module with other modules with the same hierarchy level.
                         parentTraverseForModules[parentTraverseLength].append(namespace.partition('__')[2])
-            
-                for value in sorted(parentTraverseForModules):
                 
+                # Start adding modules to the tree module list starting with module with the
+                # least number of parent modules.
+                for value in sorted(parentTraverseForModules):
+                    
+                    # Go through modules at same hierarchy level
                     for name in sorted(parentTraverseForModules[value]):
                     
+                        # Get the parent module node (which is attached to module's root node)
+                        parentModuleNode = cmds.getAttr(listNames[name][0]+':moduleGrp.moduleParent')
+                        
+                        # Set python callbacks for maya > 2012
                         if _maya_version >=2013:
-                            parentModuleNode = cmds.getAttr(listNames[name][0]+':moduleGrp.moduleParent')
-                            
+                         
+                            # Add the module name to the treeView with its parent module, if it exists
                             if parentModuleNode == 'None':
-                            
+                                # No parent added
                                 cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, numberOfButtons=3,
                                               addItem=(listNames[name][0], ''),
                                               selectionChangedCommand=moduleSelectionFromTreeViewCallback,
                                               editLabelCommand=processItemRenameForTreeViewListCallback)
                             else:
+                                # Get the parent module node from attribute info (stripped from parent type text info)
                                 parentModuleNode = parentModuleNode.split(',')[0]
+                                # Get its namespace
                                 parentModule = mfunc.stripMRTNamespace(parentModuleNode)[0]
+                                # Add the module name with its parent
                                 cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, numberOfButtons=3,
                                               addItem=(listNames[name][0], parentModule),
                                               selectionChangedCommand=moduleSelectionFromTreeViewCallback,
                                               editLabelCommand=processItemRenameForTreeViewListCallback)
-
+                         
+                            # If proxy geometry for the module is found, enable/set the proxy geo buttons
                             if cmds.objExists(listNames[name][0]+':proxyGeometryGrp'):
                                 cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
                                               buttonTextIcon=([listNames[name][0], 1, 'V'],
@@ -2453,6 +2438,7 @@ class MRT_UI(object):
                                                              [listNames[name][0], 2, 'Proxy geometry visibility'],
                                                              [listNames[name][0], 3, 'Reference proxy geometry']))
                             else:
+                                # If no proxy geometry, only enable/set button for module visibility.
                                 cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
                                               buttonTextIcon=[listNames[name][0], 1, 'V'],
                                               buttonStyle=[listNames[name][0], 1, '2StateButton'],
@@ -2463,38 +2449,60 @@ class MRT_UI(object):
                                                             [listNames[name][0], 3, 0]),
                                               buttonTooltip=[listNames[name][0], 1, 'Module visibility'])
                         else:
-                            parentModuleNode = cmds.getAttr(listNames[name][0]+':moduleGrp.moduleParent')
-                            
+                            # For maya < 2013, set MEL UI callbacks
+                         
+                            # Add the module name to the treeView with its parent module, if it exists
                             if parentModuleNode == 'None':
-                            
+                                # No parent added
                                 cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, numberOfButtons=3,
                                               addItem=(listNames[name][0], ''),
                                               selectionChangedCommand='moduleSelectionFromTreeViewCallback',
                                               editLabelCommand='processItemRenameForTreeViewListCallback')
                             else:
+                                # Get the parent module node from attribute info (stripped from parent type text info)
                                 parentModuleNode = parentModuleNode.split(',')[0]
+                                # Get its namespace
                                 parentModule = mfunc.stripMRTNamespace(parentModuleNode)[0]
+                                # Add the module name with its parent
                                 cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, numberOfButtons=3,
-                                              addItem=(listNames[name][0], parentModule), selectionChangedCommand='moduleSelectionFromTreeViewCallback', editLabelCommand='processItemRenameForTreeViewListCallback')
-
+                                              addItem=(listNames[name][0], parentModule),
+                                              selectionChangedCommand='moduleSelectionFromTreeViewCallback',
+                                              editLabelCommand='processItemRenameForTreeViewListCallback')
+                         
+                            # If proxy geometry for the module is found, enable/set the proxy geo buttons
                             if cmds.objExists(listNames[name][0]+':proxyGeometryGrp'):
                                 cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
-                                              buttonTextIcon=([listNames[name][0], 1, 'V'], [listNames[name][0], 2, 'P'], [listNames[name][0], 3, 'R']),
-                                              buttonStyle=([listNames[name][0], 1, '2StateButton'], [listNames[name][0], 2, '2StateButton'], [listNames[name][0], 3, '2StateButton']),
-                                              buttonState=([listNames[name][0], 1, 'buttonDown'], [listNames[name][0], 2, 'buttonDown'], [listNames[name][0], 3, 'buttonDown']),
-                                              pressCommand=([1, 'treeViewButton_1_ActionCallback'], [2, 'treeViewButton_2_ActionCallback'], [3, 'treeViewButton_3_ActionCallback']),
-                                              enableButton=([listNames[name][0], 1, 1], [listNames[name][0], 2, 1], [listNames[name][0], 3, 1]),
-                                              buttonTooltip=([listNames[name][0], 1, 'Module visibility'], [listNames[name][0], 2, 'Proxy geometry visibility'], [listNames[name][0], 3, 'Reference proxy geometry']))
+                                              buttonTextIcon=([listNames[name][0], 1, 'V'],
+                                                              [listNames[name][0], 2, 'P'],
+                                                              [listNames[name][0], 3, 'R']),
+                                              buttonStyle=([listNames[name][0], 1, '2StateButton'],
+                                                           [listNames[name][0], 2, '2StateButton'],
+                                                           [listNames[name][0], 3, '2StateButton']),
+                                              buttonState=([listNames[name][0], 1, 'buttonDown'],
+                                                           [listNames[name][0], 2, 'buttonDown'],
+                                                           [listNames[name][0], 3, 'buttonDown']),
+                                              pressCommand=([1, 'treeViewButton_1_ActionCallback'],
+                                                            [2, 'treeViewButton_2_ActionCallback'],
+                                                            [3, 'treeViewButton_3_ActionCallback']),
+                                              enableButton=([listNames[name][0], 1, 1],
+                                                            [listNames[name][0], 2, 1],
+                                                            [listNames[name][0], 3, 1]),
+                                              buttonTooltip=([listNames[name][0], 1, 'Module visibility'],
+                                                             [listNames[name][0], 2, 'Proxy geometry visibility'],
+                                                             [listNames[name][0], 3, 'Reference proxy geometry']))
                             else:
+                                # If no proxy geometry, only enable/set button for module visibility.
                                 cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
                                               buttonTextIcon=[listNames[name][0], 1, 'V'],
                                               buttonStyle=[listNames[name][0], 1, '2StateButton'],
                                               buttonState=[listNames[name][0], 1, 'buttonDown'],
                                               pressCommand=[1, 'treeViewButton_1_ActionCallback'],
-                                              enableButton=([listNames[name][0], 1, 1], [listNames[name][0], 2, 0], [listNames[name][0], 3, 0]),
+                                              enableButton=([listNames[name][0], 1, 1],
+                                                            [listNames[name][0], 2, 0],
+                                                            [listNames[name][0], 3, 0]),
                                               buttonTooltip=[listNames[name][0], 1, 'Module visibility'])
 
-
+                        # Display the text label as oblique if it's a mirror module.
                         if listNames[name][2] == None:
                             cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
                                           displayLabel=[listNames[name][0], name],
@@ -2504,50 +2512,80 @@ class MRT_UI(object):
                                           displayLabel=[listNames[name][0], name],
                                           displayLabelSuffix=[listNames[name][0], ' (%s node mirror module)'%listNames[name][1]],
                                           fontFace=[listNames[name][0], 2])
-                for name in sorted(listNames):
-                    v_state = cmds.getAttr(listNames[name][0]+':moduleGrp.visibility')
-                    if cmds.objExists(listNames[name][0]+':proxyGeometryGrp'):
-                        cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
-                                      buttonTransparencyColor=([listNames[name][0], 1, 0.85, 0.66, 0.27], [listNames[name][0], 2, 0.57, 0.66, 1.0], [listNames[name][0], 3, 0.42, 0.87, 1.0]))
-                        p_state = cmds.getAttr(listNames[name][0]+':proxyGeometryGrp.visibility')
-                        r_state = cmds.getAttr(listNames[name][0]+':proxyGeometryGrp.overrideDisplayType')
-                        if p_state == 0:
-                            cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
-                                          buttonTransparencyColor=[listNames[name][0], 2, 0.65, 0.71, 0.90], buttonState=[listNames[name][0], 2, 'buttonUp'])
-                        if r_state == 0:
-                            cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
-                                          buttonTransparencyColor=[listNames[name][0], 3, 0.68, 0.85, 0.90], buttonState=[listNames[name][0], 3, 'buttonUp'])
-                        if v_state == 0:
-                            cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
-                                          buttonTransparencyColor=[listNames[name][0], 1, 0.71, 0.66, 0.56], buttonState=[listNames[name][0], 1, 'buttonUp'])
-                    else:
-                        cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
-                                      buttonTransparencyColor=([listNames[name][0], 1, 0.85, 0.66, 0.27], [listNames[name][0], 2, 0.39, 0.39, 0.39], [listNames[name][0], 3, 0.39, 0.39, 0.39]))
-                        if v_state == 0:
-                            cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
-                                          buttonTransparencyColor=[listNames[name][0], 1, 0.71, 0.66, 0.56], buttonState=[listNames[name][0], 1, 'buttonUp'])
-        else:
-            if _maya_version >=2013:
-                cmds.scrollLayout(self.uiVars['moduleList_Scroll'], edit=True, height=40)
-                cmds.frameLayout(self.uiVars['moduleList_fLayout'], edit=True, height=32)
-                cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, numberOfButtons=1, addItem=('< no current module in scene >', ''), hideButtons=True)
-                cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, font=['< no current module in scene >', 'boldLabelFont'], editLabelCommand=processItemRenameForTreeViewListCallback, enable=False)
-                cmds.rowLayout(self.uiVars['sortModuleList_row'], edit=True, enable=False)
-            else:
-                cmds.scrollLayout(self.uiVars['moduleList_Scroll'], edit=True, height=40)
-                cmds.frameLayout(self.uiVars['moduleList_fLayout'], edit=True, height=32)
-                cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, numberOfButtons=1, addItem=('< no current module in scene >', ''), hideButtons=True)
-                cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, font=['< no current module in scene >', 'boldLabelFont'], editLabelCommand='processItemRenameForTreeViewListCallback', enable=False)
-                cmds.rowLayout(self.uiVars['sortModuleList_row'], edit=True, enable=False)
 
+            # After creating the treeView items for scene modules,
+            # set their button states / attributes, based on
+            for name in sorted(listNames):
+
+                # Set the colour for proxy geo visibility / selection toggle buttons
+                if cmds.objExists(listNames[name][0]+':proxyGeometryGrp'):
+                    # If proxy geo exist for the module, set the default button colours
+                    cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
+                                  buttonTransparencyColor=([listNames[name][0], 1, 0.85, 0.66, 0.27],
+                                                           [listNames[name][0], 2, 0.57, 0.66, 1.0],
+                                                           [listNames[name][0], 3, 0.42, 0.87, 1.0]))
+                     
+                    # If the proxy geometry is visible, set its button colour / state
+                    p_state = cmds.getAttr(listNames[name][0]+':proxyGeometryGrp.visibility')
+                    if p_state == 0:
+                        cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
+                                      buttonTransparencyColor=[listNames[name][0], 2, 0.65, 0.71, 0.90],
+                                      buttonState=[listNames[name][0], 2, 'buttonUp'])
+                     
+                    # If the proxy geometry is non-selectable, set its button colour / state
+                    r_state = cmds.getAttr(listNames[name][0]+':proxyGeometryGrp.overrideDisplayType')
+                    if r_state == 0:
+                        cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
+                                      buttonTransparencyColor=[listNames[name][0], 3, 0.68, 0.85, 0.90],
+                                      buttonState=[listNames[name][0], 3, 'buttonUp'])
+                else:
+                    # If no proxy geo exists for the module, set the default button colours
+                    cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
+                                  buttonTransparencyColor=([listNames[name][0], 1, 0.85, 0.66, 0.27],
+                                                           [listNames[name][0], 2, 0.39, 0.39, 0.39],
+                                                           [listNames[name][0], 3, 0.39, 0.39, 0.39]))
+                # Get if the module is visible
+                v_state = cmds.getAttr(listNames[name][0]+':moduleGrp.visibility')
+                
+                if v_state == 0:
+                    # Set the button colour/state if associated module is hidden
+                    cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
+                                  buttonTransparencyColor=[listNames[name][0], 1, 0.71, 0.66, 0.56],
+                                  buttonState=[listNames[name][0], 1, 'buttonUp'])
+        
+        # If no scene module is found, clear the scene module treeView list, its associated layouts.
+        else:
+            cmds.scrollLayout(self.uiVars['moduleList_Scroll'], edit=True, height=40)
+            cmds.frameLayout(self.uiVars['moduleList_fLayout'], edit=True, height=32)
+            cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, numberOfButtons=1,
+                                        addItem=('< no current module in scene >', ''), hideButtons=True)
+            cmds.rowLayout(self.uiVars['sortModuleList_row'], edit=True, enable=False)
+            
+            if _maya_version >=2013:
+                cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
+                                        font=['< no current module in scene >', 'boldLabelFont'],
+                                        editLabelCommand=processItemRenameForTreeViewListCallback, enable=False)
+            else:
+                cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
+                                        font=['< no current module in scene >', 'boldLabelFont'],
+                                        editLabelCommand='processItemRenameForTreeViewListCallback', enable=False)
+
+        # Restore current namespace
         cmds.namespace(setNamespace=currentNamespace)
         cmds.undoInfo(stateWithoutFlush=True)
 
 
     def makeCollectionFromSceneTreeViewModulesUI(self, *args, allModules=False, auto=None):
+        '''
+        Called to make a module collection by selecting scene module(s) from the MRT UI 
+        scene module treeView list. This method is also called internally by MRT for creating an
+        "auto" module collection while creating a character from scene module(s). The argument
+        "allModule" specifies that all modules in the scene will be used to save a module collection.
+        '''
         # NESTED_DEF_1 #
         def saveModuleCollectionFromDescription(collectionDescription, treeViewSelection, *args):
             # Create a module collection from the passed-in information.
+            
             # Close the windows for module description and its error prompt window.
             try:
                 cmds.deleteUI('mrt_collection_noDescpError_UI_window')
@@ -2557,6 +2595,7 @@ class MRT_UI(object):
                 cmds.deleteUI('mrt_collectionDescription_input_UI_window')
             except:
                 pass
+
             # Get the last directory for module collection save. If error, get the default directory.
             fileFilter = 'MRT Module Collection Files (*.mrtmc)'
             ui_preferences_file = open(self.ui_preferences_path, 'rb')
@@ -2565,66 +2604,94 @@ class MRT_UI(object):
             startDir = ui_preferences['startDirectoryForCollectionSave']
             if not os.path.exists(startDir):
                 startDir = ui_preferences['defaultStartDirectoryForCollectionSave']
-            # Get the file path for saving the collection. Save it as the new preferred location for saving module collections.
+            
+            # If the module collection is being created by the user.
+            # Get the file path for saving the collection.
+            # Save it as the new preferred location for saving module collections.
             if not auto:
-                fileReturn = cmds.fileDialog2(caption='Save module collection', fileFilter=fileFilter, startingDirectory=startDir, dialogStyle=2)
+                fileReturn = cmds.fileDialog2(caption='Save module collection', fileFilter=fileFilter,
+                                                                        startingDirectory=startDir, dialogStyle=2)
                 if fileReturn == None:
                     return
                 ui_preferences['startDirectoryForCollectionSave'] = fileReturn[0].rpartition('/')[0]
                 ui_preferences_file = open(self.ui_preferences_path, 'wb')
                 cPickle.dump(ui_preferences, ui_preferences_file, cPickle.HIGHEST_PROTOCOL)
                 ui_preferences_file.close()
+            
+            # If an auto module collection is being by created internally by MRT.
             if auto:
                 fileReturn = [auto]
-
-            for module in treeViewSelection[:]:
+            
+            # If mirror module(s) exist for the selected modules for making a collection
+            for module in treeViewSelection[:]: # treeViewSelection to be modified
                 if cmds.attributeQuery('mirrorModuleNamespace', node=module+':moduleGrp', exists=True):
                     mirrorModule = cmds.getAttr(module+':moduleGrp.mirrorModuleNamespace')
                     treeViewSelection.append(mirrorModule)
-
+            
+            # Get the first pass of modules to be collected for saving a collection
             modulesToBeCollected = treeViewSelection[:]
-
-            parentCollectStatus = cmds.radioCollection(self.uiVars['moduleSaveColl_options_parentsCheckRadioCollection'], query=True, select=True)
+            
+            # Get the status for collecting parent modules for current selected modules (and their mirror modules)
+            parentCollectStatus = cmds.radioCollection(self.uiVars['moduleSaveColl_options_parentsCheckRadioCollection'],
+                                                                                                    query=True, select=True)
+            # If direct parent modules are to be collected for current modules, find and add them.
             if parentCollectStatus == 'Direct_Parent':
+                # Go through each module.
                 for module in treeViewSelection:
+                    # Get the parent module node, if it exists.
                     parentModuleNode = cmds.getAttr(module+':moduleGrp.moduleParent')
                     if parentModuleNode != 'None':
+                        # Get the parent module namespace and add it.
                         parentModuleNode = parentModuleNode.split(',')[0]
                         parentModule = mfunc.stripMRTNamespace(parentModuleNode)[0]
                         modulesToBeCollected.append(parentModule)
-
+            
+            # If all parents are to be collected for current modules, find and add them.
             if parentCollectStatus == 'All_Parents':
+                # Go through each module.
                 for module in treeViewSelection:
+                    # Find all parent modules for the module.
                     allParentsModuleList = mfunc.traverseParentModules(module)[0]
+                    # Collect all the parent module names in a linear list. The 'modulesToBeCollected' is mutable
+                    # and is used by the following method as a storage. The existing content for
+                    # 'modulesToBeCollected' is not affected.
                     if len(allParentsModuleList):
-                        modulesToBeCollected = mfunc.concatenateCommonNamesFromHierarchyData(allParentsModuleList, modulesToBeCollected)
+                        modulesToBeCollected = \
+                                mfunc.concatenateCommonNamesFromHierarchyData(allParentsModuleList, modulesToBeCollected)
 
-            if parentCollectStatus == 'None':
-                pass
-
-            childrenCollectStatus = cmds.radioCollection(self.uiVars['moduleSaveColl_options_childrenCheckRadioCollection'], query=True, select=True)
+            # Get the status for collecting child modules for current selected modules (and their mirror modules)
+            childrenCollectStatus = cmds.radioCollection(self.uiVars['moduleSaveColl_options_childrenCheckRadioCollection'],
+                                                                                                    query=True, select=True)
+            # If direct child modules are to be collected for current modules, find and add them.
             if childrenCollectStatus == 'Direct_Children':
+                # Go through each module.
                 for module in treeViewSelection:
+                    # Get the children module(s), if they exist.
                     childrenModuleDict = mfunc.traverseChildrenModules(module)
                     if childrenModuleDict:
+                        # Collect the child module(s) by their namespaces
                         modulesToBeCollected += [module for module in childrenModuleDict]
+                        
+            # If all descendent modules are to be collected for current modules, find and add them.
             if childrenCollectStatus == 'All_Children':
+                # Go through each module.
                 for module in treeViewSelection:
+                    # Find all descendent module(s) for the module.
                     allChildrenModuleDict = mfunc.traverseChildrenModules(module, allChildren=True)
                     if allChildrenModuleDict:
-                        modulesToBeCollected = mfunc.concatenateCommonNamesFromHierarchyData(allChildrenModuleDict, modulesToBeCollected)
-            if childrenCollectStatus == 'None':
-                pass
-
+                        # Collect all children module(s) in a linear list and add it to 'modulesToBeCollected'.
+                        modulesToBeCollected = mfunc.concatenateCommonNamesFromHierarchyData(allChildrenModuleDict,
+                                                                                                    modulesToBeCollected)
+            # Collect the mirror module(s) for the new module(s) that are added.
             for module in copy.copy(modulesToBeCollected):
                 if cmds.attributeQuery('mirrorModuleNamespace', node=module+':moduleGrp', exists=True):
                     mirrorModule = cmds.getAttr(module+':moduleGrp.mirrorModuleNamespace')
                     modulesToBeCollected.append(mirrorModule)
 
-            currentNamespace = cmds.namespaceInfo(currentNamespace=True)
-            cmds.namespace(setNamespace=':')
-
             modulesToBeUnparented = {}
+            # Collect all parent module(s) (non-included in 'modulesToBeCollected') for modules to be collected.
+            # These modules to be collected will be temporarily "unparented".
+            # This is done to select and export the collected module(s) without exporting unnecessary DG items.
             allModuleNamespaces = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
             for module in modulesToBeCollected:
                 moduleParentNode = cmds.getAttr(module+':moduleGrp.moduleParent')
@@ -2632,111 +2699,160 @@ class MRT_UI(object):
                     parentModuleNodeAttr = moduleParentNode.split(',')
                     moduleParent = mfunc.stripMRTNamespace(parentModuleNodeAttr[0])[0]
                     if not moduleParent in modulesToBeCollected:
+                        # Collect the parent module node not included in the modules to be saved as collection
                         modulesToBeUnparented[module] = parentModuleNodeAttr[0]
+            
             if modulesToBeUnparented:
+                # Go through each module.
                 for module in modulesToBeUnparented:
+                    # Remove the module parenting constraint connection.
                     cmds.lockNode(module+':module_container', lock=False, lockUnpublished=False)
-                    #cmds.delete(module+':moduleParentRepresentationSegment_endLocator_pointConstraint')
-                    constraint = cmds.listRelatives(module+':moduleParentRepresentationSegment_segmentCurve_endLocator', children=True, fullPath=True, type='constraint')
+                    constraint = cmds.listRelatives(module+':moduleParentRepresentationSegment_segmentCurve_endLocator',
+                                                                            children=True, fullPath=True, type='constraint')
                     cmds.delete(constraint)
-                    cmds.setAttr(module+':moduleGrp.moduleParent', 'None', type='string')
-                    cmds.setAttr(module+':moduleParentRepresentationGrp.visibility', 0)
-                    cmds.lockNode(module+':module_container', lock=True, lockUnpublished=True)
 
-            # Get the previous selection.
-            selection = cmds.ls(selection=True)
-
+            # Finally, for the modules to be saved as collection, save their corresponding module containers,
+            # and their proxy geometry group, if it exists.
             moduleObjectsToBeCollected = []
             for module in modulesToBeCollected:
                 moduleObjectsToBeCollected.append(module+':module_container')
                 if cmds.objExists(module+':proxyGeometryGrp'):
                     moduleObjectsToBeCollected.append(module+':proxyGeometryGrp')
-
+            
+            # Check if the file path exists for the module collection, previously returned by the user (using fileDialog).
+            # Remove the module collection file. It'll be overwritten.
             if os.path.exists(fileReturn[0]):
                 os.remove(fileReturn[0])
+                
+            # Create a dict object, to contain the module collection data (by key) to be saved.
             mrtmc_fObject = {}
+            
+            # Save the module collection description.
             mrtmc_fObject['collectionDescrp'] = collectionDescription
+            
+            # Select the module containers and module proxy geometry (see above) to be included in the collection.
             cmds.select(moduleObjectsToBeCollected, replace=True)
+            
+            # Disable / remove module mirror move connections
             mfunc.deleteMirrorMoveConnections()
+            
+            # Create a temporary maya scene to export module collection data.
             tempFilePath = fileReturn[0].rpartition('.mrtmc')[0]+'_temp.ma'
             cmds.file(tempFilePath, force=True, options='v=1', type='mayaAscii', exportSelected=True, pr=True)
+            
+            # Read the contents of the maya scene and use it to construct module collection file.
             tempFile_fObject = open(tempFilePath)
-            i = 1
-            for line in tempFile_fObject:
-                mrtmc_fObject['collectionData_line_'+str(i)] = line
-                i +=1
+            for i, line in enumerate(tempFile_fObject):
+                mrtmc_fObject['collectionData_line_'+str(i+1)] = line
             tempFile_fObject.close()
+            
+            # Remove the temporary maya scene file.
             os.remove(tempFilePath)
+            
+            # Now, write/save the module collection file.
             mrtmc_fObject_file = open(fileReturn[0], 'wb')
             cPickle.dump(mrtmc_fObject, mrtmc_fObject_file, cPickle.HIGHEST_PROTOCOL)
             mrtmc_fObject_file.close()
+            
+            # Remove the reference to module collection file object (for garbage collection).
             del mrtmc_fObject
 
+            # If module collection is being saved by the user, get the UI preference to load the
+            # new module collection into the UI module collection list.
             if not auto:
                 ui_preferences_file = open(self.ui_preferences_path, 'rb')
                 ui_preferences = cPickle.load(ui_preferences_file)
                 ui_preferences_file.close()
                 loadNewCollections = ui_preferences['autoLoadNewSavedModuleCollectionToListStatus']
+                # If preference set to load new collections, load/add the new saved collection to the list.
                 if loadNewCollections:
                     self.loadModuleCollectionsForUI([fileReturn[0]])
-
+            
+            # Re-create the module parenting constraints, which were temporarily removed (see above).
             if modulesToBeUnparented:
                 for module in modulesToBeUnparented:
-                    cmds.lockNode(module+':module_container', lock=False, lockUnpublished=False)
-                    pointConstraint = cmds.pointConstraint(modulesToBeUnparented[module], module+':moduleParentRepresentationSegment_segmentCurve_endLocator', maintainOffset=False, name=module+':moduleParentRepresentationSegment_endLocator_pointConstraint')[0]
+                    pointConstraint = cmds.pointConstraint(modulesToBeUnparented[module],
+                        module+':moduleParentRepresentationSegment_segmentCurve_endLocator', maintainOffset=False,
+                                    name=module+':moduleParentRepresentationSegment_endLocator_pointConstraint')[0]
                     mfunc.addNodesToContainer(module+':module_container', [pointConstraint])
                     cmds.setAttr(module+':moduleGrp.moduleParent', modulesToBeUnparented[module], type='string')
-                    cmds.setAttr(module+':moduleParentRepresentationGrp.visibility', 1)
                     cmds.lockNode(module+':module_container', lock=True, lockUnpublished=True)
 
-            if len(selection):
-                cmds.select(selection, replace=True)
-            else:
-                cmds.select(clear=True)
-            cmds.namespace(setNamespace=currentNamespace)
+            
         # NESTED_DEF_2 #
         def saveModuleCollectionFromDescriptionProcessInputUI(*args):
             # Process the module collection description input before proceeding with creating a module collection.
+            
+            # If all modules are to be saved as a collection,
             if allModules:
                 treeViewSelection = mrt_namespaces
             else:
+                # Get the module(s) that are selected in the treeView list.
                 # During the proces of entering a description, if the selection changes.
                 treeViewSelection = cmds.treeView(self.uiVars['sceneModuleList_treeView'], query=True, selectItem=True)
                 if treeViewSelection == None:
                     cmds.warning('MRT Error: Module collection error. No module(s) selected for making a collection.')
                     return
-            # Check the description. if empty, notify the user, or proceed.
+                    
+            # Check the description. If empty, notify the user, or proceed.
             if not auto:
                 collectionDescription = cmds.scrollField(self.uiVars['collectionDescpWindowScrollField'], query=True, text=True)
+                
                 if collectionDescription == '':
+                
+                    # Close the window if it exists.
                     try:
                         cmds.deleteUI('mrt_collection_noDescpError_UI_window')
                     except:
                         pass
-                    self.uiVars['collectionNoDescpErrorWindow'] = cmds.window('mrt_collection_noDescpError_UI_window', title='Module collection warning', maximizeButton=False, sizeable=False)
+                        
+                    # Create the "no description error window".
+                    self.uiVars['collectionNoDescpErrorWindow'] = cmds.window('mrt_collection_noDescpError_UI_window',
+                                                title='Module collection warning', maximizeButton=False, sizeable=False)
+                    
+                    # Remove it from preference.
                     try:
                         cmds.windowPref('mrt_collection_noDescpError_UI_window', remove=True)
                     except:
                         pass
-                    cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90, width=220, marginWidth=20, marginHeight=15)
+                        
+                    # Create the parent layouts and elements.
+                    cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90,
+                                                                                width=220, marginWidth=20, marginHeight=15)
                     cmds.text(label='Are you sure you want to continue saving a collection with an empty description?')
-                    cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 90], [2, 'left', 30]), rowAttach=([1, 'top', 8], [2, 'top', 8]))
-                    cmds.button(label='Continue', width=90, command=partial(saveModuleCollectionFromDescription, collectionDescription, treeViewSelection))
-                    ##cmds.button(label='Revert', width=90, command=('cmds.deleteUI(\"'+self.uiVars['collectionNoDescpErrorWindow']+'\")'))
-                    cmds.button(label='Revert', width=90, command=partial(self.closeWindow, self.uiVars['collectionNoDescpErrorWindow']))
+                    cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 90], [2, 'left', 30]),
+                                                                rowAttach=([1, 'top', 8], [2, 'top', 8]))
+                         
+                    cmds.button(label='Continue', width=90, command=partial(saveModuleCollectionFromDescription,
+                                                                            collectionDescription,
+                                                                            treeViewSelection))
+                    # cmds.button(label='Revert', width=90,
+                    #                   command=('cmds.deleteUI(\"'+self.uiVars['collectionNoDescpErrorWindow']+'\")'))
+                    
+                    cmds.button(label='Revert', width=90, command=partial(self.closeWindow,
+                                                                        self.uiVars['collectionNoDescpErrorWindow']))
+                    # Display the "no description error window".
                     cmds.showWindow(self.uiVars['collectionNoDescpErrorWindow'])
                 else:
                     saveModuleCollectionFromDescription(collectionDescription, treeViewSelection)
             if auto:
+                # If an auto module collection is to be saved.
                 saveModuleCollectionFromDescription('Auto generated collection', treeViewSelection)
+                
         # MAIN DEF_BEGINS #
+        
+        # Save current namespace, set to root
+        currentNamespace = cmds.namespaceInfo(currentNamespace=True)
+        cmds.namespace(setNamespace=':')
+        
+        # Get the current selection.
+        selection = cmds.ls(selection=True) or None
+            
         mrt_namespaces = []
         if allModules:
-            # If all modules are to be included in the collection.
-            currentNamespace = cmds.namespaceInfo(currentNamespace=True)
-            cmds.namespace(setNamespace=':')
+            # If all modules in the scene are to be included in the collection,
             namespaces = cmds.namespaceInfo(listOnlyNamespaces=True)
-            cmds.namespace(setNamespace=currentNamespace)
+            # Include all module namespaces
             mrt_namespaces = mfunc.returnMRT_Namespaces(namespaces)
             if mrt_namespaces == None:
                 # If no modules exist in the scene.
@@ -2749,32 +2865,59 @@ class MRT_UI(object):
                 # If no modules are selected.
                 cmds.warning('MRT Error: Module collection error. No module(s) selected for making a collection.')
                 return
-        # Create a window UI for entering the module collection description.
+                
+        # If a module collection is being save by a user.
         if not auto:
+            # Close the window for entering module collection description, if it exists.
             try:
                 cmds.deleteUI('mrt_collectionDescription_input_UI_window')
             except:
                 pass
-            self.uiVars['collectionDescpWindow'] = cmds.window('mrt_collectionDescription_input_UI_window', title='Module collection description', height=150, maximizeButton=False, sizeable=False)
+                
+            # Create a window UI for entering the module collection description.
+            self.uiVars['collectionDescpWindow'] = cmds.window('mrt_collectionDescription_input_UI_window',
+                                title='Module collection description', height=150, maximizeButton=False, sizeable=False)
+            
+            # Remove the window from preference
             try:
                 cmds.windowPref('mrt_collectionDescription_input_UI_window', remove=True)
             except:
                 pass
+                
+            # Main column
             self.uiVars['collectionDescpWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
+            
             cmds.text(label='')
             cmds.text('Enter description for module collection', align='center', font='boldLabelFont')
-            cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=75, width=300, marginWidth=5, marginHeight=10)
+            
+            # Parent layout for description text field.
+            cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=75,
+                                                                            width=300, marginWidth=5, marginHeight=10)
             self.uiVars['collectionDescpWindowScrollField'] = cmds.scrollField(preventOverride=True, wordWrap=True)
+            
+            # Set to main column
             cmds.setParent(self.uiVars['collectionDescpWindowColumn'])
+            # Parent layout for buttons
             cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 28], [2, 'left', 20]))
             cmds.button(label='Save collection', width=130, command=saveModuleCollectionFromDescriptionProcessInputUI)
-            ##cmds.button(label='Cancel', width=90, command=('cmds.deleteUI(\"'+self.uiVars['collectionDescpWindow']+'\")'))
+            # cmds.button(label='Cancel', width=90, command=('cmds.deleteUI(\"'+self.uiVars['collectionDescpWindow']+'\")'))
             cmds.button(label='Cancel', width=90, command=partial(self.closeWindow, self.uiVars['collectionDescpWindow']))
+            
             cmds.setParent(self.uiVars['collectionDescpWindowColumn'])
             cmds.text(label='')
+            
             cmds.showWindow(self.uiVars['collectionDescpWindow'])
+        
+        # If an auto module collection is to be saved (used internally by MRT).
         if auto:
             saveModuleCollectionFromDescriptionProcessInputUI()
+        
+        # Restore previous namespace
+        cmds.namespace(setNamespace=currentNamespace)
+        
+        # Restore previous selection
+        cmds.select(selection, replace=True)
+
 
     def performModuleRename(self, *args):
         mfunc.deleteMirrorMoveConnections()
