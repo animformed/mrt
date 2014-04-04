@@ -2707,7 +2707,7 @@ class MRT_UI(object):
                 for module in modulesToBeUnparented:
                     # Remove the module parenting constraint connection.
                     cmds.lockNode(module+':module_container', lock=False, lockUnpublished=False)
-                    constraint = cmds.listRelatives(module+':moduleParentRepresentationSegment_segmentCurve_endLocator',
+                    constraint = cmds.listRelatives(module+':moduleParentReprSegment_segmentCurve_endLocator',
                                                                             children=True, fullPath=True, type='constraint')
                     cmds.delete(constraint)
 
@@ -2772,8 +2772,8 @@ class MRT_UI(object):
             if modulesToBeUnparented:
                 for module in modulesToBeUnparented:
                     pointConstraint = cmds.pointConstraint(modulesToBeUnparented[module],
-                        module+':moduleParentRepresentationSegment_segmentCurve_endLocator', maintainOffset=False,
-                                    name=module+':moduleParentRepresentationSegment_endLocator_pointConstraint')[0]
+                        module+':moduleParentReprSegment_segmentCurve_endLocator', maintainOffset=False,
+                                    name=module+':moduleParentReprSegment_endLocator_pointConstraint')[0]
                     mfunc.addNodesToContainer(module+':module_container', [pointConstraint])
                     cmds.setAttr(module+':moduleGrp.moduleParent', modulesToBeUnparented[module], type='string')
                     cmds.lockNode(module+':module_container', lock=True, lockUnpublished=True)
@@ -2920,34 +2920,60 @@ class MRT_UI(object):
 
 
     def performModuleRename(self, *args):
-        mfunc.deleteMirrorMoveConnections()
-        newUserSpecifiedName = cmds.textField(self.uiVars['moduleRename_textField'], query=True, text=True)
-        newUserSpecifiedName = newUserSpecifiedName.lower()
-        selectedModule = cmds.ls(selection=True)
-        selectedModule.reverse()
-        selectedModule = selectedModule[0]
-        currentNamespaceForSelectedModule = mfunc.stripMRTNamespace(selectedModule)[0]
-        newNamespace = currentNamespaceForSelectedModule.rpartition('__')[0] + '__' + newUserSpecifiedName
+        '''
+        Renames a selected module. Modifies the user specified name.
+        '''
+        # Save the current namespace, set to root.
         currentNamespace = cmds.namespaceInfo(currentNamespace=True)
         cmds.namespace(setNamespace=':')
-        sceneNamespaces = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
-        currentModuleUserNames = []
+        
+        # Disable / delete all mirror move nodes and connections for mirror module nodes.
+        mfunc.deleteMirrorMoveConnections()
+        
+        # Get the new user specified name for renaming the module.
+        newUserSpecifiedName = cmds.textField(self.uiVars['moduleRename_textField'], query=True, text=True)
+        newUserSpecifiedName = newUserSpecifiedName.lower()
+        
+        # Get the last selected module.
+        selectedModule = cmds.ls(selection=True)
+        selectedModule = selectedModule[-1]
+        
+        # Get the current namespace name for the selected module.
+        currentNamespaceForSelectedModule = mfunc.stripMRTNamespace(selectedModule)[0]
+        
+        # Set the new namespace using the new user specified name for the module.
+        newNamespace = currentNamespaceForSelectedModule.rpartition('__')[0] + '__' + newUserSpecifiedName
+        
+        # If the new namespace matches existing, return.
         if newNamespace == currentNamespaceForSelectedModule:
             return
+        
+        # Get all module namespaces in the scene.
+        sceneNamespaces = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
+        
+        currentModuleUserNames = []
+        
+        # Check if the new module namespace exists in the scene, return if true.
         if sceneNamespaces:
             for namespace in sceneNamespaces:
                 userSpecifiedName = namespace.partition('__')[2]
                 if newUserSpecifiedName == userSpecifiedName:
-                    cmds.warning('MRT Error: Namespace conflict. The module name "%s" already exists in the scene.'%newUserSpecifiedName)
+                    cmds.warning('MRT Error: Namespace conflict. The module name "%s" already ' \
+                                                                    'exists in the scene.' % newUserSpecifiedName)
                     return
+        
+        # Now, that there are no namespace conflicts with existing modules, module re-naming can proceed.
+        
+        # Modify the module's namespace stored in module creation queue with the new namespace.
         if len(self.modules):
             for (key, value) in self.modules.items():
-                i = 0
-                for item in value:
+                for i, item in enumerate(value):
                     if item == currentNamespaceForSelectedModule:
                         self.modules[key][i] = newNamespace
                         break
-                    i += 1
+        
+        # If the module has children (modules), modify their "moduleParent" attribute, to
+        # match the new parent module namespace.
         children = mfunc.traverseChildrenModules(currentNamespaceForSelectedModule)
         if children:
             for childNamespace in children:
@@ -2959,54 +2985,103 @@ class MRT_UI(object):
                 newParentInfo = str(newParentNode)+','+str(currentParentInfo[1])
                 cmds.setAttr(childNamespace+':moduleGrp.moduleParent', newParentInfo, type='string')
                 cmds.lockNode(childNamespace+':module_container', lock=True, lockUnpublished=True)
-
+        
+        # Finally, re-name the namespace for the module itself.
+        # Add the new module namespace.
         cmds.namespace(addNamespace=newNamespace)
+        # Unclock the module container to perform changes.
         cmds.lockNode(currentNamespaceForSelectedModule+':module_container', lock=False, lockUnpublished=False)
-        cmds.namespace(setNamespace=':')
+        # Move the contents of module from old namespace to the new namespace.
         cmds.namespace(moveNamespace=[currentNamespaceForSelectedModule, newNamespace])
+        # Remove the old module namespace.
         cmds.namespace(removeNamespace=currentNamespaceForSelectedModule)
+        # If a mirror module exists (if the module is part of a mirror module pair),
+        # change the "mirrorModuleNamespace" attribute on the mirror module to match the new namespace.
+        # This attribute is used to find a module's mirror.
         if cmds.attributeQuery('mirrorModuleNamespace', node=newNamespace+':moduleGrp', exists=True):
             mirrorModuleNamespace = cmds.getAttr(newNamespace+':moduleGrp.mirrorModuleNamespace')
             cmds.lockNode(mirrorModuleNamespace+':module_container', lock=False, lockUnpublished=False)
             cmds.setAttr(mirrorModuleNamespace+':moduleGrp.mirrorModuleNamespace', newNamespace, type='string')
             cmds.lockNode(mirrorModuleNamespace+':module_container', lock=True, lockUnpublished=True)
+            
+        # Lock the module container after re-naming.
         cmds.lockNode(newNamespace+':module_container', lock=True, lockUnpublished=True)
 
+        # Select the re-named module.
         selection = newNamespace+':'+mfunc.stripMRTNamespace(selectedModule)[1]
         cmds.select(selection, replace=True)
+        
+        # Update the scene module list
         self.updateListForSceneModulesInUI()
+        
+        # Clear module parenting fields.
         self.clearParentModuleField()
         self.clearChildModuleField()
+        
+        # Reset the current namespace.
         if cmds.namespace(exists=currentNamespace):
             cmds.namespace(setNamespace=currentNamespace)
 
+
     def performModuleDuplicate_UI_wrapper(self, *args):
+        '''
+        Duplicates a selected module, when initiated using the "Duplicate selected module" from MRT UI.
+        Calls performModuleDuplicate() to perform the duplication.
+        '''
+        # Close the duplicate action window if open.
         try:
             cmds.deleteUI('mrt_duplicateModuleAction_UI_window')
         except:
             pass
-        self.uiVars['duplicateActionWindow'] = cmds.window('mrt_duplicateModuleAction_UI_window', title='Duplicate Module', widthHeight=(300, 150), maximizeButton=False, sizeable=False)
+        
+        # Create the module duplication window
+        self.uiVars['duplicateActionWindow'] = cmds.window('mrt_duplicateModuleAction_UI_window', title='Duplicate Module',
+                                                                widthHeight=(300, 150), maximizeButton=False, sizeable=False)
+        # Remove it from preferences
         try:
             cmds.windowPref('mrt_duplicateModuleAction_UI_window', remove=True)
         except:
             pass
+            
+        # Main column
         self.uiVars['duplicateActionWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
+        
         cmds.text(label='')
+        
+        # Float 3 field for module duplication offset
         cmds.text('Enter relative offset for duplication (translation)', align='center', font='boldLabelFont')
-        self.uiVars['duplicateActionWindowFloatfieldGrp'] = cmds.floatFieldGrp(numberOfFields=3, label='Offset (world units)', value1=1.0, value2=1.0, value3=1.0, columnAttach=([1, 'left', 15], [2, 'left', 1], [3, 'left', 1], [4, 'right', 12]), columnWidth4=[120, 80, 80, 90], rowAttach=([1, 'top', 14], [2, 'top', 10], [3, 'top', 10], [4, 'top', 10]))
+        self.uiVars['duplicateActionWindowFloatfieldGrp'] = cmds.floatFieldGrp(numberOfFields=3,
+                                                                               label='Offset (world units)',
+                                                                               value1=1.0, value2=1.0, value3=1.0,
+                                                                               columnAttach=([1, 'left', 15],
+                                                                                             [2, 'left', 1],
+                                                                                             [3, 'left', 1],
+                                                                                             [4, 'right', 12]),
+                                                                               columnWidth4=[120, 80, 80, 90],
+                                                                               rowAttach=([1, 'top', 14],
+                                                                                          [2, 'top', 10],
+                                                                                          [3, 'top', 10],
+                                                                                          [4, 'top', 10]))
+        # Maintain module parenting after duplication
         cmds.rowLayout(numberOfColumns=1, columnAttach=[1, 'left', 110], rowAttach=[1, 'top', 2])
-        self.uiVars['duplicateAction_maintainParentCheckbox'] = cmds.checkBox(label='Maintain parent connections', enable=True, value=True)
+        self.uiVars['duplicateAction_maintainParentCheckbox'] = cmds.checkBox(label='Maintain parent connections',
+                                                                                            enable=True, value=True)
         cmds.setParent(self.uiVars['duplicateActionWindowColumn'])
+        
+        # Button for module duplicate command
         cmds.rowLayout(numberOfColumns=1, columnAttach=[1, 'left', 115], rowAttach=[1, 'top', 5])
         cmds.button(label='OK', width=150, command=self.performModuleDuplicate)
         cmds.setParent(self.uiVars['duplicateActionWindowColumn'])
+        
         cmds.text(label='')
         cmds.showWindow(self.uiVars['duplicateActionWindow'])
+
 
     def performModuleDuplicate(self, *args):
         selection = cmds.ls(selection=True)
         if not selection:
-            cmds.warning('MRT Error: Duplicate Module Error. Nothing is selected. Please select a module to perform duplication.')
+            cmds.warning('MRT Error: Duplicate Module Error. Nothing is selected. ' \
+                                                    'Please select a module to perform duplication.')
             return
         selection.reverse()
         selection = selection[0]
@@ -3017,18 +3092,26 @@ class MRT_UI(object):
         moduleAttrsDict = mfunc.returnModuleAttrsFromScene(moduleNamespace)
         mfunc.createModuleFromAttributes(moduleAttrsDict)
         cmds.select(clear=True)
+        
         if cmds.checkBox(self.uiVars['duplicateAction_maintainParentCheckbox'], query=True, value=True):
             for (module, parentModuleNode) in moduleAttrsDict['moduleParentInfo']:
                 if module != None and parentModuleNode != 'None':
                     parentModuleNodeAttr = parentModuleNode.split(',')
                     cmds.lockNode(module+':module_container', lock=False, lockUnpublished=False)
-                    pointConstraint = cmds.pointConstraint(parentModuleNodeAttr[0], module+':moduleParentRepresentationSegment_segmentCurve_endLocator', maintainOffset=False, name=module+':moduleParentRepresentationSegment_endLocator_pointConstraint')[0]
+                    
+                    pointConstraint = \
+                    cmds.pointConstraint(parentModuleNodeAttr[0],
+                                         module+':moduleParentReprSegment_segmentCurve_endLocator',
+                                         maintainOffset=False,
+                                         name=module+':moduleParentReprSegment_endLocator_pointConstraint')[0]
+                         
                     mfunc.addNodesToContainer(module+':module_container', [pointConstraint])
                     cmds.setAttr(module+':moduleGrp.moduleParent', parentModuleNode, type='string')
-                    cmds.setAttr(module+':moduleParentRepresentationGrp.visibility', 1)
+                    cmds.setAttr(module+':moduleParentReprGrp.visibility', 1)
                     if parentModuleNodeAttr[1] == 'Hierarchical':
-                        cmds.setAttr(module+':moduleParentRepresentationSegment_hierarchy_representationShape.overrideColor', 16)
+                        cmds.setAttr(module+':moduleParentReprSegment_hierarchy_reprShape.overrideColor', 16)
                     cmds.lockNode(module+':module_container', lock=True, lockUnpublished=True)
+                    
         cmds.select(clear=True)
         # If proxy geometry is enabled.
         if moduleAttrsDict['node_compnts'][2] == True:
@@ -3038,10 +3121,14 @@ class MRT_UI(object):
                     if i == 0:
                         orig_proxy_elbow_transform = moduleAttrsDict['orig_module_Namespace']+':root_node_transform_proxy_elbow_geo'
                         proxy_elbow_transform = moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_elbow_geo'
+                        
                         if cmds.objExists(orig_proxy_elbow_transform+'_preTransform'):
                             cmds.delete(proxy_elbow_transform)
-                            duplicatedTransform = cmds.duplicate(orig_proxy_elbow_transform, name=moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_elbow_geo')[0]
+                            duplicatedTransform = cmds.duplicate(orig_proxy_elbow_transform,
+                                        name=moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_elbow_geo')[0]
+                                        
                             cmds.parent(duplicatedTransform, proxy_elbow_transform+'_scaleTransform', relative=True)
+                         
                         else:
                             cmds.delete(proxy_elbow_transform+'_preTransform')
                     elif i == moduleAttrsDict['num_nodes']-1:
@@ -3205,9 +3292,9 @@ class MRT_UI(object):
             else:
                 selection = moduleAttrsDict['mirror_module_Namespace']+':splineEndHandleTransform'
                 cmds.evalDeferred(partial(mfunc.moveSelectionOnIdle, selection, offset), lowestPriority=True)
-
-
+                
         cmds.evalDeferred(partial(mfunc.performOnIdle), lowestPriority=True)
+
 
     def performModuleDeletion(self, *args):
         currentNamespace = cmds.namespaceInfo(currentNamespace=True)
@@ -3259,6 +3346,7 @@ class MRT_UI(object):
         self.clearChildModuleField()
         self.resetListHeightForSceneModulesUI()
 
+
     def deleteAllSceneModules(self):
         namespacesToBeRemoved = []
         allModules = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
@@ -3296,11 +3384,11 @@ class MRT_UI(object):
         if childrenModules:
             for childModule in childrenModules:
                 cmds.lockNode(childModule+':module_container', lock=False, lockUnpublished=False)
-                #cmds.delete(childModule+':moduleParentRepresentationSegment_endLocator_pointConstraint')
-                constraint = cmds.listRelatives(childModule+':moduleParentRepresentationSegment_segmentCurve_endLocator', children=True, fullPath=True, type='constraint')
+                #cmds.delete(childModule+':moduleParentReprSegment_endLocator_pointConstraint')
+                constraint = cmds.listRelatives(childModule+':moduleParentReprSegment_segmentCurve_endLocator', children=True, fullPath=True, type='constraint')
                 cmds.delete(constraint)
                 cmds.setAttr(childModule+':moduleGrp.moduleParent', 'None', type='string')
-                cmds.setAttr(childModule+':moduleParentRepresentationGrp.visibility', 0)
+                cmds.setAttr(childModule+':moduleParentReprGrp.visibility', 0)
                 cmds.lockNode(childModule+':module_container', lock=True, lockUnpublished=True)
 
     def toggleEditMenuButtonsOnModuleSelection(self):
@@ -3382,8 +3470,8 @@ class MRT_UI(object):
                     if cmds.nodeType(lastSelection) == 'joint':
                         cmds.textField(self.uiVars['selectedParent_textField'], edit=True, text=lastSelection, font='plainLabelFont')
                         cmds.button(self.uiVars['moduleParent_button'], edit=True, enable=True)
-                    #elif lastSelection.endswith('localAxesInfoRepresentation'):
-                        #text = lastSelection.rpartition('_localAxesInfoRepresentation')[0]
+                    #elif lastSelection.endswith('localAxesInfoRepr'):
+                        #text = lastSelection.rpartition('_localAxesInfoRepr')[0]
                         #cmds.textField(self.uiVars['selectedParent_textField'], edit=True, text=text, font='plainLabelFont')
                         #cmds.button(self.uiVars['moduleParent_button'], edit=True, enable=True)
                     else:
@@ -3429,12 +3517,12 @@ class MRT_UI(object):
                 self.clearChildModuleField()
                 return
         cmds.lockNode(fieldInfo+':module_container', lock=False, lockUnpublished=False)
-        constraint = cmds.listRelatives(fieldInfo+':moduleParentRepresentationSegment_segmentCurve_endLocator', children=True, fullPath=True, type='constraint')
-        #cmds.delete(fieldInfo+':moduleParentRepresentationSegment_endLocator_pointConstraint')
+        constraint = cmds.listRelatives(fieldInfo+':moduleParentReprSegment_segmentCurve_endLocator', children=True, fullPath=True, type='constraint')
+        #cmds.delete(fieldInfo+':moduleParentReprSegment_endLocator_pointConstraint')
         cmds.delete(constraint)
         cmds.setAttr(fieldInfo+':moduleGrp.moduleParent', 'None', type='string')
-        cmds.setAttr(fieldInfo+':moduleParentRepresentationGrp.visibility', 0)
-        cmds.setAttr(fieldInfo+':moduleParentRepresentationSegment_hierarchy_representationShape.overrideColor', 2)
+        cmds.setAttr(fieldInfo+':moduleParentReprGrp.visibility', 0)
+        cmds.setAttr(fieldInfo+':moduleParentReprSegment_hierarchy_reprShape.overrideColor', 2)
         cmds.lockNode(fieldInfo+':module_container', lock=True, lockUnpublished=True)
         cmds.button(self.uiVars['moduleUnparent_button'], edit=True, enable=False)
         cmds.button(self.uiVars['parentSnap_button'], edit=True, enable=False)
@@ -3486,14 +3574,14 @@ class MRT_UI(object):
         cmds.lockNode(childFieldInfo+':module_container', lock=False, lockUnpublished=False)
         mfunc.updateContainerNodes(childFieldInfo+':module_container')
         mfunc.updateContainerNodes(parentModuleNamespace+':module_container')
-        pointConstraint = cmds.pointConstraint(parentFieldInfo, childFieldInfo+':moduleParentRepresentationSegment_segmentCurve_endLocator', maintainOffset=False, name=childFieldInfo+':moduleParentRepresentationSegment_endLocator_pointConstraint')[0]
+        pointConstraint = cmds.pointConstraint(parentFieldInfo, childFieldInfo+':moduleParentReprSegment_segmentCurve_endLocator', maintainOffset=False, name=childFieldInfo+':moduleParentReprSegment_endLocator_pointConstraint')[0]
         mfunc.addNodesToContainer(childFieldInfo+':module_container', [pointConstraint])
         parentType = cmds.radioCollection(self.uiVars['moduleParent_radioColl'], query=True, select=True)
         if parentType == 'Hierarchical':
-            cmds.setAttr(childFieldInfo+':moduleParentRepresentationSegment_hierarchy_representationShape.overrideColor', 16)
+            cmds.setAttr(childFieldInfo+':moduleParentReprSegment_hierarchy_reprShape.overrideColor', 16)
         parentInfo = parentFieldInfo + ',' + parentType
         cmds.setAttr(childFieldInfo+':moduleGrp.moduleParent', parentInfo, type='string')
-        cmds.setAttr(childFieldInfo+':moduleParentRepresentationGrp.visibility', 1)
+        cmds.setAttr(childFieldInfo+':moduleParentReprGrp.visibility', 1)
         cmds.lockNode(childFieldInfo+':module_container', lock=True, lockUnpublished=True)
         cmds.button(self.uiVars['moduleUnparent_button'], edit=True, enable=True)
         cmds.button(self.uiVars['childSnap_button'], edit=True, enable=True)
@@ -4340,14 +4428,12 @@ class MRT_UI(object):
         self.updateRemoveAllButtonStatForParentSwitching()
 
 
-
     def postSelectionParentSwitchListItem(self, *args):
         selectedItem = cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], query=True, selectItem=True)
         if selectedItem:
             cmds.button(self.uiVars['c_rig_prntSwitch_RemoveSelected'], edit=True, enable=True)
         else:
             cmds.button(self.uiVars['c_rig_prntSwitch_RemoveSelected'], edit=True, enable=False)
-
 
 
     def addSelectedControlToTargetList(self, *args):
@@ -4419,25 +4505,33 @@ class MRT_UI(object):
         self.updateRemoveAllButtonStatForParentSwitching()
 
 
-
     def removeSelectedTargetFromParentSwitchList(self, *args):
+        '''
+        Callback for "Remove selected" button under "Parent switching". Removes a selected parent target from parent
+        target scroll list.
+        '''
+        # Remove the selected item from scroll list.
         selectedItem = cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], query=True, selectItem=True)[0]
         cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], edit=True, removeItem=selectedItem)
-                                                                                    
+        
+        # If there are no items left in the list, append the default item.
         allItems = cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], query=True, allItems=True) or []
         if not allItems:
             cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], edit=True, enable=False,
                                         height=32, append='\t           < no current target(s) >', font='boldLabelFont')
         
+        # If there are item(s) in the parent target list that needs to be updated, get them.
+        # (self.existingParentSwitchTargets) is a list of existing parent target(s).
         targetDiff = set.symmetric_difference(set(self.existingParentSwitchTargets), set(allItems))
-        
         if len(targetDiff) > 0:
             cmds.button(self.uiVars['c_rig_prntSwitch_createButton'], edit=True, enable=True)
         else:
             cmds.button(self.uiVars['c_rig_prntSwitch_createButton'], edit=True, enable=False)
         
+        # Disable the button state for removing selected parent target.
         cmds.button(self.uiVars['c_rig_prntSwitch_RemoveSelected'], edit=True, enable=False)
 
+        # Update the target parent scroll list height based on the number of items.
         if len(allItems):
             scrollHeight = len(allItems)* 25
             if scrollHeight > 100:
@@ -4447,39 +4541,38 @@ class MRT_UI(object):
             if scrollHeight == 25:
                 scrollHeight = 40
             cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], edit=True, height=scrollHeight)
-            self.postSelectionParentSwitchListItem()
-
+            
+            #self.postSelectionParentSwitchListItem()
+        
+        # Update state for "Remove All" parent targets button.
         self.updateRemoveAllButtonStatForParentSwitching()
 
 
-
     def removeAllTargetsFromParentSwitchList(self, *args):
-        allItems = cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], query=True, allItems=True)
-        for item in allItems:
-            cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], edit=True,
-                                                                                                removeItem=item)
+        '''
+        Callback for "Remove All" button for clearing all items in parent target scroll list under "Parent switching".
+        '''
+        # Clear the target parent list items.
+        cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], edit=True, removeAll=True)
         
-        remItems = cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], query=True, allItems=True) or []
-        if not remItems:
-            cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], edit=True,
-                              enable=False, append='\t           < no current target(s) >', font='boldLabelFont')
-        
+        # Add the default item, and set the height.
+        cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], edit=True, enable=False,
+                                                append='\t           < no current target(s) >', font='boldLabelFont')
         cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], edit=True, height=32)
         
-        targetDiff = set.symmetric_difference(set(self.existingParentSwitchTargets), set(remItems))
-        
-        if len(targetDiff) > 0:
-            cmds.button(self.uiVars['c_rig_prntSwitch_createButton'], edit=True, enable=True)
-        else:
-            cmds.button(self.uiVars['c_rig_prntSwitch_createButton'], edit=True, enable=False)
-        
+        # Disable the associate button states.
+        cmds.button(self.uiVars['c_rig_prntSwitch_createButton'], edit=True, enable=False)
         cmds.button(self.uiVars['c_rig_prntSwitch_RemoveAll'], edit=True, enable=False)
 
 
-
     def updateRemoveAllButtonStatForParentSwitching(self):
+        '''
+        Updates the button enable state for "Remove All" button in Parent switching under Rig tab.
+        '''
+        # If there are items in the parent switch target scroll list, proceed, or disable button state.
         allItems = cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], query=True, allItems=True)
         if allItems:
+            # If the list contains just the default item, disable button state
             if len(allItems) == 1 and re.findall('< no current target\(s\) >', allItems[0]):
                 cmds.button(self.uiVars['c_rig_prntSwitch_RemoveAll'], edit=True, enable=False)
             else:
@@ -4487,14 +4580,23 @@ class MRT_UI(object):
         else:
             cmds.button(self.uiVars['c_rig_prntSwitch_RemoveAll'], edit=True, enable=False)
 
-    
+
     def createParentSwitchGroupforControlHandle(self, *args):
+        '''
+        Creates the transform for a character control for constraining in space switching use. It 
+        receives constraints from parent controls added as parent switches.
+        '''
+        # Check selection
         selection = cmds.ls(selection=True)
         if selection:
             selection = selection[-1]
         else:
             return
+        
+        # Check if the selected object is a character control
         if re.match('^MRT_character[A-Za-z0-9]*__\w+_handle$', selection):
+        
+            # Check if the character control has a parent switch group
             transformParent = cmds.listRelatives(selection, parent=True)
             if transformParent:
                 if re.match(selection+'_grp', transformParent[0]):
@@ -4509,22 +4611,37 @@ class MRT_UI(object):
         selectionUserSpecName = re.split('_[A-Z]', selectionName)[0]
         rootJoint = 'MRT_character%s__%s_root_node_transform'%(characterName, selectionUserSpecName)
 
-        # Create the group node which will receive the constraints from parent transforms.
+        # Create the parent switch group node which will receive the constraints from parent transforms.
         parentSwitch_grp = cmds.group(empty=True, name=selection + '_parentSwitch_grp')
         tempConstraint = cmds.parentConstraint(selection, parentSwitch_grp, maintainOffset=False)[0]
         cmds.delete(tempConstraint)
+        
         # Add custom attributes to the group node, and create a child transform to contain the main transform
         # (for which the parent switch group is being created).
+        
+        # Create an enum attribute on the character control (to be updated later to add parent names for user switching)
         cmds.addAttr(selection, attributeType='enum', longName='targetParents', enumName=' ', keyable=True)
         cmds.setAttr(selection+'.targetParents', lock=True)
+        
+        # Create string attribute on parent switch group node to store parent node list
         cmds.addAttr(parentSwitch_grp, dataType='string', longName='parentTargetList', keyable=False)
         cmds.setAttr(parentSwitch_grp+'.parentTargetList', 'None', type='string', lock=True)
+        
+        # Create a pre-transform for the character control, to be placed below the parent switch group.
         transform_grp = cmds.duplicate(parentSwitch_grp, parentOnly=True, name=selection+'_grp')[0]
+        
+        # If the character control has a parent, get it.
         transformParent = cmds.listRelatives(selection, parent=True)
         if transformParent:
             cmds.parent(parentSwitch_grp, transformParent[0], absolute=True)
+            
+        # Parent the control pre-transform below the parent switch group.
         cmds.parent(transform_grp, parentSwitch_grp, absolute=True)
+        
+        # Parent the control below its pre-transform
         cmds.parent(selection, transform_grp, absolute=True)
+        
+        # Add the control pre-transform and the parent switch group to the control's container.
         controlContainer = cmds.container(selection, query=True, findContainer=True)
         mfunc.addNodesToContainer(controlContainer, [parentSwitch_grp, transform_grp])
 

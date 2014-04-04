@@ -612,8 +612,8 @@ def returnValidSelectionFlagForModuleTransformObjects(selection):
                     re.compile('^MRT_\D+__\w+:root_node_transform_control$'),
                     re.compile('^MRT_\D+__\w+:end_node_transform_control$'),
                     re.compile('^MRT_\D+__\w+:node_1_transform_control$'),
-                    re.compile('^MRT_\D+__\w+:single_orientation_representation_transform$'),
-                    re.compile('^MRT_\D+__\w+:[_0-9a-z]*transform_orientation_representation_transform$')]
+                    re.compile('^MRT_\D+__\w+:single_orientation_repr_transform$'),
+                    re.compile('^MRT_\D+__\w+:[_0-9a-z]*transform_orientation_repr_transform$')]
 
     for matchObject in matchObjects:
 
@@ -1287,8 +1287,8 @@ def returnModuleAttrsFromScene(moduleNamespace):
             moduleAttrsDict['node_handle_sizes'] = [('root_node_transform', \
                                     cmds.getAttr(moduleNamespace+':module_transform.root_node_transform_handle_size'))]
 
-            moduleAttrsDict['orientation_representation_values'] = [('root_node_transform', \
-                                  cmds.getAttr(moduleNamespace+':single_orientation_representation_transform.rotate')[0])]
+            moduleAttrsDict['orientation_repr_values'] = [('root_node_transform', \
+                                  cmds.getAttr(moduleNamespace+':single_orientation_repr_transform.rotate')[0])]
 
             moduleAttrsDict['node_translation_values'] = [('root_node_transform', \
                                                        cmds.getAttr(moduleNamespace+':root_node_transform.translate')[0])]
@@ -1297,27 +1297,27 @@ def returnModuleAttrsFromScene(moduleNamespace):
                     cmds.xform(moduleNamespace+':root_node_transform', query=True, worldSpace=True, translation=True))]
 
             moduleAttrsDict['node_world_orientation_values'] = [('root_node_transform', \
-            cmds.xform(moduleNamespace+':single_orientation_representation_transform', query=True, worldSpace=True, rotation=True))]
+            cmds.xform(moduleNamespace+':single_orientation_repr_transform', query=True, worldSpace=True, rotation=True))]
 
             moduleAttrsDict['node_rotationOrder_values'] = [('root_node_transform', \
                                                      cmds.getAttr(moduleNamespace+':root_node_transform.rotateOrder'))]
 
         if numNodes > 1:
             # Get the node orientation representation control values
-            node_orientation_Grp = moduleNamespace+':moduleOrientationHierarchyRepresentationGrp'
+            node_orientation_Grp = moduleNamespace+':moduleOrientationHierarchyReprGrp'
             node_orientation_Grp_allChildren = \
                 cmds.listRelatives(node_orientation_Grp, allDescendents=True, type='transform')
-            all_node_orientation_transforms = filter(lambda transform:transform.endswith('orientation_representation_transform'), \
+            all_node_orientation_transforms = filter(lambda transform:transform.endswith('orientation_repr_transform'), \
                                                                                         node_orientation_Grp_allChildren)
 
-            node_orientation_representation_values = []
+            node_orientation_repr_values = []
 
             for transform in all_node_orientation_transforms:
                 orientationAttr = cmds.listAttr(transform, keyable=True, visible=True, unlocked=True)[0]
-                node_orientation_representation_values.append((stripMRTNamespace(transform)[1], \
+                node_orientation_repr_values.append((stripMRTNamespace(transform)[1], \
                                                                                 cmds.getAttr(transform+'.'+orientationAttr)))
 
-            moduleAttrsDict['orientation_representation_values'] = node_orientation_representation_values ##
+            moduleAttrsDict['orientation_repr_values'] = node_orientation_repr_values ##
 
             # Get the world orientation values for the module nodes.
             node_world_orientations = []
@@ -2398,7 +2398,7 @@ def createModuleFromAttributes(moduleAttrsDict, createFromUI=False):
                     cmds.setAttr(node+'.translate', *node_translation_value)
 
                 # Set values for orientation representations.
-                for (orientation_node, node_orientation_value) in moduleAttrsDict['orientation_representation_values']:
+                for (orientation_node, node_orientation_value) in moduleAttrsDict['orientation_repr_values']:
                     node = moduleAttrsDict['module_Namespace']+':'+orientation_node
                     attr = cmds.listAttr(node, keyable=True, visible=True, unlocked=True)[0]
                     cmds.setAttr(node+'.'+attr, node_orientation_value)
@@ -2415,16 +2415,16 @@ def createModuleFromAttributes(moduleAttrsDict, createFromUI=False):
 
                 # Get the single orientation representation control for a joint module with a single node
                 node = moduleAttrsDict['module_Namespace']+':root_node_transform'
-                orientation_representation = moduleAttrsDict['module_Namespace']+':single_orientation_representation_transform'
+                orientation_repr = moduleAttrsDict['module_Namespace']+':single_orientation_repr_transform'
                 selectionNodes.append(node)
 
                 # Set it's orientation
-                cmds.setAttr(orientation_representation+'.rotate', *moduleAttrsDict['orientation_representation_values'][0][1])
+                cmds.setAttr(orientation_repr+'.rotate', *moduleAttrsDict['orientation_repr_values'][0][1])
 
                 # Set the value for orientation representation control's mirror
                 if moduleAttrsDict['mirror_options'][0] == 'On':
-                    orientation_representation = moduleAttrsDict['mirror_module_Namespace']+':single_orientation_representation_transform'
-                    cmds.setAttr(orientation_representation+'.rotate', *moduleAttrsDict['orientation_representation_values'][0][1])
+                    orientation_repr = moduleAttrsDict['mirror_module_Namespace']+':single_orientation_repr_transform'
+                    cmds.setAttr(orientation_repr+'.rotate', *moduleAttrsDict['orientation_repr_values'][0][1])
 
 
         if moduleAttrsDict['node_type'] == 'SplineNode':
@@ -2629,9 +2629,9 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
 
             # Based on the number of attributes on the selected control, affect the mirror attributes.
             if len(selectionAttrs) == 1: # A Joint module orientation representation control ?
-                if re.match('^MRT_\D+__\w+:[_0-9a-z]*transform_orientation_representation_transform$', selection):
+                if re.match('^MRT_\D+__\w+:[_0-9a-z]*transform_orientation_repr_transform$', selection):
                     __MRT_utility_tempScriptJob_list.append(cmds.scriptJob(attributeChange=[str(selection+'.'+selectionAttrs[0]), \
-                    partial(updateOrientationRepresentationTransformForMirrorMove, selection, mirrorObject, selectionAttrs[0], \
+                    partial(updateOrientationReprTransformForMirrorMove, selection, mirrorObject, selectionAttrs[0], \
                                                                                                             moduleNamespace)]))
                 else:
                     __MRT_utility_tempScriptJob_list.append(cmds.scriptJob(attributeChange=[str(selection+'.'+selectionAttrs[0]), \
@@ -2749,13 +2749,13 @@ def updateChangedAttributeForMirrorMove(selection, mirrorObject, attribute, mult
     cmds.setAttr(mirrorObject+'.'+attribute, value)
 
 
-def updateOrientationRepresentationTransformForMirrorMove(selection, mirrorObject, attribute, namespace):
+def updateOrientationReprTransformForMirrorMove(selection, mirrorObject, attribute, namespace):
     """
-    This function is called by a scriptJob when "orientation_representation_transform" control
+    This function is called by a scriptJob when "orientation_repr_transform" control
     for a mirrored joint module is selected. It mirrors the rotation of the aim axis movement
     of the control to its mirror. Used in setupMirrorMoveConnections().
     """
-    # Get the value of the "orientation representation transform" control aim axis rotation.
+    # Get the value of the "orientation repr transform" control aim axis rotation.
     value = cmds.getAttr(selection+'.'+attribute)
 
     # Set the rotation according to the mirror function.
