@@ -117,7 +117,7 @@ def moduleSelectionFromTreeView():
 	else:
 		cmds.select(clear=True)
 
-# Now declare Mel and Python UI callbacks calling the defined functions above,
+# Now declare MEL and Python UI callbacks calling the defined functions above,
 # depending on the maya's version.
 
 if _maya_version >=2013:
@@ -4139,19 +4139,27 @@ class MRT_UI(object):
 
 
     def removeSelectedControlRigFromHierarchy(self, *args):
+        '''
+        Detaches a control rig currently applied to a character joint hierarchy.
+        '''
+        # Temporarily disable DG cycle check.
         cy_check = cmds.cycleCheck(query=True, evaluation=True)
         if cy_check:
             cmds.cycleCheck(evaluation=False)
+        
+        # Check if the selection is referenced.
         selection = cmds.ls(selection=True)[-1]
         if cmds.ls(selection, referencedNodes=True):
             cmds.warning('MRT Error: Referenced object selected. Aborting.')
             return
-        ctrlRigLayerName = cmds.textScrollList(self.uiVars['c_rig_attachedRigs_txScList'], query=True, 
-        																								selectItem=True)[-1]
+        
+        # Get the selected control rig to be detached.
+        ctrlRigLayerName = cmds.textScrollList(self.uiVars['c_rig_attachedRigs_txScList'], query=True, selectItem=True)[-1]
         ctrlRigLayer = self.controlRiggingAttributes[ctrlRigLayerName].partition('apply')[2]
         hierarchyRoot = self.controlRiggingAttributes['__rootJoint__']
         characterName = hierarchyRoot.partition('__')[0].partition('MRT_character')[2]
         userSpecName = re.split('_root_node_transform', hierarchyRoot)[0].partition('__')[2]
+        
         # Change the rig layer attribute on root joint for the character hierarchy
         rigLayers = cmds.getAttr(hierarchyRoot+'.rigLayers')
         rigLayers = rigLayers.split(',')
@@ -4164,6 +4172,7 @@ class MRT_UI(object):
             cmds.setAttr(hierarchyRoot+'.rigLayers', lock=False)
             cmds.setAttr(hierarchyRoot+'.rigLayers', 'None', type='string', lock=True)
         cmds.currentTime(0)
+        
         # Reset all controls.
         nodes = []
         cmds.currentTime(0)
@@ -4198,12 +4207,15 @@ class MRT_UI(object):
         ctrl_container = 'MRT_character{0}__{1}_{2}_Container'.format(characterName, userSpecName, ctrlRigLayer)
 
         allControlRigHandles = [item for item in cmds.ls(type='transform') 
-        						if re.match('^MRT_character%s__%s_%s\w+handle$' % (characterName, userSpecName, ctrlRigLayer), item)]
+                    if re.match('^MRT_character%s__%s_%s\w+handle$' % (characterName, userSpecName, ctrlRigLayer), item)]
 
         for handle in allControlRigHandles:
-            childTargetHandles = set([item.rpartition('_parentSwitch_grp_parentConstraint')[0] 
-            		  				  for item in cmds.listConnections(handle, destination=True) 
-            		  				  if re.match('^MRT_character%s__\w+handle_parentSwitch_grp_parentConstraint$' % (characterName), item)])
+        
+            childTargetHandles = \
+                set([item.rpartition('_parentSwitch_grp_parentConstraint')[0]
+                    for item in cmds.listConnections(handle, destination=True)
+                    if re.match('^MRT_character%s__\w+handle_parentSwitch_grp_parentConstraint$' % (characterName), item)])
+                    
             if childTargetHandles:
                 for child in childTargetHandles:
                     parentSwitchCondition = child+'_'+handle+'_parentSwitch_condition'
@@ -4270,27 +4282,45 @@ class MRT_UI(object):
 
 
     def displayAttachedControlRigs(self, rootJoint):
+        '''
+        Displays the attached/applied control rig(s) on a character joint hierarchy under "Control rigging".
+        Uses the "rigLayers" attribute on the root joint of the character hierarchy.
+        '''
+        # Clear current attached control rig list.
         cmds.textScrollList(self.uiVars['c_rig_attachedRigs_txScList'], edit=True, height=32, removeAll=True)
+        
+        # Get the "rigLayers" attribute from the root joint of the character hierarchy. This contains a string
+        # list of control rigs(s) currently applied to the character hierarchy.
         if rootJoint:
             atRigList = cmds.getAttr(rootJoint+'.rigLayers')
+            
+            # If attached control rig(s) are found.
             if atRigList != 'None':
+            
+                # Set the height of the attached control rig scroll list based on the number of items.
                 atRigList = atRigList.split(',')
                 scrollHeight = len(atRigList) * 20
                 if scrollHeight > 100:
                     scrollHeight = 100
                 if scrollHeight == 20:
                     scrollHeight = 40
+                
+                # Append control rig entry to the scroll list.
                 for layer in sorted(atRigList):
                     layer = layer.replace('_', ' ')
                     cmds.textScrollList(self.uiVars['c_rig_attachedRigs_txScList'], edit=True, enable=True, 
                     												append=layer, height=scrollHeight, font='plainLabelFont')
                 cmds.textScrollList(self.uiVars['c_rig_attachedRigs_txScList'], edit=True, selectIndexedItem=1)
                 cmds.button(self.uiVars['c_rig_removeRigButton'], edit=True, enable=True)
+            
+            # If no attached control rig is found.
             if atRigList == 'None':
                 cmds.textScrollList(self.uiVars['c_rig_attachedRigs_txScList'], edit=True, enable=True, 
                 		 height=32, append=['              < No rig(s) attached to the selected character hierarchy >'], 
                 		 																		font='obliqueLabelFont')
                 cmds.button(self.uiVars['c_rig_removeRigButton'], edit=True, enable=False)
+        
+        # If no root joint is specified.
         else:
             cmds.textScrollList(self.uiVars['c_rig_attachedRigs_txScList'], edit=True, enable=False, 
                               height=32, append=['      < select a character hierarchy to remove attached rig(s) >'], 
@@ -4299,128 +4329,217 @@ class MRT_UI(object):
 
 
     def returnValidSelectionFlagForCharacterHierarchy(self, selection):
+        '''
+        Checks if a selected object (passed-in) is an MRT character joint.
+        '''
         matchObjects = [re.compile('^MRT_character[a-zA-Z0-9]*__\w+_node_\d+_transform$'),
                         re.compile('^MRT_character[a-zA-Z0-9]*__\w+_root_node_transform$'),
                         re.compile('^MRT_character[a-zA-Z0-9]*__\w+_end_node_transform$')]
-        i = 1
-        for matchObject in matchObjects:
+
+        for i, matchObject in enumerate(matchObjects):
+        
+            # Check if the object matches an MRT character joint name.
             matchResult = matchObject.match(selection)
+            
             if matchResult:
+            
+                # Get the character name from the joint.
                 characterName = selection.partition('__')[0].partition('MRT_character')[2]
+                
+                # Get the skinJointSet set from character name.
                 skinJointSet = 'MRT_character%s__skinJointSet'%(characterName)
+                
+                # Check if the joint belongs to the set.
                 status = cmds.sets(selection, isMember=skinJointSet)
+                
+                # If valid, return true with the index+1 of the matchObjects index.
+                # This can be used to identify the joint name type.
                 if status:
-                    return True, i
-                else:
-                    return False, 0
-            i += 1
+                    return True, i+1
+
+        # Invalid MRT character joint.
         return False, 0
 
 
     def viewControlRigOptionsOnHierarchySelection(self):
-        selection = mel.eval('ls -sl -type joint')
+        '''
+        Called during selection to check if a character hierarchy is selected, to show available
+        control rig(s) and attached control rig(s) on the character hierarchy.
+        '''
+        # Check for joint selection.
+        selection = mel.eval('ls -sl -type joint')  # cmds module had issues with "ls" when executed via scriptJob
         if selection:
             selection = selection[-1]
-            if re.match('^MRT_character\w+', selection):
-                status = mfunc.checkForJointDuplication()
-                if not status:
+                    
+            # Check if the selected joint belongs to an MRT character.
+            status = self.returnValidSelectionFlagForCharacterHierarchy(selection)[0]
+            
+            if status:
+            
+                # Check for duplicated character joint(s) in the scene.
+                char_joint_state = mfunc.checkForJointDuplication()
+
+                # If there are no duplicated character joint(s) in the scene, proceed.
+                if char_joint_state:
+                
+                    characterName = selection.partition('__')[0].partition('MRT_character')[2]
+                    rootJoint = mfunc.returnRootForCharacterHierarchy(selection)
+                    rootJointAllChildren = cmds.listRelatives(rootJoint, allDescendents=True, type='joint') or []
+                    
+                    # Check for additional "root_node_transform" joint children. This might exist
+                    # in a custom character joint hierarchy, created from module with hierarchical child module(s).
+                    children_roots = [item for item in rootJointAllChildren if \
+                                      re.match('^MRT_character\w+_root_node_transform$', item)]
+                    if children_roots:
+                    
+                        # Get the joint hierarchy data from the main root joint for the selected character hierarchy.
+                        hierarchyTreeString = mfunc.returnHierarchyTreeListStringForCustomControlRigging(rootJoint)
+                        
+                        # Get the control rigging options that can be applied to the custom joint hierarchy.
+                        self.displayControlRiggingOptions(rootJoint, hierarchyTreeString)
+                    else:
+                        # If the character joint hierarchy is created from a module with no hierarchical child module(s).
+                        self.displayControlRiggingOptions(rootJoint)
+                    
+                    # Show attached control rig(s) on the selected character joint hierarchy.
+                    self.displayAttachedControlRigs(rootJoint)
+                
+                # If duplicated character joint(s) in the scene.
+                else:
                     self.displayControlRiggingOptions(None)
                     self.displayAttachedControlRigs(None)
-                    return
-            status = self.returnValidSelectionFlagForCharacterHierarchy(selection)
-            if status[0]:
-                characterName = selection.partition('__')[0].partition('MRT_character')[2]
-                rootJoint = mfunc.returnRootForCharacterHierarchy(selection)
-                rootJointAllChildren = cmds.listRelatives(rootJoint, allDescendents=True, type='joint') or []
-                children_roots = [item for item in rootJointAllChildren if \
-                				  re.match('^MRT_character\w+_root_node_transform$', item)]
-                if children_roots:
-                    hierarchyTreeString = mfunc.returnHierarchyTreeListStringForCustomControlRigging(rootJoint)
-                    self.displayControlRiggingOptions(rootJoint, hierarchyTreeString)
-                else:
-                    self.displayControlRiggingOptions(rootJoint)
-                self.displayAttachedControlRigs(rootJoint)
+            
+            # If non-MRT character joint is selected.
             else:
                 self.displayControlRiggingOptions(None)
                 self.displayAttachedControlRigs(None)
+                
+        # No selection.
         else:
             self.displayControlRiggingOptions(None)
             self.displayAttachedControlRigs(None)
 
 
     def clearParentSwitchControlField(self, *args):
+        '''
+        Called to reset the UI states under "Parent Switching".
+        '''
+        # Reset the character control field to perform parent switching.
         cmds.textField(self.uiVars['c_rig_prntSwitch_textField'], edit=True, text='< insert control >', 
         																						font='obliqueLabelFont')
+        # Disable associated button states
         cmds.button(self.uiVars['c_rig_prntSwitch_addButton'], edit=True, enable=False)
         cmds.button(self.uiVars['c_rig_prntSwitch_RemoveAll'], edit=True, enable=False)
         cmds.button(self.uiVars['c_rig_prntSwitch_RemoveSelected'], edit=True, enable=False)
         cmds.button(self.uiVars['c_rig_prntSwitch_createButton'], edit=True, enable=False)
+        
+        # Remove all items from parent target scroll list
         cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], edit=True, removeAll=True)
         cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], edit=True, enable=False, 
         								 height=32, append=['\t           < no control inserted >'], font='boldLabelFont')
+        
+        # Empty records for current parent switch group and parent target list.
         self.controlParentSwitchGrp = None
         self.existingParentSwitchTargets = []
 
 
-
     def insertValidSelectionForParentSwitching(self, *args):
-    
+        '''
+        Checks for a valid character control to be inserted into
+        '''
         selection = cmds.ls(selection=True)
         if selection:
             selection = selection[-1]
         else:
             return
         
+        # Clear the text field for storing the character control for parent switching.
         self.clearParentSwitchControlField()
-        parent = cmds.listRelatives(selection, parent=True)[0]
         
+        # Check if a character control is selected.
         if re.match('^MRT_character[A-Za-z0-9]*__\w+_handle$', selection):
-        
+            
+            # While selecting FK based control for assigning parent target(s), you can only select the root FK control.
+            # Match for root: MRT_character[A-Za-z0-9]*__\w+_root_node_transform_handle
             if re.match('^MRT_character[A-Za-z0-9]*__\w+_(node_\d+_transform|end_node_transform){1}_handle$', selection):
                 cmds.warning('MRT Error: Invalid control/object for assigning target parent controls. You can only select '\
                 																			  'the root FK control handle.')
                 return
             
+            # If the character control has a valid pre-transform below the parent switch group.
+            parent = cmds.listRelatives(selection, parent=True)[0]
             if re.match(selection+'_grp', parent):
             
+                # Get the parent switch group
                 self.controlParentSwitchGrp = selection + '_parentSwitch_grp'
+                
+                # Update the text field for character control (for parent switching)
                 cmds.textField(self.uiVars['c_rig_prntSwitch_textField'], edit=True, text=selection, font='plainLabelFont')
+                
+                # Update the parent target list for existing parent target(s) on the character control
                 self.updateListForExistingParentSwitchTargets()
+                
+                # Enable button state for adding parent targets.
                 cmds.button(self.uiVars['c_rig_prntSwitch_addButton'], edit=True, enable=True)
+                
             else:
                 cmds.warning('MRT Error: Invalid control/object for parent switching. '
                 			 'The control transform has no parent switch group.')
+                         
                 self.clearParentSwitchControlField()
         else:
             cmds.warning('MRT Error: Invalid control/object for assigning target parent controls. '
             			 'You can only select a control transform (with suffix \'handle\').')
+                         
             self.clearParentSwitchControlField()
 
 
-
     def updateListForExistingParentSwitchTargets(self):
+        '''
+        Updates / populates the parent target scroll list for Parent switching. Uses existing parent switch
+        targets for a character control.
+        '''
+        # Remove all existing items from the list.
         cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], edit=True, height=32, removeAll=True)
+        
+        # Get the parent target list ("parentTargetList" on parent switch group node for the character control).
         targetInfo = cmds.getAttr(self.controlParentSwitchGrp+'.parentTargetList')
+        
+        # Add parent target items to the scroll list. Adjust the scroll height based on the number of items.
         if targetInfo != 'None':
+        
             targetInfoList = targetInfo.split(',')
             scrollHeight = len(targetInfoList) * 20
             if scrollHeight > 100:
                 scrollHeight = 100
             if scrollHeight == 20:
                 scrollHeight = 40
+            
             if len(targetInfoList) > 0:
                 for layer in sorted(targetInfoList):
+                
+                    # Character root control to be added as the first item in the parent target list
                     if re.match('^MRT_character[A-Za-z0-9]*__root_transform$', layer):
-                        #layer = layer + ' (default)'
                         cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], edit=True, 
                         				 enable=True, appendPosition=[1, layer], height=scrollHeight, font='plainLabelFont')
                     else:
+                        # Add other parent targets
                         cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], edit=True, 
                         							  enable=True, append=layer, height=scrollHeight, font='plainLabelFont')
+                         
+                    # Store/append existing parent targets
                     self.existingParentSwitchTargets.append(layer)
+                
+                # Select first item
                 cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], edit=True, selectIndexedItem=1)
+                
+                # Update the "Remove selected" button status.
                 self.postSelectionParentSwitchListItem()
+                
+                # Enable the "Remove All" button for clearing parent targets.
                 cmds.button(self.uiVars['c_rig_prntSwitch_RemoveAll'], edit=True, enable=True)
+                
+        # If no existing parent target(s)
         else:
             cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], edit=True, enable=False,
                                             height=32, append='\t           < no current target(s) >', font='boldLabelFont')
@@ -4429,6 +4548,10 @@ class MRT_UI(object):
 
 
     def postSelectionParentSwitchListItem(self, *args):
+        '''
+        Updates the button state for "Remove selected" for Parent switching.
+        '''
+        # If a parent target is selected in the scroll list, set the button state to true, else false.
         selectedItem = cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], query=True, selectItem=True)
         if selectedItem:
             cmds.button(self.uiVars['c_rig_prntSwitch_RemoveSelected'], edit=True, enable=True)
@@ -4437,7 +4560,11 @@ class MRT_UI(object):
 
 
     def addSelectedControlToTargetList(self, *args):
-    
+        '''
+        Callback for "Add selected control to target list" button in Parent switching. Adds a selected character 
+        control to the parent target list.
+        '''
+        # Check selection.
         selection = cmds.ls(selection=True)
         
         if selection:
@@ -4445,13 +4572,17 @@ class MRT_UI(object):
         else:
             return
         
+        # If a character control or character root transform is selected (to be added as valid parent target).
         if re.match('^MRT_character[A-Za-z0-9]*__\w+_handle$', selection) or
                                                     re.match('^MRT_character[A-Za-z0-9]*__root_transform$', selection):
-                                                    
+                         
+            # Get the control to which parent target(s) are to be added.
             ins_control = cmds.textField(self.uiVars['c_rig_prntSwitch_textField'], query=True, text=True)
+            
             characterName = selection.partition('__')[0].partition('MRT_character')[2]
             ins_control = ins_control.partition('__')[2]
             ins_control_h_name = re.split('_[A-Z]', ins_control)[0]
+            # Get the root joint in hierarchy for the
             ins_control_rootJoint = 'MRT_character%s__%s_root_node_transform'%(characterName, ins_control_h_name)
             
             if not re.match('^MRT_character[A-Za-z0-9]*__root_transform$', selection):
