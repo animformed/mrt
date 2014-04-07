@@ -3078,200 +3078,343 @@ class MRT_UI(object):
 
 
     def performModuleDuplicate(self, *args):
+        '''
+        Called by "performModuleDuplicate_UI_wrapper" to duplicate a scene module.
+        '''
+        # Check selection.
         selection = cmds.ls(selection=True)
         if not selection:
             cmds.warning('MRT Error: Duplicate Module Error. Nothing is selected. ' \
                                                     'Please select a module to perform duplication.')
             return
-        selection.reverse()
-        selection = selection[0]
+        
+        # Get last item in selection.
+        selection = selection[-1]
+        
+        # Check selection for module.
         if mfunc.stripMRTNamespace(selection) == None:
             cmds.warning('MRT Error: Duplicate Module Error. Invalid selection. Please select a module.')
             return
+        
+        # Get module namespace and its current attributes.
         moduleNamespace = mfunc.stripMRTNamespace(selection)[0]
         moduleAttrsDict = mfunc.returnModuleAttrsFromScene(moduleNamespace)
+        
+        # Create a new copy of the module using the attributes.
         mfunc.createModuleFromAttributes(moduleAttrsDict)
+        
         cmds.select(clear=True)
         
+        # If "Maintain parent connections" is turned on, connect the new module to the parent of the original module.
         if cmds.checkBox(self.uiVars['duplicateAction_maintainParentCheckbox'], query=True, value=True):
+        
+            # Get the module parenting info from the collected attributes.
+            # "createModuleFromAttributes" modifies the "moduleParentInfo" key's first item
+            # with the new created module namespace.
             for (module, parentModuleNode) in moduleAttrsDict['moduleParentInfo']:
+            
+                # If the original module has parent.
                 if module != None and parentModuleNode != 'None':
+                
+                    # Get the parent module node.
                     parentModuleNodeAttr = parentModuleNode.split(',')
+                    
+                    # Unlock the new module container.
                     cmds.lockNode(module+':module_container', lock=False, lockUnpublished=False)
                     
+                    # Connect the module parent representation to the parent module node.
                     pointConstraint = \
                     cmds.pointConstraint(parentModuleNodeAttr[0],
                                          module+':moduleParentReprSegment_segmentCurve_endLocator',
                                          maintainOffset=False,
                                          name=module+':moduleParentReprSegment_endLocator_pointConstraint')[0]
-                         
-                    mfunc.addNodesToContainer(module+':module_container', [pointConstraint])
+                    
+                    # Update the "moduleParent" attribute on the new module with the parent module node.
                     cmds.setAttr(module+':moduleGrp.moduleParent', parentModuleNode, type='string')
-                    cmds.setAttr(module+':moduleParentReprGrp.visibility', 1)
+
+                    # Set the module parent representation colour to "white" if module parent type
+                    # is set to "Hierarchical".
                     if parentModuleNodeAttr[1] == 'Hierarchical':
                         cmds.setAttr(module+':moduleParentReprSegment_hierarchy_reprShape.overrideColor', 16)
+
+                    # Add the new nodes to the new module container.
+                    mfunc.addNodesToContainer(module+':module_container', [pointConstraint])
+                    
+                    # Turn on the visibility for module parent representation.
+                    cmds.setAttr(module+':moduleParentReprGrp.visibility', 1)
+                    
+                    # Lock the container for the new module.
                     cmds.lockNode(module+':module_container', lock=True, lockUnpublished=True)
                     
         cmds.select(clear=True)
-        # If proxy geometry is enabled.
+        
+        # If the original module has proxy geometry, duplicate them as well.
+        # To do this, delete the proxy geometry on the duplicated module first.
         if moduleAttrsDict['node_compnts'][2] == True:
-            # If elbow proxy is enabled.
+        
+            # If elbow proxy geometry.
             if moduleAttrsDict['proxy_geo_options'][1] == True:
+            
                 for i in range(moduleAttrsDict['num_nodes']):
+                
                     if i == 0:
+                        
+                        # Get the name of the original proxy geometry transform.
                         orig_proxy_elbow_transform = moduleAttrsDict['orig_module_Namespace']+':root_node_transform_proxy_elbow_geo'
+                        
+                        # Get the name of the duplicated module proxy geometry transform.
                         proxy_elbow_transform = moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_elbow_geo'
+                        
+                        if cmds.objExists(orig_proxy_elbow_transform+'_preTransform'):
+                        
+                            # Delete the new proxy geometry transform on the duplicated module.
+                            cmds.delete(proxy_elbow_transform)
+                         
+                            # Duplicate the original proxy geometry transform, rename it.
+                            duplicatedTransform = cmds.duplicate(orig_proxy_elbow_transform,
+                                        name=moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_elbow_geo')[0]
+                         
+                            # Assign it to the new duplicate module.
+                            cmds.parent(duplicatedTransform, proxy_elbow_transform+'_scaleTransform', relative=True)
+                         
+                        else:
+                            cmds.delete(proxy_elbow_transform+'_preTransform')
+                         
+                    elif i == moduleAttrsDict['num_nodes']-1:
+                        orig_proxy_elbow_transform = moduleAttrsDict['orig_module_Namespace']+':end_node_transform_proxy_elbow_geo'
+                        proxy_elbow_transform = moduleAttrsDict['module_Namespace']+':end_node_transform_proxy_elbow_geo'
                         
                         if cmds.objExists(orig_proxy_elbow_transform+'_preTransform'):
                             cmds.delete(proxy_elbow_transform)
                             duplicatedTransform = cmds.duplicate(orig_proxy_elbow_transform,
-                                        name=moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_elbow_geo')[0]
-                                        
+                                        name=moduleAttrsDict['module_Namespace']+':end_node_transform_proxy_elbow_geo')[0]
+                         
                             cmds.parent(duplicatedTransform, proxy_elbow_transform+'_scaleTransform', relative=True)
                          
                         else:
                             cmds.delete(proxy_elbow_transform+'_preTransform')
-                    elif i == moduleAttrsDict['num_nodes']-1:
-                        orig_proxy_elbow_transform = moduleAttrsDict['orig_module_Namespace']+':end_node_transform_proxy_elbow_geo'
-                        proxy_elbow_transform = moduleAttrsDict['module_Namespace']+':end_node_transform_proxy_elbow_geo'
-                        if cmds.objExists(orig_proxy_elbow_transform+'_preTransform'):
-                            cmds.delete(proxy_elbow_transform)
-                            duplicatedTransform = cmds.duplicate(orig_proxy_elbow_transform, name=moduleAttrsDict['module_Namespace']+':end_node_transform_proxy_elbow_geo')[0]
-                            cmds.parent(duplicatedTransform, proxy_elbow_transform+'_scaleTransform', relative=True)
-                        else:
-                            cmds.delete(proxy_elbow_transform+'_preTransform')
+                         
                     else:
                         proxy_elbow_transform = moduleAttrsDict['module_Namespace']+':node_'+str(i)+'_transform_proxy_elbow_geo'
                         orig_proxy_elbow_transform = moduleAttrsDict['orig_module_Namespace']+':node_'+str(i)+'_transform_proxy_elbow_geo'
+                        
                         if cmds.objExists(orig_proxy_elbow_transform+'_preTransform'):
                             cmds.delete(proxy_elbow_transform)
-                            duplicatedTransform = cmds.duplicate(orig_proxy_elbow_transform, name=moduleAttrsDict['module_Namespace']+':node_'+str(i)+'_transform_proxy_elbow_geo')[0]
+                            duplicatedTransform = cmds.duplicate(orig_proxy_elbow_transform,
+                                        name=moduleAttrsDict['module_Namespace']+':node_'+str(i)+'_transform_proxy_elbow_geo')[0]
+                         
                             cmds.parent(duplicatedTransform, proxy_elbow_transform+'_scaleTransform', relative=True)
+                         
                         else:
                             cmds.delete(proxy_elbow_transform+'_preTransform')
-            # If bone proxy is enabled.
+
+
+            # If bone proxy geometry.
             if moduleAttrsDict['proxy_geo_options'][0] == True:
+            
                 for i in range(moduleAttrsDict['num_nodes']-1):
+                
                     if i == 0:
+                    
                         orig_proxy_bone_transform = moduleAttrsDict['orig_module_Namespace']+':root_node_transform_proxy_bone_geo'
                         proxy_bone_transform = moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_bone_geo'
+                        
                         if cmds.objExists(orig_proxy_bone_transform+'_preTransform'):
                             cmds.delete(proxy_bone_transform)
-                            duplicatedTransform = cmds.duplicate(orig_proxy_bone_transform, name=moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_bone_geo')[0]
+                            duplicatedTransform = cmds.duplicate(orig_proxy_bone_transform,
+                                        name=moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_bone_geo')[0]
+                         
                             cmds.parent(duplicatedTransform, proxy_bone_transform+'_scaleTransform', relative=True)
+                         
                         else:
                             cmds.delete(proxy_bone_transform+'_preTransform')
+
                     else:
                         proxy_bone_transform = moduleAttrsDict['module_Namespace']+':node_'+str(i)+'_transform_proxy_bone_geo'
                         orig_proxy_bone_transform = moduleAttrsDict['orig_module_Namespace']+':node_'+str(i)+'_transform_proxy_bone_geo'
+                        
                         if cmds.objExists(orig_proxy_bone_transform+'_preTransform'):
                             cmds.delete(proxy_bone_transform)
-                            duplicatedTransform = cmds.duplicate(orig_proxy_bone_transform, name=moduleAttrsDict['module_Namespace']+':node_'+str(i)+'_transform_proxy_bone_geo')[0]
+                            duplicatedTransform = cmds.duplicate(orig_proxy_bone_transform,
+                                        name=moduleAttrsDict['module_Namespace']+':node_'+str(i)+'_transform_proxy_bone_geo')[0]
+                         
                             cmds.parent(duplicatedTransform, proxy_bone_transform+'_scaleTransform', relative=True)
+                         
                         else:
                             cmds.delete(proxy_bone_transform+'_preTransform')
+
+
             # If mirror is enabled, options for the proxies in the mirror module.
             if moduleAttrsDict['mirror_options'][0] == 'On':
+            
                 # If elbow proxy is enabled.
                 if moduleAttrsDict['proxy_geo_options'][1] == True:
+                
                     for i in range(moduleAttrsDict['num_nodes']):
+                    
                         if i == 0:
+                        
                             orig_proxy_elbow_transform = moduleAttrsDict['orig_mirror_module_Namespace']+':root_node_transform_proxy_elbow_geo'
                             proxy_elbow_transform = moduleAttrsDict['mirror_module_Namespace']+':root_node_transform_proxy_elbow_geo'
+                         
                             if moduleAttrsDict['proxy_geo_options'][3] == 'Off':
+                         
                                 if cmds.objExists(orig_proxy_elbow_transform+'_preTransform'):
                                     cmds.delete(proxy_elbow_transform)
-                                    duplicatedTransform = cmds.duplicate(orig_proxy_elbow_transform, name=moduleAttrsDict['mirror_module_Namespace']+':root_node_transform_proxy_elbow_geo')[0]
+                                    duplicatedTransform = cmds.duplicate(orig_proxy_elbow_transform,
+                                        name=moduleAttrsDict['mirror_module_Namespace']+':root_node_transform_proxy_elbow_geo')[0]
+                         
                                     cmds.parent(duplicatedTransform, proxy_elbow_transform+'_scaleTransform', relative=True)
+                         
                                 else:
                                     cmds.delete(proxy_elbow_transform+'_preTransform')
+                         
                             if moduleAttrsDict['proxy_geo_options'][3] == 'On':
+                         
                                 mirror_proxy_elbow_transform = moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_elbow_geo'
+                         
                                 if cmds.objExists(mirror_proxy_elbow_transform+'_preTransform'):
                                     cmds.delete(proxy_elbow_transform)
-                                    duplicatedTransform = cmds.duplicate(mirror_proxy_elbow_transform, instanceLeaf=True, name=moduleAttrsDict['mirror_module_Namespace']+':root_node_transform_proxy_elbow_geo')[0]
+                                    duplicatedTransform = cmds.duplicate(mirror_proxy_elbow_transform, instanceLeaf=True,
+                                        name=moduleAttrsDict['mirror_module_Namespace']+':root_node_transform_proxy_elbow_geo')[0]
+                         
                                     cmds.parent(duplicatedTransform, proxy_elbow_transform+'_scaleTransform', relative=True)
+                         
                                 else:
                                     cmds.delete(proxy_elbow_transform+'_preTransform')
+                         
                         elif i == moduleAttrsDict['num_nodes']-1:
+                        
                             orig_proxy_elbow_transform = moduleAttrsDict['orig_mirror_module_Namespace']+':end_node_transform_proxy_elbow_geo'
                             proxy_elbow_transform = moduleAttrsDict['mirror_module_Namespace']+':end_node_transform_proxy_elbow_geo'
+                         
                             if moduleAttrsDict['proxy_geo_options'][3] == 'Off':
+                         
                                 if cmds.objExists(orig_proxy_elbow_transform+'_preTransform'):
                                     cmds.delete(proxy_elbow_transform)
-                                    duplicatedTransform = cmds.duplicate(orig_proxy_elbow_transform, name=moduleAttrsDict['mirror_module_Namespace']+':end_node_transform_proxy_elbow_geo')[0]
+                                    duplicatedTransform = cmds.duplicate(orig_proxy_elbow_transform,
+                                        name=moduleAttrsDict['mirror_module_Namespace']+':end_node_transform_proxy_elbow_geo')[0]
+                         
                                     cmds.parent(duplicatedTransform, proxy_elbow_transform+'_scaleTransform', relative=True)
+                         
                                 else:
                                     cmds.delete(proxy_elbow_transform+'_preTransform')
+                         
                             if moduleAttrsDict['proxy_geo_options'][3] == 'On':
+                         
                                 mirror_proxy_elbow_transform = moduleAttrsDict['module_Namespace']+':end_node_transform_proxy_elbow_geo'
+                         
                                 if cmds.objExists(mirror_proxy_elbow_transform+'_preTransform'):
                                     cmds.delete(proxy_elbow_transform)
-                                    duplicatedTransform = cmds.duplicate(mirror_proxy_elbow_transform, instanceLeaf=True, name=moduleAttrsDict['mirror_module_Namespace']+':end_node_transform_proxy_elbow_geo')[0]
+                                    duplicatedTransform = cmds.duplicate(mirror_proxy_elbow_transform, instanceLeaf=True,
+                                        name=moduleAttrsDict['mirror_module_Namespace']+':end_node_transform_proxy_elbow_geo')[0]
+                         
                                     cmds.parent(duplicatedTransform, proxy_elbow_transform+'_scaleTransform', relative=True)
+                         
                                 else:
                                     cmds.delete(proxy_elbow_transform+'_preTransform')
+                         
                         else:
                             orig_proxy_elbow_transform = moduleAttrsDict['orig_mirror_module_Namespace']+':node_'+str(i)+'_transform_proxy_elbow_geo'
                             proxy_elbow_transform = moduleAttrsDict['mirror_module_Namespace']+':node_'+str(i)+'_transform_proxy_elbow_geo'
+                         
                             if moduleAttrsDict['proxy_geo_options'][3] == 'Off':
+                         
                                 if cmds.objExists(orig_proxy_elbow_transform+'_preTransform'):
                                     cmds.delete(proxy_elbow_transform)
-                                    duplicatedTransform = cmds.duplicate(orig_proxy_elbow_transform, name=moduleAttrsDict['mirror_module_Namespace']+':node_'+str(i)+'_transform_proxy_elbow_geo')[0]
+                                    duplicatedTransform = cmds.duplicate(orig_proxy_elbow_transform,
+                                        name=moduleAttrsDict['mirror_module_Namespace']+':node_'+str(i)+'_transform_proxy_elbow_geo')[0]
+                         
                                     cmds.parent(duplicatedTransform, proxy_elbow_transform+'_scaleTransform', relative=True)
+                         
                                 else:
                                     cmds.delete(proxy_elbow_transform+'_preTransform')
+                         
                             if moduleAttrsDict['proxy_geo_options'][3] == 'On':
+                         
                                 mirror_proxy_elbow_transform = moduleAttrsDict['module_Namespace']+':node_'+str(i)+'_transform_proxy_elbow_geo'
+                         
                                 if cmds.objExists(mirror_proxy_elbow_transform+'_preTransform'):
                                     cmds.delete(proxy_elbow_transform)
-                                    duplicatedTransform = cmds.duplicate(mirror_proxy_elbow_transform, instanceLeaf=True, name=moduleAttrsDict['mirror_module_Namespace']+':node_'+str(i)+'_transform_proxy_elbow_geo')[0]
+                                    duplicatedTransform = cmds.duplicate(mirror_proxy_elbow_transform, instanceLeaf=True,
+                                        name=moduleAttrsDict['mirror_module_Namespace']+':node_'+str(i)+'_transform_proxy_elbow_geo')[0]
+                         
                                     cmds.parent(duplicatedTransform, proxy_elbow_transform+'_scaleTransform', relative=True)
+                         
                                 else:
                                     cmds.delete(proxy_elbow_transform+'_preTransform')
+                         
                 # If bone proxy is enabled.
                 if moduleAttrsDict['proxy_geo_options'][0] == True:
+                
                     for i in range(moduleAttrsDict['num_nodes']-1):
+                    
                         if i == 0:
+                        
                             orig_proxy_bone_transform = moduleAttrsDict['orig_mirror_module_Namespace']+':root_node_transform_proxy_bone_geo'
                             proxy_bone_transform = moduleAttrsDict['mirror_module_Namespace']+':root_node_transform_proxy_bone_geo'
+                         
                             if moduleAttrsDict['proxy_geo_options'][3] == 'Off':
+                         
                                 if cmds.objExists(orig_proxy_bone_transform+'_preTransform'):
                                     cmds.delete(proxy_bone_transform)
-                                    duplicatedTransform = cmds.duplicate(orig_proxy_bone_transform, name=moduleAttrsDict['mirror_module_Namespace']+':root_node_transform_proxy_bone_geo')[0]
+                                    duplicatedTransform = cmds.duplicate(orig_proxy_bone_transform,
+                                        name=moduleAttrsDict['mirror_module_Namespace']+':root_node_transform_proxy_bone_geo')[0]
+                         
                                     cmds.parent(duplicatedTransform, proxy_bone_transform+'_scaleTransform', relative=True)
+                         
                                 else:
                                     cmds.delete(proxy_bone_transform+'_preTransform')
+                         
                             if moduleAttrsDict['proxy_geo_options'][3] == 'On':
+                         
                                 mirror_proxy_bone_transform = moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_bone_geo'
+                         
                                 if cmds.objExists(mirror_proxy_bone_transform+'_preTransform'):
                                     cmds.delete(proxy_bone_transform)
-                                    duplicatedTransform = cmds.duplicate(mirror_proxy_bone_transform, instanceLeaf=True, name=moduleAttrsDict['mirror_module_Namespace']+':root_node_transform_proxy_bone_geo')[0]
+                                    duplicatedTransform = cmds.duplicate(mirror_proxy_bone_transform, instanceLeaf=True,
+                                        name=moduleAttrsDict['mirror_module_Namespace']+':root_node_transform_proxy_bone_geo')[0]
+                         
                                     cmds.parent(duplicatedTransform, proxy_bone_transform+'_scaleTransform', relative=True)
+                         
                                 else:
                                     cmds.delete(proxy_bone_transform+'_preTransform')
                         else:
                             orig_proxy_bone_transform = moduleAttrsDict['orig_mirror_module_Namespace']+':node_'+str(i)+'_transform_proxy_bone_geo'
                             proxy_bone_transform = moduleAttrsDict['mirror_module_Namespace']+':node_'+str(i)+'_transform_proxy_bone_geo'
+                         
                             if moduleAttrsDict['proxy_geo_options'][3] == 'Off':
+                         
                                 if cmds.objExists(orig_proxy_bone_transform+'_preTransform'):
                                     cmds.delete(proxy_bone_transform)
-                                    duplicatedTransform = cmds.duplicate(orig_proxy_bone_transform, name=moduleAttrsDict['mirror_module_Namespace']+':node_'+str(i)+'_transform_proxy_bone_geo')[0]
+                                    duplicatedTransform = cmds.duplicate(orig_proxy_bone_transform,
+                                        name=moduleAttrsDict['mirror_module_Namespace']+':node_'+str(i)+'_transform_proxy_bone_geo')[0]
+                         
                                     cmds.parent(duplicatedTransform, proxy_bone_transform+'_scaleTransform', relative=True)
+                         
                                 else:
                                     cmds.delete(proxy_bone_transform+'_preTransform')
+                         
                             if moduleAttrsDict['proxy_geo_options'][3] == 'On':
                                 mirror_proxy_bone_transform = moduleAttrsDict['module_Namespace']+':node_'+str(i)+'_transform_proxy_bone_geo'
+                         
                                 if cmds.objExists(mirror_proxy_bone_transform+'_preTransform'):
                                     cmds.delete(proxy_bone_transform)
-                                    duplicatedTransform = cmds.duplicate(mirror_proxy_bone_transform, instanceLeaf=True, name=moduleAttrsDict['mirror_module_Namespace']+':node_'+str(i)+'_transform_proxy_bone_geo')[0]
+                                    duplicatedTransform = cmds.duplicate(mirror_proxy_bone_transform, instanceLeaf=True,
+                                        name=moduleAttrsDict['mirror_module_Namespace']+':node_'+str(i)+'_transform_proxy_bone_geo')[0]
+                         
                                     cmds.parent(duplicatedTransform, proxy_bone_transform+'_scaleTransform', relative=True)
+                         
                                 else:
                                     cmds.delete(proxy_bone_transform+'_preTransform')
-
+        
+        # Update the scene module treeView list with the new duplicated module.
         self.updateListForSceneModulesInUI()
-
+        
+        # Get the translation offset to be applied to the new duplicated module.
         offset = cmds.floatFieldGrp(self.uiVars['duplicateActionWindowFloatfieldGrp'], query=True, value=True)
+        
+        # Apply the offset to new module's module transform.
         if moduleAttrsDict['node_type'] != 'SplineNode':
             if cmds.getAttr(moduleAttrsDict['module_Namespace']+':moduleGrp.onPlane')[0] == '+':
                 selection = moduleAttrsDict['module_Namespace']+':module_transform'
@@ -3293,6 +3436,7 @@ class MRT_UI(object):
                 selection = moduleAttrsDict['mirror_module_Namespace']+':splineEndHandleTransform'
                 cmds.evalDeferred(partial(mfunc.moveSelectionOnIdle, selection, offset), lowestPriority=True)
                 
+        # Clear selection when idle.
         cmds.evalDeferred(partial(mfunc.performOnIdle), lowestPriority=True)
 
 
