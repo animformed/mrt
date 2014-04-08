@@ -6,7 +6,7 @@
 #    Can be modified or copied for your own purpose. Please keep updating it for use with future versions
 #    of Maya. This was originally written for Maya 2011, and updated for 2013 and then for 2014.
 #
-#    Written by Himanish Bhattacharya
+#    Written by Himanish Bhattacharya.
 #
 # *************************************************************************************************************
 
@@ -3441,14 +3441,28 @@ class MRT_UI(object):
 
 
     def performModuleDeletion(self, *args):
+        '''
+        Deletes a selected module from scene.
+        '''
+        # Store the current namespace.
         currentNamespace = cmds.namespaceInfo(currentNamespace=True)
         cmds.namespace(setNamespace=':')
+        
+        # Get the selected module.
         selection = mel.eval("ls -sl -type dagNode")
         moduleSelection = selection[0]
+        
+        # Get the module namespace.
         moduleSelectionNamespace = mfunc.stripMRTNamespace(moduleSelection)[0]
+        
+        # Collect the module to be removed (if its mirrored module exists, it will be added later).
         modulesToBeRemoved = [moduleSelectionNamespace]
+        
+        # Now add the mirror for the current module if it exists.
         if cmds.attributeQuery('mirrorModuleNamespace', node=moduleSelectionNamespace+':moduleGrp', exists=True):
             modulesToBeRemoved.append(cmds.getAttr(moduleSelectionNamespace+':moduleGrp.mirrorModuleNamespace'))
+        
+        # Remove the module(s) to be deleted from module creation queue.
         if len(self.modules):
             for (key, value) in self.modules.items():
                 if len(modulesToBeRemoved) == 1:
@@ -3459,15 +3473,31 @@ class MRT_UI(object):
                     if modulesToBeRemoved[0] in value and modulesToBeRemoved[1] in value:
                         self.modules.pop(key)
                         break
+                        
+        # If the module creation queue becomes empty, disable the "Undo last create" button for modules.
+        if not len(self.modules):
+            cmds.button(self.uiVars['moduleUndoCreate_button'], edit=True, enable=False)
+        
+        # Delete the connections/nodes for moving mirror modules.
         mfunc.deleteMirrorMoveConnections()
+        
+        # Perform deletions.
         for namespace in modulesToBeRemoved:
+            
+            # Remove connection(s) to children module(s) (if they exist).
             self.removeChildrenModules(namespace)
+            
+            # Get the module container, unlock it.
             moduleContainer = namespace+':module_container'
             cmds.lockNode(moduleContainer, lock=False, lockUnpublished=False)
+            
+            # Remove curveInfo from module container (maya issues warnings if connections are deleted
+            # to curveInfos, before deleting the curveInfo nodes).
             dgNodes = cmds.container(moduleContainer, query=True, nodeList=True)
             for node in dgNodes:
                 if node.endswith('_curveInfo'):
                     cmds.delete(node)
+                    
             # Delete the proxy geometry for the module if it exists.
             try:
                 proxyGeoGrp = namespace+':proxyGeometryGrp'
@@ -3475,27 +3505,45 @@ class MRT_UI(object):
                 cmds.delete()
             except:
                 pass
+                
+            # Now delete the module container.
             cmds.select(moduleContainer, replace=True)
             cmds.delete()
+        
+        # Remove the module namespaces.
         for namespace in modulesToBeRemoved:
             cmds.namespace(removeNamespace=namespace)
-        cmds.namespace(setNamespace=':')
+        
+        # Reset current namespace.
         if cmds.namespace(exists=currentNamespace):
             cmds.namespace(setNamespace=currentNamespace)
-        if not len(self.modules):
-            cmds.button(self.uiVars['moduleUndoCreate_button'], edit=True, enable=False)
+        
+        # Perform cleanup.
         mfunc.cleanSceneState()
-        #mfunc.updateAllTransforms()
         self.clearParentModuleField()
         self.clearChildModuleField()
         self.resetListHeightForSceneModulesUI()
 
 
     def deleteAllSceneModules(self):
+        '''
+        Removes all module from scene.
+        '''
         namespacesToBeRemoved = []
+        
+        # Store the current namespace.
+        currentNamespace = cmds.namespaceInfo(currentNamespace=True)
+        cmds.namespace(setNamespace=':')
+        
+        # Get all module namespaces.
         allModules = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
+        
+        # Disconnect module parenting connections for all modules.
         for namespace in allModules:
             self.removeChildrenModules(namespace)
+            
+        # Remove curveInfos from module containers (maya issues warnings if connections are deleted
+        # to curveInfos, before deleting the curveInfo nodes).
         for namespace in allModules:
             moduleContainer = namespace+':module_container'
             cmds.lockNode(moduleContainer, lock=False, lockUnpublished=False)
@@ -3503,6 +3551,7 @@ class MRT_UI(object):
             for node in dgNodes:
                 if node.endswith('_curveInfo'):
                     cmds.delete(node)
+            
             # Delete the proxy geometry for the module if it exists.
             try:
                 proxyGeoGrp = namespace+':proxyGeometryGrp'
@@ -3510,37 +3559,71 @@ class MRT_UI(object):
                 cmds.delete()
             except:
                 pass
+                
+            # Delete the module container.
             cmds.select(moduleContainer, replace=True)
             cmds.delete()
-            cmds.namespace(setNamespace=':')
+            
             namespacesToBeRemoved.append(namespace)
+        
+        # Remove module namespaces from scene.
         if namespacesToBeRemoved:
             for namespace in namespacesToBeRemoved:
                 cmds.namespace(removeNamespace=namespace)
+                
+        # Reset current namespace.
+        if cmds.namespace(exists=currentNamespace):
+            cmds.namespace(setNamespace=currentNamespace)
+        
+        # Perform cleanup.
         mfunc.cleanSceneState()
         cmds.button(self.uiVars['moduleUndoCreate_button'], edit=True, enable=False)
         self.modules = {}
         self.clearParentModuleField()
         self.clearChildModuleField()
+        
 
     def removeChildrenModules(self, moduleNamespace):
+        '''
+        Removes connections from children module(s) from a given module, if they exist.
+        '''
+        # Get children module namespaces.
         childrenModules = mfunc.traverseChildrenModules(moduleNamespace)
+        
         if childrenModules:
+        
             for childModule in childrenModules:
+                
+                # Unlock child module container.
                 cmds.lockNode(childModule+':module_container', lock=False, lockUnpublished=False)
-                #cmds.delete(childModule+':moduleParentReprSegment_endLocator_pointConstraint')
-                constraint = cmds.listRelatives(childModule+':moduleParentReprSegment_segmentCurve_endLocator', children=True, fullPath=True, type='constraint')
+                
+                # Get module parenting constraint, and delete it.
+                constraint = cmds.listRelatives(childModule+':moduleParentReprSegment_segmentCurve_endLocator',
+                                                                    children=True, fullPath=True, type='constraint')
                 cmds.delete(constraint)
+                
+                # Reset module parenting attributes.
                 cmds.setAttr(childModule+':moduleGrp.moduleParent', 'None', type='string')
                 cmds.setAttr(childModule+':moduleParentReprGrp.visibility', 0)
+                
+                # Lock child module container.
                 cmds.lockNode(childModule+':module_container', lock=True, lockUnpublished=True)
+                
 
     def toggleEditMenuButtonsOnModuleSelection(self):
+        '''
+        Set UI states for controls with buttons for performing module edits, based on
+        valid scene module selection.
+        '''
+        # Get selection, and get the selection module namespace, if valid.
         selection = mel.eval("ls -sl -type dagNode")
         if selection:
             lastSelection = selection[-1]
             namespaceInfo = mfunc.stripMRTNamespace(lastSelection)
+            
+            # If valid scene module.
             if namespaceInfo != None:
+            
                 cmds.button(self.uiVars['moduleSaveColl_button'], edit=True, enable=True)
                 cmds.rowLayout(self.uiVars['moduleSaveCollOptions_row1'], edit=True, enable=True)
                 cmds.rowLayout(self.uiVars['moduleSaveCollOptions_row2'], edit=True, enable=True)
@@ -3549,31 +3632,35 @@ class MRT_UI(object):
                 cmds.button(self.uiVars['moduleDuplicate_button'], edit=True, enable=True)
                 text = namespaceInfo[0].rpartition('__')[2]
                 cmds.textField(self.uiVars['moduleRename_textField'], edit=True, text=text)
-            else:
-                cmds.button(self.uiVars['moduleSaveColl_button'], edit=True, enable=False)
-                cmds.rowLayout(self.uiVars['moduleSaveCollOptions_row1'], edit=True, enable=False)
-                cmds.rowLayout(self.uiVars['moduleSaveCollOptions_row2'], edit=True, enable=False)
-                cmds.button(self.uiVars['moduleRename_button'], edit=True, enable=False)
-                cmds.button(self.uiVars['moduleDelete_button'], edit=True, enable=False)
-                cmds.button(self.uiVars['moduleDuplicate_button'], edit=True, enable=False)
-                cmds.textField(self.uiVars['moduleRename_textField'], edit=True, text=None)
-        else:
-            cmds.button(self.uiVars['moduleSaveColl_button'], edit=True, enable=False)
-            cmds.rowLayout(self.uiVars['moduleSaveCollOptions_row1'], edit=True, enable=False)
-            cmds.rowLayout(self.uiVars['moduleSaveCollOptions_row2'], edit=True, enable=False)
-            cmds.button(self.uiVars['moduleRename_button'], edit=True, enable=False)
-            cmds.button(self.uiVars['moduleDelete_button'], edit=True, enable=False)
-            cmds.button(self.uiVars['moduleDuplicate_button'], edit=True, enable=False)
-            cmds.textField(self.uiVars['moduleRename_textField'], edit=True, text=None)
+                
+                return
+                
+        cmds.button(self.uiVars['moduleSaveColl_button'], edit=True, enable=False)
+        cmds.rowLayout(self.uiVars['moduleSaveCollOptions_row1'], edit=True, enable=False)
+        cmds.rowLayout(self.uiVars['moduleSaveCollOptions_row2'], edit=True, enable=False)
+        cmds.button(self.uiVars['moduleRename_button'], edit=True, enable=False)
+        cmds.button(self.uiVars['moduleDelete_button'], edit=True, enable=False)
+        cmds.button(self.uiVars['moduleDuplicate_button'], edit=True, enable=False)
+        cmds.textField(self.uiVars['moduleRename_textField'], edit=True, text=None)
+            
 
     def insertChildModuleIntoField(self, *args):
+        '''
+        Inserts a selected scene module into the child module textfield for module parenting.
+        '''
+        # Get selection, and get the selection module namespace, if valid.
         selection = cmds.ls(selection=True)
         if selection:
             lastSelection = selection[-1]
             namespaceInfo = mfunc.stripMRTNamespace(lastSelection)
+            
+            # If valid scene module, insert its namespace into the child module textfield.
             if namespaceInfo != None:
-                cmds.textField(self.uiVars['selectedChildModule_textField'], edit=True, text=namespaceInfo[0], font='plainLabelFont')
+                cmds.textField(self.uiVars['selectedChildModule_textField'], edit=True, text=namespaceInfo[0],
+                                                                                                font='plainLabelFont')
                 parentInfo = cmds.getAttr(namespaceInfo[0]+':moduleGrp.moduleParent')
+                
+                # If the module has a parent, enable associated button states.
                 if parentInfo != 'None':
                     parentInfo = parentInfo.split(',')[0]
                     cmds.button(self.uiVars['moduleUnparent_button'], edit=True, enable=True)
@@ -3584,73 +3671,88 @@ class MRT_UI(object):
                     cmds.button(self.uiVars['moduleUnparent_button'], edit=True, enable=False)
                     cmds.button(self.uiVars['parentSnap_button'], edit=True, enable=False)
                     cmds.button(self.uiVars['childSnap_button'], edit=True, enable=False)
-            else:
-                cmds.textField(self.uiVars['selectedChildModule_textField'], edit=True, text='< insert child module >', font='obliqueLabelFont')
-                cmds.button(self.uiVars['moduleUnparent_button'], edit=True, enable=False)
-                cmds.button(self.uiVars['parentSnap_button'], edit=True, enable=False)
-                cmds.button(self.uiVars['childSnap_button'], edit=True, enable=False)
-                cmds.warning('MRT Error: Please select and insert a module as child.')
-        else:
-            cmds.textField(self.uiVars['selectedChildModule_textField'], edit=True, text='< insert child module >', font='obliqueLabelFont')
-            cmds.button(self.uiVars['moduleUnparent_button'], edit=True, enable=False)
-            cmds.button(self.uiVars['parentSnap_button'], edit=True, enable=False)
-            cmds.button(self.uiVars['childSnap_button'], edit=True, enable=False)
-            cmds.warning('MRT Error: Please select and insert a module as child.')
+                    
+                return
+        
+        # If no valid module is selected.
+        cmds.textField(self.uiVars['selectedChildModule_textField'], edit=True, text='< insert child module >',
+                                                                                                font='obliqueLabelFont')
+        cmds.button(self.uiVars['moduleUnparent_button'], edit=True, enable=False)
+        cmds.button(self.uiVars['parentSnap_button'], edit=True, enable=False)
+        cmds.button(self.uiVars['childSnap_button'], edit=True, enable=False)
+        cmds.warning('MRT Error: Please select and insert a module as child.')
+
 
     def insertParentModuleNodeIntoField(self, *args):
+        '''
+        Inserts a selected scene module node nto the parent module textfield for module parenting.
+        '''
+        # Get selection, and get the selection module namespace, if valid.
         selection = cmds.ls(selection=True)
         if selection:
             lastSelection = selection[-1]
             namespaceInfo = mfunc.stripMRTNamespace(lastSelection)
+            
+            # If valid scene module, insert the parent module node into the textfield.
             if namespaceInfo != None:
+                
+                # Check the module node based on its type, before inserting it.
                 moduleType = namespaceInfo[0].partition('__')[0]
-                if moduleType == 'MRT_JointNode':
+                
+                if moduleType == 'MRT_JointNode' or moduleType == 'MRT_SplineNode':
                     if cmds.nodeType(lastSelection) == 'joint':
                         cmds.textField(self.uiVars['selectedParent_textField'], edit=True, text=lastSelection, font='plainLabelFont')
                         cmds.button(self.uiVars['moduleParent_button'], edit=True, enable=True)
+                        return
                     else:
                         cmds.warning('MRT Error: Please select and insert a module node as parent.')
-                if moduleType == 'MRT_SplineNode':
-                    if cmds.nodeType(lastSelection) == 'joint':
-                        cmds.textField(self.uiVars['selectedParent_textField'], edit=True, text=lastSelection, font='plainLabelFont')
-                        cmds.button(self.uiVars['moduleParent_button'], edit=True, enable=True)
-                    #elif lastSelection.endswith('localAxesInfoRepr'):
-                        #text = lastSelection.rpartition('_localAxesInfoRepr')[0]
-                        #cmds.textField(self.uiVars['selectedParent_textField'], edit=True, text=text, font='plainLabelFont')
-                        #cmds.button(self.uiVars['moduleParent_button'], edit=True, enable=True)
-                    else:
-                        cmds.warning('MRT Error: Please select and insert a module node as parent.')
+                        
                 if moduleType == 'MRT_HingeNode':
                     if lastSelection.endswith('_control'):
                         cmds.textField(self.uiVars['selectedParent_textField'], edit=True, text=lastSelection, font='plainLabelFont')
                         cmds.button(self.uiVars['moduleParent_button'], edit=True, enable=True)
+                        return
                     else:
                         cmds.warning('MRT Error: Please select and insert a module node as parent.')
-            else:
-                cmds.textField(self.uiVars['selectedParent_textField'], edit=True, text='< insert parent module node >', font='obliqueLabelFont')
-                cmds.button(self.uiVars['moduleParent_button'], edit=True, enable=False)
-                cmds.warning('MRT Error: Please select and insert a module node as parent.')
-        else:
-            cmds.textField(self.uiVars['selectedParent_textField'], edit=True, text='< insert parent module node >', font='obliqueLabelFont')
-            cmds.button(self.uiVars['moduleParent_button'], edit=True, enable=False)
-            cmds.warning('MRT Error: Please select and insert a module node as parent.')
+
+        cmds.textField(self.uiVars['selectedParent_textField'], edit=True, text='< insert parent module node >', font='obliqueLabelFont')
+        cmds.button(self.uiVars['moduleParent_button'], edit=True, enable=False)
+        cmds.warning('MRT Error: Please select and insert a module node as parent.')
+
 
     def clearParentModuleField(self, *args):
+        '''
+        Clears parent module node textfield for module parenting.
+        '''
         cmds.textField(self.uiVars['selectedParent_textField'], edit=True, text='< insert parent module node >', font='obliqueLabelFont')
         cmds.button(self.uiVars['moduleParent_button'], edit=True, enable=False)
 
+
     def clearChildModuleField(self, *args):
+        '''
+        Clears child module namespace textfield for module parenting.
+        '''
         cmds.textField(self.uiVars['selectedChildModule_textField'], edit=True, text='< insert child module >', font='obliqueLabelFont')
         cmds.button(self.uiVars['moduleUnparent_button'], edit=True, enable=False)
         cmds.button(self.uiVars['parentSnap_button'], edit=True, enable=False)
         cmds.button(self.uiVars['childSnap_button'], edit=True, enable=False)
 
+
     def performUnparentForModule(self, *args):
-        fieldInfo = cmds.textField(self.uiVars['selectedChildModule_textField'], query=True, text=True)
+        '''
+        Remove parent module connections from a valid child module.
+        '''
+        # Store the current namespace, set to root.
         currentNamespace = cmds.namespaceInfo(currentNamespace=True)
         cmds.namespace(setNamespace=':')
+        
+        # Get the child module namespace.
+        fieldInfo = cmds.textField(self.uiVars['selectedChildModule_textField'], query=True, text=True)
+        
+        # Get the current scene module namespaces.
         moduleNamespaces = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
-        cmds.namespace(setNamespace=currentNamespace)
+        
+        # Check for scene and child module namespaces.
         if moduleNamespaces == None:
             cmds.warning('MRT Error: Module parenting conflict. No modules in the scene.')
             self.clearChildModuleField()
@@ -3660,20 +3762,35 @@ class MRT_UI(object):
                 cmds.warning('MRT Error: Module parenting conflict. The child module doesn\'t exist.')
                 self.clearChildModuleField()
                 return
+        
+        # Remove the child module connections from parent module.
         cmds.lockNode(fieldInfo+':module_container', lock=False, lockUnpublished=False)
-        constraint = cmds.listRelatives(fieldInfo+':moduleParentReprSegment_segmentCurve_endLocator', children=True, fullPath=True, type='constraint')
-        #cmds.delete(fieldInfo+':moduleParentReprSegment_endLocator_pointConstraint')
+        constraint = cmds.listRelatives(fieldInfo+':moduleParentReprSegment_segmentCurve_endLocator', children=True,
+                                                                                        fullPath=True, type='constraint')
         cmds.delete(constraint)
+        
+        # Hide representation for module parenting.
         cmds.setAttr(fieldInfo+':moduleGrp.moduleParent', 'None', type='string')
         cmds.setAttr(fieldInfo+':moduleParentReprGrp.visibility', 0)
         cmds.setAttr(fieldInfo+':moduleParentReprSegment_hierarchy_reprShape.overrideColor', 2)
         cmds.lockNode(fieldInfo+':module_container', lock=True, lockUnpublished=True)
+        
+        # Disable associated button states for working with parent module.
         cmds.button(self.uiVars['moduleUnparent_button'], edit=True, enable=False)
         cmds.button(self.uiVars['parentSnap_button'], edit=True, enable=False)
         cmds.button(self.uiVars['childSnap_button'], edit=True, enable=False)
+        
+        # Update scene module list.
         self.updateListForSceneModulesInUI()
+        
+        # Reset current namespace.
+        cmds.namespace(setNamespace=currentNamespace)
+
 
     def performParentForModule(self, *args):
+        '''
+        Perform module parenting connections/settings for a child module from parent module node.
+        '''
         parentFieldInfo = cmds.textField(self.uiVars['selectedParent_textField'], query=True, text=True)
         if 'MRT_HingeNode' in parentFieldInfo:
             parentFieldInfo = parentFieldInfo.rpartition('_control')[0]
