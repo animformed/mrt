@@ -4282,6 +4282,7 @@ class MRT_UI(object):
             self.uiVars['displayCtrlRigOptions_scrollField'] = cmds.scrollField(text=scrollTextString, editable=False, width=760, enableBackground=True, height=300, wordWrap=False)
             cmds.showWindow(self.uiVars['displayCtrlRigOptionsWindow'])
 
+
     def displayControlRiggingOptions(self, rootJoint, customHierarchyTreeListString=None):
         self.controlRiggingAttributes = {}
         cmds.textScrollList(self.uiVars['c_rig_txScList'], edit=True, height=32, removeAll=True)
@@ -4437,14 +4438,20 @@ class MRT_UI(object):
         # Reset all controls.
         nodes = []
         cmds.currentTime(0)
+        
+        # Get character root and world transform controls.
         rootCtrls = [item for item in cmds.ls(type='transform') 
         			 if re.match('^MRT_character%s__(world|root){1}_transform$' % (characterName), item)]
         if rootCtrls:
             nodes.extend(rootCtrls)
+        
+        # Get all module containers.
         ctrl_containers = [item for item in cmds.ls(type='container') 
         				   if re.match('^MRT_character%s__\w+_Container$'%(characterName), item)]
         if ctrl_containers:
             nodes.extend(ctrl_containers)
+        
+        # Remove anim on collected nodes.
         if nodes:
             for node in nodes:
                 mel.eval('cutKey -t ":" '+node+';')
@@ -4455,6 +4462,8 @@ class MRT_UI(object):
                             cmds.setAttr(node+'.'+attr, 0)
                         if re.search('scale', attr):
                             cmds.setAttr(node+'.'+attr, 1)
+                         
+        # Get all character joints.
         allJoints = cmds.getAttr('MRT_character'+characterName+'__mainGrp.skinJointList')
         allJoints = allJoints.split(',')
 
@@ -4467,62 +4476,77 @@ class MRT_UI(object):
         # Remove the control rig container
         ctrl_container = 'MRT_character{0}__{1}_{2}_Container'.format(characterName, userSpecName, ctrlRigLayer)
 
+        # Get all character controls.
         allControlRigHandles = [item for item in cmds.ls(type='transform') 
                     if re.match('^MRT_character%s__%s_%s\w+handle$' % (characterName, userSpecName, ctrlRigLayer), item)]
-
-        for handle in allControlRigHandles:
         
+        # Go through each character control.
+        for handle in allControlRigHandles:
+            
+            # Get all child target character control(s) for current control, if they exist.
+            # The current control may be a parent target for space switching for the child control.
             childTargetHandles = \
                 set([item.rpartition('_parentSwitch_grp_parentConstraint')[0]
                     for item in cmds.listConnections(handle, destination=True)
                     if re.match('^MRT_character%s__\w+handle_parentSwitch_grp_parentConstraint$' % (characterName), item)])
                     
             if childTargetHandles:
+            
                 for child in childTargetHandles:
+                
+                    # Remove the parent switch condition for the current parent character control.
                     parentSwitchCondition = child+'_'+handle+'_parentSwitch_condition'
                     cmds.delete(parentSwitchCondition)
-                    attrs = cmds.addAttr(child+'.targetParents', query=True, enumName=True)
-                    attrs = attrs.split(':')
-                    index = attrs.index(handle)
-                    attrs.pop(index)
-                    cmds.addAttr(child+'.targetParents', edit=True, enumName=':'.join(attrs))
+                    
+                    # Get the parent name enum targets on child character control.
+                    targets = cmds.addAttr(child+'.targetParents', query=True, enumName=True)
+                    targets = targets.split(':')
+                    
+                    # Remove current character control from enum parent switch list.
+                    targets.remove(handle)
+                    
+                    # Re-set the parent switch condition nodes for the child control.
+                    for target in targets[1:]:  # Go through all enum target names, except the first, which is "None".
+                        index = targets.index(target)
+                        parentSwitchCondition = child+'_'+target+'_parentSwitch_condition'
+                        cmds.setAttr(parentSwitchCondition+'.firstTerm', index)
+                    if len(targets) > 0:
+                        cmds.setAttr(child+'.targetParents', 1)
+                    else:
+                        cmds.setAttr(child+'.targetParents', 0)
+                    
+                    # Update the parent target enum list.
+                    cmds.addAttr(child+'.targetParents', edit=True, enumName=':'.join(targets))
+                    
+                    # Remove constraint for space switching.
                     if cmds.objectType(child, isType='joint'):
                         cmds.orientConstraint(handle, child+'_parentSwitch_grp', edit=True, remove=True)
                     else:
                         cmds.parentConstraint(handle, child+'_parentSwitch_grp', edit=True, remove=True)
+                    
+                    # Update the parent target transform list on the parent switch group for the child control.
                     currentTargets = cmds.getAttr(child+'_parentSwitch_grp.parentTargetList')
                     currentTargets = currentTargets.split(',')
-                    index = currentTargets.index(handle)
-                    currentTargets.pop(index)
-                    if isinstance(currentTargets, list):
-                        currentTargets = ','.join(currentTargets)
+                    currentTargets.remove(handle)
+                    currentTargets = ','.join(currentTargets)
                     cmds.setAttr(child+'_parentSwitch_grp.parentTargetList', lock=False)
                     cmds.setAttr(child+'_parentSwitch_grp.parentTargetList', currentTargets, type='string', lock=True)
-
-                    allAttrs = cmds.addAttr(child+'.targetParents', query=True, enumName=True)
-                    allAttrs = allAttrs.split(':')
-                    for attr in allAttrs[1:]:
-                        index = allAttrs.index(attr)
-                        parentSwitchCondition = child+'_'+attr+'_parentSwitch_condition'
-                        cmds.setAttr(parentSwitchCondition+'.firstTerm', index)
-                    if len(allAttrs) > 0:
-                        cmds.setAttr(child+'.targetParents', 1)
-                    else:
-                        cmds.setAttr(child+'.targetParents', 0)
-
+        
+        # Remove all parent switch condition nodes for the control rig layer (which is to be deleted).
         allParentSwitchConditions = [item for item in cmds.ls(type='condition') if \
         							 re.match('^MRT_character%s__%s_%s_\w+_parentSwitch_condition$' 
         							 		  % (characterName, userSpecName, ctrlRigLayer), item)]
         if allParentSwitchConditions:
             cmds.delete(allParentSwitchConditions)
-
+        
+        # Remove the control rig container.
         if cmds.objExists(ctrl_container):
             cmds.delete(ctrl_container)
         else:
             cmds.warning('MRT Error: No container found for the control rig to be removed. Please check the source ' \
             			 'definition for the control rig.')
 
-        # Remove the rig layer attribute from world transform
+        # Remove the control rig layer attribute from charcater world transform control.
         attrName = '{0}_{1}'.format(userSpecName, ctrlRigLayer)
         check = False
         if cmds.attributeQuery(attrName, node='MRT_character'+characterName+'__root_transform', exists=True):
@@ -4534,11 +4558,18 @@ class MRT_UI(object):
         if not check:
             cmds.warning('MRT Error: No attribute found on the character root transform for the control rig to be removed. ' \
             			 'Please check the source definition for the control rig.')
-        cmds.select(clear=True)
+        
+        # Reset selection.
         cmds.select(selection)
+        
+        # Reset display for current control rig(s) attached to the hierarchy.
         self.displayAttachedControlRigs(hierarchyRoot)
+        
+        # Enable DG cycle check.
         if cy_check:
             cmds.cycleCheck(evaluation=True)
+        
+        # Clear control textfield for Parent switching.
         self.clearParentSwitchControlField()
 
 
