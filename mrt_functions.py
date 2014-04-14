@@ -1219,7 +1219,7 @@ def returnModuleAttrsFromScene(moduleNamespace):
 
     # Get the module parent info with default values. This is updated later. It contains the following info:
     # [[current module namespace, module parent info,
-    # [mirror module namespace, mirror module parent info (if this module's a mirrored module pair]]
+    # [mirror module namespace, mirror module parent info (if this module has a mirrored module pair)]]
     moduleAttrsDict['moduleParentInfo'] = [[moduleNamespace, cmds.getAttr(moduleNamespace+':moduleGrp.moduleParent')], \
                                                                                                      [None, u'None']]
     # Get the mirror function info for the module (This info is valid only in case of a mirrored module pair).
@@ -1230,7 +1230,7 @@ def returnModuleAttrsFromScene(moduleNamespace):
     moduleAttrsDict['mirror_options'] = ['Off', 'Local_Orientation', 'Behaviour']
 
     # Set if the module is a mirrored module. This value is needed/modified as needed while creating mirror modules.
-    # This can be set to False. It's used to keep track of which module of the mirrored pair is being created (The one
+    # This can be set to False. It's used to keep track of which module of thesetupParentingForRawCharacterParts mirrored pair is being created (The one
     # on the '-' or the '+' side of the creation plane.
     moduleAttrsDict['mirrorModule'] = False
 
@@ -1246,8 +1246,8 @@ def returnModuleAttrsFromScene(moduleNamespace):
     # Get the proxy geometry info. It contains the following info:
     # [True if it contains bone proxy geo,
     # True if it contains elbow proxy geo,
-    # elbow proxy type, 'sphere' or 'cube' (to be updated later)]
-    # mirror instancing is enabled for all module proxy geo]
+    # elbow proxy type, 'sphere' or 'cube' (to be updated later),
+    # mirror instancing status for all module proxy geo]
     moduleAttrsDict['proxy_geo_options'] = [False, False, None, 'Off']
 
     # Get the info for node components for the module. It contains the following info:
@@ -1795,7 +1795,8 @@ def setupParentingForRawCharacterParts(characterJointSet, jointsMainGrp, charact
 
     "Constrained" parenting uses parent constraint, "DG parenting". "Hierarchical" parenting uses DAG parenting.
     """
-    # Collect all
+    # To collect all "constrained" root joints for joint hierarchies. This is the joint above the root joint
+    # for a joint hierarchy and it is used to receive constraints.
     all_root_joints = []
 
     # Iterate through the joints in the hierarchy.
@@ -2012,56 +2013,92 @@ def createProxyForSkeletonFromModule(characterJointSet, moduleAttrsDict, charact
         return None
 
 
-def createFKlayerDriverOnJointHierarchy(**kwargs):
+def createFKlayerDriverOnJointHierarchy(*args, **kwargs):
     """
-    Creates a joint layer on top of a selected character hierarchy. For description in context, see the "applyFK_Control" method
-    for the "BaseJointControl" class in "mrt_controlRig_src.py"
+    Creates a joint layer on top of a selected character hierarchy. For description in context, 
+    see the "applyFK_Control" method for the "BaseJointControl" class in "mrt_controlRig_src.py"
     """
     
     # Get the input arguments
     
+    # 1
     if 'characterJointSet' in kwargs:
         characterJointSet = kwargs['characterJointSet']
+    else:
+        characterJointSet = args[0]
+    if isinstance(characterJointSet, list) and len(characterJointSet):
+        pass
     else:
         cmds.warning('Not joint set specified from a character. Cannot create driver hierarchy.')
         # I don't use 'cmds.error' since it generates an exception.
         return
-
+    
+    # 2
     if 'jointLayerName' in kwargs:
         jointLayerName = kwargs['jointLayerName']
     else:
+        jointLayerName = args[1]
+    if not isinstance(jointLayerName, str):
         cmds.warning('No name specified for the driver layer. Aborting.')
         return
 
+    # 3
     if 'characterName' in kwargs:
         characterName = kwargs['characterName']
     else:
+        characterName = args[2]
+    if not isinstance(characterName, str):
         cmds.warning('No character name specified. Aborting.')
         return
-
+    
+    # 4
     if 'asControl' in kwargs:
         asControl = kwargs['asControl']
+    elif len(args) > 3:
+        asControl = args[3]
     else:
         asControl = False
+    if not isinstance(asControl, bool):
+        asControl = False
 
+    # 5
     if 'layerVisibility' in kwargs:
         layerVisibility = kwargs['layerVisibility']
+    elif len(args) > 4:
+        layerVisibility = args[4]
     else:
         layerVisibility = 'On'
-
+    if not isinstance(layerVisibility, str):
+        layerVisibility = 'On'
+    
+    # 6
     if 'transFilter' in kwargs:
         transFilter = kwargs['transFilter']
+    elif len(args) > 5:
+        transFilter = args[5]
     else:
         transFilter = False
-
+    if not isinstance(transFilter, bool):
+        transFilter = False
+    
+    # 7
     if 'controlLayerColour' in kwargs:
         controlLayerColour = kwargs['controlLayerColour']
+    elif len(args) > 6:
+        controlLayerColour = args[6]
     else:
         controlLayerColour = None
-
+    if not isinstance(controlLayerColour, int):
+        controlLayerColour = None
+    
+    # 8
     if 'connectLayer' in kwargs:
         connectLayer = kwargs['connectLayer']
+    elif len(args) > 7:
+        connectLayer = args[7]
     else:
+        connectLayer = True
+    if not isinstance(connectLayer, bool):
         connectLayer = True
 
     # To get the names of joints in the new driver layer.

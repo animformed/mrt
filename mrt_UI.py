@@ -2989,12 +2989,16 @@ class MRT_UI(object):
         # Finally, re-name the namespace for the module itself.
         # Add the new module namespace.
         cmds.namespace(addNamespace=newNamespace)
+        
         # Unclock the module container to perform changes.
         cmds.lockNode(currentNamespaceForSelectedModule+':module_container', lock=False, lockUnpublished=False)
+        
         # Move the contents of module from old namespace to the new namespace.
         cmds.namespace(moveNamespace=[currentNamespaceForSelectedModule, newNamespace])
+        
         # Remove the old module namespace.
         cmds.namespace(removeNamespace=currentNamespaceForSelectedModule)
+        
         # If a mirror module exists (if the module is part of a mirror module pair),
         # change the "mirrorModuleNamespace" attribute on the mirror module to match the new namespace.
         # This attribute is used to find a module's mirror.
@@ -3791,98 +3795,197 @@ class MRT_UI(object):
         '''
         Perform module parenting connections/settings for a child module from parent module node.
         '''
+        # Save the current namespace.
+        currentNamespace = cmds.namespaceInfo(currentNamespace=True)
+        cmds.namespace(setNamespace=':')
+        
+        # Get the parent module node from the parent field for module parenting.
         parentFieldInfo = cmds.textField(self.uiVars['selectedParent_textField'], query=True, text=True)
+        
+        # If the parent module is a HingeNode module, get the appropriate node.
         if 'MRT_HingeNode' in parentFieldInfo:
             parentFieldInfo = parentFieldInfo.rpartition('_control')[0]
+            
+        # Get the parent module namespace.
         parentModuleNamespace = mfunc.stripMRTNamespace(parentFieldInfo)[0]
+        
+        # Get the child module namespace.
         childFieldInfo = cmds.textField(self.uiVars['selectedChildModule_textField'], query=True, text=True)
         if childFieldInfo == '< insert child module >':
             cmds.warning('MRT Error: Module parenting conflict. Insert a child module for parenting.')
             return
-        currentNamespace = cmds.namespaceInfo(currentNamespace=True)
-        cmds.namespace(setNamespace=':')
+            
+        # Get all module namespace.
         moduleNamespaces = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
-        cmds.namespace(setNamespace=currentNamespace)
+        
+        # If no module(s) in the scene.
         if moduleNamespaces == None:
             cmds.warning('MRT Error: Module parenting conflict. No modules in the scene.')
             self.clearChildModuleField()
             return
-        else:
-            if not childFieldInfo in moduleNamespaces:
-                cmds.warning('MRT Error: Module parenting conflict. The child module doesn\'t exist.')
-                self.clearChildModuleField()
-                return
-            if not parentModuleNamespace in moduleNamespaces:
-                cmds.warning('MRT Error: Module parenting conflict. The parent module doesn\'t exist.')
-                self.clearParentModuleField()
-                return
-        parentModule_moduleParentInfo = cmds.getAttr(parentModuleNamespace+':moduleGrp.moduleParent')
-        if parentModule_moduleParentInfo != 'None':
-            parentModule_moduleParentInfo = parentModule_moduleParentInfo.split(',')[0]
-            parentModule_moduleParentInfo = mfunc.stripMRTNamespace(parentModule_moduleParentInfo)[0]
+        
+        # Check if the parent and child module namespaces exist in the current scene.
+        # This is not necessary, but a user can delete the modules after inserting them
+        # into the module parenting fields. You never know haha.
+        if not childFieldInfo in moduleNamespaces:
+            cmds.warning('MRT Error: Module parenting conflict. The child module doesn\'t exist.')
+            self.clearChildModuleField()
+            return
+        if not parentModuleNamespace in moduleNamespaces:
+            cmds.warning('MRT Error: Module parenting conflict. The parent module doesn\'t exist.')
+            self.clearParentModuleField()
+            return
+        
+        # Check if the child module namespace equals parent module namespace.
         if mfunc.stripMRTNamespace(parentFieldInfo)[0] == childFieldInfo:
             cmds.warning('MRT Error: Module parenting conflict. Cannot parent a module on itself.')
             return
-        if parentModule_moduleParentInfo == childFieldInfo:
-            cmds.warning('MRT Error: Module parenting conflict. The module to be parented is already a child.')
-            return
+        
+        # Check if the parent module node is already assigned.
+        child_moduleParentInfo = cmds.getAttr(childFieldInfo+':moduleGrp.moduleParent')
+        
+        if child_moduleParentInfo != 'None:
+            child_moduleParentInfo = child_moduleParentInfo.split(',')[0]
+            child_moduleParentInfo = mfunc.stripMRTNamespace(child_moduleParentInfo)[0]
+            
+            if child_moduleParentInfo == parentModuleNamespace:
+                cmds.warning('MRT Error: Module parenting conflict. The parent module node is already assigned as a parent.')
+                return
+        
+        # Check if the parent module is already a child.
+        parentModule_moduleParentInfo = cmds.getAttr(parentModuleNamespace+':moduleGrp.moduleParent')
+        if parentModule_moduleParentInfo != 'None':
+        
+            parentModule_moduleParentInfo = parentModule_moduleParentInfo.split(',')[0]
+            parentModule_moduleParentInfo = mfunc.stripMRTNamespace(parentModule_moduleParentInfo)[0]
+
+            if parentModule_moduleParentInfo == childFieldInfo:
+                cmds.warning('MRT Error: Module parenting conflict. The module to be parented is already a child.')
+                return
+        
+        # Check if the parent module is a mirrored module for the child module.
         if cmds.attributeQuery('mirrorModuleNamespace', node=childFieldInfo+':moduleGrp', exists=True):
+        
             if parentModuleNamespace == cmds.getAttr(childFieldInfo+':moduleGrp.mirrorModuleNamespace'):
                 cmds.warning('MRT Error: Module parenting conflict. Cannot set up parenting inside mirror modules.')
                 return
+        
+        # If the child module has an existing valid parent module node, unparent it before proceeding.
         if cmds.getAttr(childFieldInfo+':moduleGrp.moduleParent') != 'None':
             self.performUnparentForModule([])
+        
+        # Unlock and update the child module container.
         cmds.lockNode(childFieldInfo+':module_container', lock=False, lockUnpublished=False)
         mfunc.updateContainerNodes(childFieldInfo+':module_container')
         mfunc.updateContainerNodes(parentModuleNamespace+':module_container')
-        pointConstraint = cmds.pointConstraint(parentFieldInfo, childFieldInfo+':moduleParentReprSegment_segmentCurve_endLocator', maintainOffset=False, name=childFieldInfo+':moduleParentReprSegment_endLocator_pointConstraint')[0]
-        mfunc.addNodesToContainer(childFieldInfo+':module_container', [pointConstraint])
+        
+        # Set-up module parenting connections.
+        moduleParentingConstraint = \
+        cmds.pointConstraint(parentFieldInfo, childFieldInfo+':moduleParentReprSegment_segmentCurve_endLocator',
+                             maintainOffset=False, name=childFieldInfo+':moduleParentReprSegment_endLocator_pointConstraint')[0]
+        
+        mfunc.addNodesToContainer(childFieldInfo+':module_container', [moduleParentingConstraint])
+        
+        # Set module parenting representation colour.
         parentType = cmds.radioCollection(self.uiVars['moduleParent_radioColl'], query=True, select=True)
         if parentType == 'Hierarchical':
             cmds.setAttr(childFieldInfo+':moduleParentReprSegment_hierarchy_reprShape.overrideColor', 16)
+        cmds.setAttr(childFieldInfo+':moduleParentReprGrp.visibility', 1)
+        
+        # Update the "moduleParent" attribute on the child module.
         parentInfo = parentFieldInfo + ',' + parentType
         cmds.setAttr(childFieldInfo+':moduleGrp.moduleParent', parentInfo, type='string')
-        cmds.setAttr(childFieldInfo+':moduleParentReprGrp.visibility', 1)
+        
+        # Lock the child module container.
         cmds.lockNode(childFieldInfo+':module_container', lock=True, lockUnpublished=True)
+        
+        # Set button states for post module parenting operations.
         cmds.button(self.uiVars['moduleUnparent_button'], edit=True, enable=True)
         cmds.button(self.uiVars['childSnap_button'], edit=True, enable=True)
         if not 'MRT_SplineNode' in parentFieldInfo:
+            # The spline module nodes cannot be translated directly, unlike other module nodes.
             cmds.button(self.uiVars['parentSnap_button'], edit=True, enable=True)
+        
+        # Restore namespace
+        cmds.namespace(setNamespace=currentNamespace)
+
 
     def performSnapParentToChild(self, *args):
+        '''
+        Transform the parent module node for a child module to the root child module node position.
+        The child module is connected from its root to its parent module node.
+        '''
+        # Get the child module namespace.
         childFieldInfo = cmds.textField(self.uiVars['selectedChildModule_textField'], query=True, text=True)
+        
+        # Get the child module root node name.
         childRootNode = childFieldInfo+':root_node_transform'
+        
+        # Get the parent module node name.
         parentModuleNode = cmds.getAttr(childFieldInfo+':moduleGrp.moduleParent')
         parentModuleNode = parentModuleNode.split(',')[0]
         if 'MRT_HingeNode' in parentModuleNode:
             parentModuleNode = parentModuleNode + '_control'
-        cmds.xform(parentModuleNode, worldSpace=True, absolute=True, translation=cmds.xform(childRootNode, query=True, worldSpace=True, translation=True))
+            
+        # Transform the parent module node.
+        cmds.xform(parentModuleNode, worldSpace=True, absolute=True,
+                   translation=cmds.xform(childRootNode, query=True, worldSpace=True, translation=True))
+
 
     def performSnapChildToParent(self, *args):
+        '''
+        Transform the child module root node to the parent module node position.
+        '''
+        # Get the child module namespace.
         childFieldInfo = cmds.textField(self.uiVars['selectedChildModule_textField'], query=True, text=True)
+        
+        # Get the child module root node name.
         if 'MRT_HingeNode' in childFieldInfo:
             childRootNode = childFieldInfo+':root_node_transform_control'
         elif 'MRT_SplineNode' in childFieldInfo:
             childRootNode = childFieldInfo+ ':spline_1_adjustCurve_transform'
         else:
             childRootNode = childFieldInfo+':root_node_transform'
+            
+        # Get the parent module node name.
         parentModuleNode = cmds.getAttr(childFieldInfo+':moduleGrp.moduleParent')
         parentModuleNode = parentModuleNode.split(',')[0]
-        cmds.xform(childRootNode, worldSpace=True, absolute=True, translation=cmds.xform(parentModuleNode, query=True, worldSpace=True, translation=True))
+        
+        # Transform the child module root node.
+        cmds.xform(childRootNode, worldSpace=True, absolute=True,
+                   translation=cmds.xform(parentModuleNode, query=True, worldSpace=True, translation=True))
+
 
     def processCharacterFromScene(self, *args):
+        '''
+        Main procedure for creating character from scene module(s).
+        '''
+        # Check if a character exists in the scene.
         characterStatus = self.checkMRTcharacter()
-        currentNamespace = cmds.namespaceInfo(currentNamespace=True)
-        cmds.namespace(setNamespace=':')
         if characterStatus[0]:
             characterName = re.findall('^MRT_character(\D+)__mainGrp$', characterStatus[0])
             cmds.warning('MRT Error: Character "%s" exists in the scene, aborting.'%(characterName[0]))
             return
+        
+        # Check for valid character name entered by the user.
+        characterName = cmds.textField(self.uiVars['characterName_textField'], query=True, text=True)
+        if not str(characterName).isalnum():
+            cmds.warning('MRT Error: Please enter a valid name for creating a character.')
+            return
+        # Or
+        characterName = characterName.title()
+            
+        # Save current namespace, set to root.
+        currentNamespace = cmds.namespaceInfo(currentNamespace=True)
+        cmds.namespace(setNamespace=':')
+        
+        # Get the current scene modules.
         scene_modules = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
         if not scene_modules:
             cmds.warning('MRT Error: No modules found in the scene to create a character.')
             return
-        # Sort modules by their mirror namespaces(Mirrored namespaces are appended at the end).
+            
+        # Sort modules by their mirror namespaces (Mirrored namespaces are appended at the end).
         mrt_modules = []
         for module in scene_modules[:]:
             if cmds.getAttr(module+':moduleGrp.onPlane')[0] != '-':
@@ -3891,15 +3994,17 @@ class MRT_UI(object):
                 scene_modules.pop(index)
         mrt_modules.extend(scene_modules)
 
-        characterName = cmds.textField(self.uiVars['characterName_textField'], query=True, text=True)
-        if not str(characterName).isalnum():
-            cmds.warning('MRT Error: Please enter a valid name for creating a character.')
-            return
-        characterName = characterName.title()
+        # Create the main character group.
         mainGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__mainGrp')
+        
+        # Add an attribute to store the module collection file name for the scene modules used to
+        # create the character (for auto module collection file).
         cmds.addAttr(mainGrp, dataType='string', longName='collectionFileID')
-        #cmds.addAttr(mainGrp, dataType='string', longName='translationControlFuncList')
+        
+        # Add an attribute to store a string list of skin joints for the character.
         cmds.addAttr(mainGrp, dataType='string', longName='skinJointList')
+        
+        # Create the groups under the main character groups.
         jointsGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__jointsMainGrp', parent=mainGrp)
         geoMainGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__geometryMainGrp', parent=mainGrp)
         skinGeoGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__skinGeometryGrp', parent=geoMainGrp)
@@ -3907,52 +4012,102 @@ class MRT_UI(object):
         miscGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__MiscGrp', parent=mainGrp)
         defGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__DeformersGrp', parent=miscGrp)
         cmds.setAttr(defGrp+'.visibility', 0)
+        
+        # Create a group for character proxy geometry under the "geometry" main group.
         proxyMainGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__proxyAllGeometryGrp', parent=geoMainGrp)
+        
+        # Create the display layers for the character.
         skinGeoLayerName = cmds.createDisplayLayer(empty=True, name='MRT_character'+characterName+'_skin_geometry', noRecurse=False)
         skinJointsLayerName = cmds.createDisplayLayer(empty=True, name='MRT_character'+characterName+'_all_joints', noRecurse=True)
         controlRigLayerName = cmds.createDisplayLayer(empty=True, name='MRT_character'+characterName+'_control_rig', noRecurse=False)
+        
         cmds.select(clear=True)
-        characterJointSet = []
 
+        # Get a random name for the auto module collection file to be saved. This file is used by MRT to revert
+        # back to scene modules from a character.
         fileId = reduce(lambda x,y:x+y, (random.random(), random.random(), random.random()))
         fileId = str(fileId).partition('.')[2]
+        
+        # Set the collection file id for the auto module collection file.
         cmds.setAttr(mainGrp+'.collectionFileID', fileId, type='string', lock=True)
+        
+        # Get the path for the auto module collection file.
         autoCharacterFile = self.autoCollections_path + '/character__%s.mrtmc'%(fileId)
+        
+        # Now, save an auto module collection file from scene modules.
         self.makeCollectionFromSceneTreeViewModulesUI(args=True, allModules=True, auto=autoCharacterFile)
-        #translationFunctionSet = []
+        
+        characterJointSet = []
+        
+        # Go through each scene module,
         for module in mrt_modules:
+            
+            # Get the module attributes/properties.
             moduleAttrsDict = mfunc.returnModuleAttrsFromScene(module)
+            
+            # Create the joint hierarchy from module.
             joints = mfunc.createSkeletonFromModule(moduleAttrsDict, characterName)
-            characterJointSet.append((moduleAttrsDict['moduleParentInfo'][0][1], joints[:]))
-
+            
+            # Collect and append the joint names for the joint hierarchy generated from module by:
+            # ("<parent module node>,<parent type>", ["<child hierarchy root joint>", ..., "<child hierarchy end joint>"])
+            # As an example:
+            # ("MRT_JointNode__r_clavicle:root_node_transform,Constrained", ["MRT_characterNew__r_arm_root_node_transform",
+            #                                                                "MRT_characterNew__r_arm_node_1_transform",
+            #                                                                "MRT_characterNew__r_arm_end_node_transform"])
+            # Also, the moduleAttrsDict['moduleParentInfo'] has the following data:
+            # [[current module namespace, module parent info,
+            #             [mirror module namespace, mirror module parent info (if this module has a mirrored module pair)]]
+            characterJointSet.append( ( moduleAttrsDict['moduleParentInfo'][0][1], joints[:] ) )
+            
+            # If the module has proxy geometry, generate the proxy geometry for the joint hierarchy as well.
+            # The moduleAttrsDict['proxy_geo_options'] has a list with the following:
+            # [ True if it contains bone proxy geo,
+            #       True if it contains elbow proxy geo,
+            #           elbow proxy type, 'sphere' or 'cube',
+            #                  mirror instancing status for all module proxy geo ]
             if moduleAttrsDict['proxy_geo_options'][3] == 'On':
+                # Create and return the proxy geo group for the joint hierarchy, if proxy geo exists for the module.
                 proxyGrp = mfunc.createProxyForSkeletonFromModule(characterJointSet, moduleAttrsDict, characterName)
                 if proxyGrp:
+                    # Parent the proxy geo for the joint hierarchy under the main proxy geo group.
                     cmds.parent(proxyGrp, proxyMainGrp, absolute=True)
-
+        
+        # Delete all scene modules (not needed further).
         self.deleteAllSceneModules()
 
-        #worldRefJoints, all_root_joint = mfunc.setupParentingForRawCharacterParts(characterJointSet, jointsGrp, characterName)
+        # Set up parenting among discrete joint hierarchies generated from scene modules. This parenting
+        # is either constrained or DAG type. This depends on the module parenting relationships set-up
+        # earlier among scene modules ("Constrained" or "Hierarchical" module parenting).
         all_root_joints = mfunc.setupParentingForRawCharacterParts(characterJointSet, jointsGrp, characterName)
-
-        characterJoints = cmds.ls(type='joint')
-        for joint in characterJoints:
-            if joint.startswith('MRT_character'):
+        
+        # Find the root joints for all character joint hierarchies, parent them into the character joint group.
+        characterJoints = []
+        allJoints = cmds.ls(type='joint')
+        for joint in allJoints:
+            validJoint = self.returnValidFlagForCharacterJoint(joint)[0]
+            if validJoint:
+                characterJoints.append(joint)
                 parent = cmds.listRelatives(joint, parent=True)
                 if parent == None:
                     cmds.parent(joint, jointsGrp)
-
-        characterJoints = [joint for joint in characterJoints if joint.endswith('_transform')]
+        
+        # Set the string list attribute for storing character joints
         characterJointsAttr = ','.join(characterJoints)
         cmds.setAttr(mainGrp+'.skinJointList', characterJointsAttr, type='string', lock=True)
-        #cmds.setAttr(mainGrp+'.translationControlFuncList', translationFunctionSet, type='string', lock=True)
+        
+        # If the character has no proxy geometry, delete the proxy geo main group.
         proxyGrpChildren = cmds.listRelatives(proxyMainGrp, allDescendents=True)
         if proxyGrpChildren == None:
             cmds.delete(proxyMainGrp)
+        
+        # Create the character world and root transform controls.
+        # "createRawCharacterTransformControl" returns [<root transform>, <world transform>]
         transforms = objects.createRawCharacterTransformControl()
+        
+        # Calculate and set the position and size for the character world transform,
+        # based on the number and position of all character joints.
         avgBound = 6.0
         sumPos = [0.0, 0.0, 0.0]
-        startMagPos = 0
         for joint in characterJoints:
             worldPos = cmds.xform(joint, query=True, worldSpace=True, translation=True)
             magWorldPos = math.sqrt(reduce(lambda x,y: x+y, [cmpnt**2 for cmpnt in worldPos]))
@@ -3962,60 +4117,96 @@ class MRT_UI(object):
         sumPos = [item/len(characterJoints) for item in sumPos]
         sumPos[1] = 0.0
         scaleAdd = [x*avgBound*320 for x in [1.0, 1.0, 1.0]]
+        
+        # Set the default position and size of the character world transform.
         cmds.setAttr(transforms[1]+'.translate', *sumPos, type='double3')
         cmds.setAttr(transforms[1]+'.scale', *scaleAdd, type='double3')
         cmds.makeIdentity(transforms[1], scale=True, translate=True, apply=True)
+        
+        # Put the "globalScale" on the character root transform control.
         cmds.connectAttr(transforms[0]+'.scaleY', transforms[0]+'.scaleX')
         cmds.connectAttr(transforms[0]+'.scaleY', transforms[0]+'.scaleZ')
         cmds.aliasAttr('globalScale', transforms[0]+'.scaleY')
         cmds.setAttr(transforms[0]+'.scaleX', lock=True, keyable=False, channelBox=False)
         cmds.setAttr(transforms[0]+'.scaleZ', lock=True, keyable=False, channelBox=False)
+        
+        # Hide the scale attributes on the character world transform control.
         cmds.setAttr(transforms[1]+'.scaleX', keyable=False, lock=True)
         cmds.setAttr(transforms[1]+'.scaleY', keyable=False, lock=True)
         cmds.setAttr(transforms[1]+'.scaleZ', keyable=False, lock=True)
         cmds.parent(transforms[1], mainGrp, absolute=True)
+        
+        # Name the character root transform control.
         transforms[0] = cmds.rename(transforms[0], 'MRT_character'+characterName+transforms[0])
+        
+        # Name the character world transform control.
         transforms[1] = cmds.rename(transforms[1], 'MRT_character'+characterName+transforms[1])
-
+        
+        # Constrain all root joint hierarchies in a character to the character root transform.
+        # Usually, there's only one root joint hierarchy (like spine in a biped). But there can be multiple.
         for joint in all_root_joints:
             cmds.parentConstraint(transforms[0], joint, maintainOffset=True, name=transforms[0]+'_'+joint+'__parentConstraint')
-
-        #cmds.parentConstraint(transforms[0], 'MRT_character'+characterName+'__controlGrp', maintainOffset=True, name=transforms[0]+'_controlGrp_parentConstraint')
+        
+        # Connect the character "globalScale" to main joints group.
         cmds.connectAttr(transforms[0]+'.globalScale', 'MRT_character'+characterName+'__jointsMainGrp.scaleX')
         cmds.connectAttr(transforms[0]+'.globalScale', 'MRT_character'+characterName+'__jointsMainGrp.scaleY')
         cmds.connectAttr(transforms[0]+'.globalScale', 'MRT_character'+characterName+'__jointsMainGrp.scaleZ')
-        #cmds.connectAttr(transforms[0]+'.globalScale', 'MRT_character'+characterName+'__controlGrp.scaleX')
-        #cmds.connectAttr(transforms[0]+'.globalScale', 'MRT_character'+characterName+'__controlGrp.scaleY')
-        #cmds.connectAttr(transforms[0]+'.globalScale', 'MRT_character'+characterName+'__controlGrp.scaleZ')
+
         cmds.select(clear=True)
 
+        # Add the "rigLayers" attribute to all root joints for all character joint hierachies.
+        # This attribute is used for parent/space switching operations.
         for joint in characterJoints:
             if re.search('_root_node_transform', joint):
                 cmds.addAttr(joint, dataType='string', longName='rigLayers', keyable=False)
                 cmds.setAttr(joint+'.rigLayers', 'None', type='string', lock=True)
+        
+        # Add the "skinGeometryGrp" to the "skin_geometry" display layer.
         cmds.editDisplayLayerMembers(skinGeoLayerName, skinGeoGrp)
+        
+        # Add all character joints to the all_joints display layer.
         cmds.editDisplayLayerMembers(skinJointsLayerName, *characterJoints)
+        
+        # Create an "FK bake" driver joint layer.
         result = mfunc.createFKlayerDriverOnJointHierarchy(characterJoints, 'FK_bake', characterName, False, 'None', True)
-        cmds.addAttr(transforms[0], attributeType='float', longName='FK_Bake_Layer', hasMinValue=True, hasMaxValue=True, minValue=0, maxValue=1, defaultValue=0, keyable=False)
+        
+        # Add the "FK bake control layer" switch attribute on the character root control.
+        # This attribute is for internal use only.
+        cmds.addAttr(transforms[0], attributeType='float', longName='FK_Bake_Layer', hasMinValue=True, hasMaxValue=True,
+                                                                    minValue=0, maxValue=1, defaultValue=0, keyable=False)
+        # Go through the joints in the FK bake driver layer.
         for joint in result[0]:
+            # Connect all the weights on the driver constraints for the "FK bake control layer" to
+            # its attribute on the character root control.
             for constraint in result[1]:
                 constrainResult = mfunc.returnConstraintWeightIndexForTransform(joint, constraint)
                 if constrainResult:
                     cmds.connectAttr(transforms[0]+'.FK_Bake_Layer', constraint+'.'+constrainResult[1])
-        cmds.addAttr(transforms[0], attributeType='enum', longName='CONTROL_RIGS', enumName='---------------------------:', keyable=True)
+        
+        # New control rig layer switch attribute(s) will be user keyable.
+        cmds.addAttr(transforms[0], attributeType='enum', longName='CONTROL_RIGS', enumName=' ', keyable=True)
         cmds.setAttr(transforms[0]+'.CONTROL_RIGS', lock=True)
-
+        
+        # Add the character world transform and controlGrp to the "control_rig" display layer.
         cmds.select([transforms[1], cntlGrp])
         mel.eval('editDisplayLayerMembers -noRecurse MRT_character'+characterName+'_control_rig `ls -selection`;')
-        #cmds.editDisplayLayerMembers(layerName, cmds.ls(selection=True))    # The cmds version didn't work as desired.
+
         cmds.select(clear=True)
-        if cmds.namespace(exists=currentNamespace):
-            cmds.namespace(setNamespace=currentNamespace)
-        self.clearParentModuleField()
-        self.clearChildModuleField()
+        
+        # Create a set for all character joints.
         cmds.select(characterJoints, replace=True)
         cmds.sets(name='MRT_character'+characterName+'__skinJointSet')
+        
+        # Reset namespace.
+        if cmds.namespace(exists=currentNamespace):
+            cmds.namespace(setNamespace=currentNamespace)
+        
+        # Post clean up.
+        self.clearParentModuleField()
+        self.clearChildModuleField()
+        
         cmds.select(clear=True)
+
 
     def revertModulesFromCharacter(self, *args):
         status = self.checkMRTcharacter()
@@ -4023,7 +4214,8 @@ class MRT_UI(object):
             cmds.warning('MRT Error: No character in the scene. Aborting.')
             return
         if status[0] and status[1] == '':
-            cmds.warning('MRT Error: Cannot find the auto-collection file containing the modules for the current character. Unable to revert. Aborting')
+            cmds.warning('MRT Error: Cannot find the auto-collection file containing the modules for ' \
+                         'the current character. Unable to revert. Aborting')
             return
         if status[0] and status[1] != '':
             characterName = status[0].partition('MRT_character')[2].rpartition('__')[0]
@@ -4049,6 +4241,7 @@ class MRT_UI(object):
                 cmds.delete(ctrl_containers)
             autoFile = self.autoCollections_path + '/' + status[1] + '.mrtmc'
             self.installSelectedModuleCollectionToScene(True, autoFile)
+
 
     def checkMRTcharacter(self):
         namespace = cmds.namespaceInfo(currentNamespace=True)
@@ -4081,6 +4274,7 @@ class MRT_UI(object):
                 characterCollectionFile = ''
         cmds.namespace(setNamespace=namespace)
         return characterGrp, characterCollectionFile
+
 
     def saveCharacterTemplate(self, *args):
         def saveCharTemplateFromDescriptionProcessInputUI(*args):
@@ -4214,6 +4408,7 @@ class MRT_UI(object):
         cmds.setParent(self.uiVars['charTemplateDescrpWindowColumn'])
         cmds.text(label='')
         cmds.showWindow(self.uiVars['charTemplateDescrpWindow'])
+
 
     def displayControlRiggingOptionsAllWindow(self, *args):
         '''
@@ -4620,7 +4815,7 @@ class MRT_UI(object):
             cmds.button(self.uiVars['c_rig_removeRigButton'], edit=True, enable=False)
 
 
-    def returnValidSelectionFlagForCharacterHierarchy(self, selection):
+    def returnValidFlagForCharacterJoint(self, selection):
         '''
         Checks if a selected object (passed-in) is an MRT character joint.
         '''
@@ -4664,7 +4859,7 @@ class MRT_UI(object):
             selection = selection[-1]
                     
             # Check if the selected joint belongs to an MRT character.
-            status = self.returnValidSelectionFlagForCharacterHierarchy(selection)[0]
+            status = self.returnValidFlagForCharacterJoint(selection)[0]
             
             if status:
             
