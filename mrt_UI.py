@@ -4318,171 +4318,275 @@ class MRT_UI(object):
 
     def saveCharacterTemplate(self, *args):
         '''
+        Saves a character template for an existing character in a scene. The character template must be saved
+        before applying any control rigging.
         '''
+        # NESTED DEF 1
         def saveCharTemplateFromDescriptionProcessInputUI(*args):
+            '''
+            Processes the character template description from UI to check if it's valid 
+            for saving with a character template.
+            '''
+            # Check if a character exists in the scene.
             status = self.checkMRTcharacter()
+            
             if not status[0]:
                 cmds.warning('MRT Error: No character in the scene. Aborting.')
+                
+                # Close the character template description window
                 cmds.deleteUI('mrt_charTemplateDescription_UI_window')
                 return
+                
+            # Get the character template description entered by the user.
             templateDescription = cmds.scrollField(self.uiVars['charTemplateDescrpWindowScrollField'], query=True, text=True)
+            
+            # If the character template description string is empty,
             if templateDescription == '':
                 try:
                     cmds.deleteUI('mrt_charTemplate_noDescpError_UI_window')
                 except:
                     pass
-                self.uiVars['charTemplateDescrpErrorWindow'] = cmds.window('mrt_charTemplate_noDescpError_UI_window', title='Character template warning', maximizeButton=False, sizeable=False)
+                    
+                # Create the check template description window
+                self.uiVars['charTemplateDescrpErrorWindow'] = cmds.window('mrt_charTemplate_noDescpError_UI_window',
+                                                title='Character template warning', maximizeButton=False, sizeable=False)
                 try:
                     cmds.windowPref('mrt_charTemplate_noDescpError_UI_window', remove=True)
                 except:
                     pass
-                cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90, width=220, marginWidth=20, marginHeight=15)
+                    
+                cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90,
+                                                                            width=220, marginWidth=20, marginHeight=15)
+                         
                 cmds.text(label='Are you sure you want to continue saving a character template with an empty description?')
-                cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 128], [2, 'left', 30]), rowAttach=([1, 'top', 8], [2, 'top', 8]))
-                cmds.button(label='Continue', width=90, command=partial(saveCharTemplateFromDescription, templateDescription))
-                ##cmds.button(label='Revert', width=90, command=('cmds.deleteUI(\"'+self.uiVars['charTemplateDescrpErrorWindow']+'\")'))
-                cmds.button(label='Revert', width=90, command=partial(self.closeWindow, self.uiVars['charTemplateDescrpErrorWindow']))
+                
+                cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 128], [2, 'left', 30]),
+                                                                    rowAttach=([1, 'top', 8], [2, 'top', 8]))
+                
+                # If accepted, save the character template with an empty description.
+                cmds.button(label='Continue', width=90,
+                                    command=partial(saveCharTemplateFromDescription, templateDescription))
+                
+                # Else, close the window without saving character template.
+                cmds.button(label='Revert', width=90,
+                                    command=partial(self.closeWindow, self.uiVars['charTemplateDescrpErrorWindow']))
+                
                 cmds.showWindow(self.uiVars['charTemplateDescrpErrorWindow'])
+                
+            # If the character template description string is valid, save the character template with the description.
             else:
                 saveCharTemplateFromDescription(True, templateDescription)
-
+        
+        # NESTED DEF 2
         def saveCharTemplateFromDescription(args, templateDescription):
+            '''
+            Saves a character template with the description entered by the user.
+            '''
+            # Close the check character template description window
             try:
                 cmds.deleteUI('mrt_charTemplate_noDescpError_UI_window')
             except:
                 pass
+                
+            # Close the character template description window
             try:
                 cmds.deleteUI('mrt_charTemplateDescription_UI_window')
             except:
                 pass
+                
+            # Check the current scene for character, if not, return.
             status = self.checkMRTcharacter()
             if not status[0]:
                 cmds.warning('MRT Error: No character in the scene. Aborting.')
                 return
+                
+            # Get the last directory accessed to save character template (saved as a preference)
             ui_preferences_file = open(self.ui_preferences_path, 'rb')
             ui_preferences = cPickle.load(ui_preferences_file)
             ui_preferences_file.close()
             startDirectory = ui_preferences['directoryForSavingCharacterTemplates']
+            
+            # If the directory doesn't exist, get the default directory
             if not os.path.exists(startDirectory):
                 startDirectory = ui_preferences['defaultDirectoryForSavingCharacterTemplates']
+            
+            # Get the character template file name to be saved.
             fileFilter = 'MRT Character Template Files (*.mrtct)'
-            fileReturn = cmds.fileDialog2(caption='Save character template', fileFilter=fileFilter, startingDirectory=startDirectory, dialogStyle=2)
+            fileReturn = cmds.fileDialog2(caption='Save character template', fileFilter=fileFilter,
+                                                            startingDirectory=startDirectory, dialogStyle=2)
+            # If no valid file name specified by the user.
             if fileReturn == None:
                 return
+                
+            # Save the directory for saving character template file as a preference.
             ui_preferences['directoryForSavingCharacterTemplates'] = fileReturn[0].rpartition('/')[0]
             ui_preferences_file = open(self.ui_preferences_path, 'wb')
             cPickle.dump(ui_preferences, ui_preferences_file, cPickle.HIGHEST_PROTOCOL)
             ui_preferences_file.close()
-
+            
+            # If the character template file exists, remove it (for overwriting).
             if os.path.exists(fileReturn[0]):
                 os.remove(fileReturn[0])
 
+            # Get the description for the template file object.
             mrtct_fObject = {}
             mrtct_fObject['templateDescription'] = templateDescription
-
+            
+            # Now collect objects from the scene for the character template file.
+            
+            # Collect the character main group (returned by checkMRTcharacter)
             templateObjects = [status[0]]
+            
+            # Collect the proxy geometry display layer.
             characterName = status[0].partition('MRT_character')[2].rpartition('__')[0]
             layerName = 'MRT_character'+characterName+'_proxy_geometry'
             if cmds.objExists(layerName):
                 templateObjects.append(layerName)
+                
+            # Collect the skinJointSet set.
             skinJointSet = 'MRT_character'+characterName+'__skinJointSet'
             templateObjects.append(skinJointSet)
-
-            selection = cmds.ls(selection=True)
+            
+            # Select the collected objects.
             cmds.select(templateObjects, replace=True, noExpand=True)
+            
+            # Save them temporarily in a maya scene.
             tempFilePath = fileReturn[0].rpartition('.mrtct')[0]+'_temp.ma'
             cmds.file(tempFilePath, force=True, options='v=1', type='mayaAscii', exportSelected=True, pr=True)
-
+            
+            # Add the maya scene contents to the template file object.
             tempFile_fObject = open(tempFilePath)
-            i = 1
-            for line in tempFile_fObject:
-                mrtct_fObject['templateData_line_'+str(i)] = line
-                i +=1
+            for i, line in enumerate(tempFile_fObject):
+                mrtct_fObject['templateData_line_'+str(i+1)] = line
             tempFile_fObject.close()
+            
+            # Remove the temporary maya scene file.
             os.remove(tempFilePath)
+            
+            # Now save the character template file.
             mrtct_fObject_file = open(fileReturn[0], 'wb')
             cPickle.dump(mrtct_fObject, mrtct_fObject_file, cPickle.HIGHEST_PROTOCOL)
             mrtct_fObject_file.close()
-            del mrtct_fObject
-
+            del mrtct_fObject   # Remove the reference to file object.
+            
+            # Load the new saved character template into the UI scroll list, if preferred.
             ui_preferences_file = open(self.ui_preferences_path, 'rb')
             ui_preferences = cPickle.load(ui_preferences_file)
             ui_preferences_file.close()
             if ui_preferences['loadNewCharTemplatesToCurrentList']:
                 self.loadCharTemplatesForUI(fileReturn)
 
-            cmds.namespace(setNamespace=namespace)
-            if not selection:
-                cmds.select(clear=True)
-            else:
-                cmds.select(selection)
+
+        # MAIN DEF BEGINS
+        
+        # Save current selection.
+        selection = cmds.ls(selection=True)
+        
+        # Save current namespace, set to root.
         namespace = cmds.namespaceInfo(currentNamespace=True)
         cmds.namespace(setNamespace=':')
+        
+        # Check if a character exists in the scene.
         status = self.checkMRTcharacter()
         if not status[0]:
             cmds.warning('MRT Error: No character in the scene. Aborting.')
             return
-
+        
+        # Check if any control rig is applied to the character before saving a template.
+        # This can be done by finding any control rig attribute on the character root transform.
         allAttrs = cmds.listAttr(status[0].partition('mainGrp')[0]+'root_transform', visible=True, keyable=True)
-        controlAttrs = set.symmetric_difference(set(['translateX', 'translateY', 'translateZ', 'rotateX', 'rotateY', 'rotateZ', 'globalScale', 'CONTROL_RIGS']), set(allAttrs))
+        
+        # Get the control rig attribute(s), if any.
+        controlAttrs = set.symmetric_difference(set(['translateX', 'translateY', 'translateZ',
+                                                     'rotateX', 'rotateY', 'rotateZ',
+                                                     'globalScale', 'CONTROL_RIGS']), set(allAttrs))
+        # If found,
         if len(controlAttrs):
-            cmds.warning('MRT Error: One or more control rigs are currently applied to the character. Detach them before saving a character template.')
+            cmds.warning('MRT Error: One or more control rigs are currently applied to the character. ' \
+                         'Detach them before saving a character template.')
             return
+        
+        # Bring up the window for entering the character template description.
         try:
             cmds.deleteUI('mrt_charTemplateDescription_UI_window')
         except:
             pass
-        self.uiVars['charTemplateDescrpWindow'] = cmds.window('mrt_charTemplateDescription_UI_window', title='Character template description', height=150, maximizeButton=False, sizeable=False)
+        self.uiVars['charTemplateDescrpWindow'] = cmds.window('mrt_charTemplateDescription_UI_window',
+                                                                title='Character template description',
+                                                                    height=150, maximizeButton=False, sizeable=False)
         try:
             cmds.windowPref('mrt_charTemplateDescription_UI_window', remove=True)
         except:
             pass
+            
         self.uiVars['charTemplateDescrpWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
+        
         cmds.text(label='')
         cmds.text('Enter description for character template', align='center', font='boldLabelFont')
-        cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=75, width=300, marginWidth=5, marginHeight=10)
+        
+        cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=75,
+                                                                            width=300, marginWidth=5, marginHeight=10)
+                         
         self.uiVars['charTemplateDescrpWindowScrollField'] = cmds.scrollField(preventOverride=True, wordWrap=True)
+        
         cmds.setParent(self.uiVars['charTemplateDescrpWindowColumn'])
+        
         cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 28], [2, 'left', 20]))
+        
+        # To process the character template description and save the character template (calls nested def).
         cmds.button(label='Save template', width=130, command=saveCharTemplateFromDescriptionProcessInputUI)
-        ##cmds.button(label='Cancel', width=90, command=('cmds.deleteUI(\"'+self.uiVars['charTemplateDescrpWindow']+'\")'))
+        
         cmds.button(label='Cancel', width=90, command=partial(self.closeWindow, self.uiVars['charTemplateDescrpWindow']))
+        
         cmds.setParent(self.uiVars['charTemplateDescrpWindowColumn'])
         cmds.text(label='')
+        
         cmds.showWindow(self.uiVars['charTemplateDescrpWindow'])
+        
+        # Restore namespace and selection.
+        cmds.namespace(setNamespace=namespace)
+        if not selection:
+            cmds.select(clear=True)
+        else:
+            cmds.select(selection)
 
 
     def displayControlRiggingOptionsAllWindow(self, *args):
         '''
-        control_types = []
-        for attribute in dir(mrt_controlRig):
-        try:
-        # If the control type class is derived from ControlRig class, collect it.
-        if eval('mrt_controlRig.%s.__bases__'%attribute)[0] == mrt_controlRig.BaseJointControl:
-        control_types.append(attribute)
-        except Exception:
-        pass
+        Brings up a window to display a list for currently available control rig type(s) that can be applied to
+        character joint hierarchies.
         '''
+        
+        # Find derived control rig type classes from the "BaseJointControl" class (direct inheritance).
         control_types = [cls for cls in getattr(mrt_controlRig, 'BaseJointControl').__subclasses__()]
 
         if control_types:
+        
             scrollTextString = '\n\t\t\t\t  < Available control rigging options for character hierarchy types >'.upper()
+            
             for cls in control_types:
+            
+                # For each drived control rig type class, find the last subclass for it, if any.
+                # This class will override the rig definitions, and will contain the latest updates
+                # to the control rig type defined in the class directly inherited from the base "BaseJointControl" class.
                 klassName = cls.__name__
                 klassName = mfunc.findLastSubClassForSuperClass(klassName, 'mrt_controlRig')
-                klass_p_name = klassName[0].upper()
+                
+                # Make the title for the control rig type (from class name) for display.
+                klass_p_name = klassName.capitalize()
                 for char in klassName[1:]:
                     if char.isupper():
                         klass_p_name += ' ' + char
                     else:
                         klass_p_name += char
+                        
+                # Now add the title.
                 scrollTextString += '\n\n\n' + klass_p_name
-
                 scrollTextString += '\n' + '-' * len(klass_p_name) + '\n'
-
-                cls_string = cls.__doc__
-
-                c_docString = ''
+                
+                # Get the class docstring for control rig type description.
+                cls_string = cls.__doc__ or ''
+                c_type_descrp = ''
 
                 if cls_string:
 
@@ -4491,140 +4595,252 @@ class MRT_UI(object):
                     docline_temp = ''
 
                     for item in cls_string_list:
-                        c_docString += item + ' '
+                        c_type_descrp += item + ' '
                         docline_temp += item + ' '
                         if len(docline_temp) > 98:
                             docline_temp = ''
-                            c_docString += '\n'
-
-                scrollTextString += c_docString + '\n\n| Control rigging options |\n'
-
-                funcList = [item.partition('apply')[2].replace('_', ' ') for item in dir(cls) if re.match('^apply[A-Z]\D+$', item)]
-                i = 1
-                for func in funcList:
-                    scrollTextString += '\n%s. '%i
+                            c_type_descrp += '\n'
+                
+                # Add the description for display.
+                scrollTextString += c_type_descrp + '\n\n| Control rigging options |\n'
+                
+                # Get a list of rig definition names that can be applied under the control rig type.
+                funcList = [item.partition('apply')[2].replace('_', ' ') for item in dir(cls)
+                                                                            if re.match('^apply[A-Z]\D+$', item)]
+                # Add the rig definition names for display.
+                for i, func in enumerate(funcList):
+                    scrollTextString += '\n%s. '% (i+1)
                     scrollTextString += func
-                    i += 1
-
+            
+            # Bring up the window to display the current rigging options.
             try:
                 cmds.deleteUI('mrt_displayCtrlRigOptions_UI_window')
             except:
                 pass
-            self.uiVars['displayCtrlRigOptionsWindow'] = cmds.window('mrt_displayCtrlRigOptions_UI_window', title='Control rigging options for character hierarchies', maximizeButton=False, sizeable=False)
+                
+            self.uiVars['displayCtrlRigOptionsWindow'] = cmds.window('mrt_displayCtrlRigOptions_UI_window',
+                            title='Control rigging options for character hierarchies', maximizeButton=False, sizeable=False)
             try:
                 cmds.windowPref(self.uiVars['displayCtrlRigOptionsWindow'], remove=True)
             except:
                 pass
+                
             self.uiVars['displayCtrlRigOptions_columnLayout'] = cmds.columnLayout()
-            self.uiVars['displayCtrlRigOptions_scrollField'] = cmds.scrollField(text=scrollTextString, editable=False, width=760, enableBackground=True, height=300, wordWrap=False)
+            
+            # Now display the string under "scrollTextString".
+            self.uiVars['displayCtrlRigOptions_scrollField'] = cmds.scrollField(text=scrollTextString, editable=False,
+                                                               width=760, enableBackground=True, height=300, wordWrap=False)
+                         
             cmds.showWindow(self.uiVars['displayCtrlRigOptionsWindow'])
 
 
-    def displayControlRiggingOptions(self, rootJoint, customHierarchyTreeListString=None):
+    def displayControlRiggingOptions(self, rootJoint='', customHierarchyTreeListString=None):
+        '''
+        Displays/updates the available control rig(s) under UI that can be applied or attached to a
+        selected character joint hierarchy.
+        
+        Takes in the name of the root joint of the selected character hierarchy and
+        "customHierarchyTreeListString" string value, if needed. This is used to match or identify 
+        control rig(s) that can be applied to the selected joint hierarchy, if it's a custom 
+        joint hierarchy created from modules with hierarchical module parenting.
+        
+        If it's not a custom joint hierarchy, then the control rig(s) are searched based
+        on the type of module it was created from.
+        
+        Called from "viewControlRigOptionsOnHierarchySelection".
+        '''
+        # To store the control rig attributes for the selected joint hierarchy.
         self.controlRiggingAttributes = {}
+        
+        # Clear the current control rig list.
         cmds.textScrollList(self.uiVars['c_rig_txScList'], edit=True, height=32, removeAll=True)
+        
+        # If root joint name is passed-in
         if rootJoint:
-            mp_klasses = []
+            
+            # To collect valid control rig classes identified for the joint hierarchy.
+            control_klasses = []
+            
             if customHierarchyTreeListString:
-                customClasses = [klass.__name__ for klass in getattr(mrt_controlRig, 'BaseJointControl').__subclasses__() if eval('mrt_controlRig.%s.customHierarchy'%klass.__name__) != None]
+                # Get all control rig classes under the base class with class attribute
+                # "customHierarchy" set to string value (default base value is set to None).
+                customClasses = [klass.__name__ for klass in getattr(mrt_controlRig, 'BaseJointControl').__subclasses__()
+                                                        if eval('mrt_controlRig.%s.customHierarchy'%klass.__name__) != None]
                 customClasses.sort()
+                
+                # Now find the class(es) that matches the input "customHierarchyTreeListString" string value.
                 for klass in customClasses:
                     klass = mfunc.findLastSubClassForSuperClass(klass, 'mrt_controlRig')
                     h_string = eval('mrt_controlRig.%s.customHierarchy'%klass)
                     if h_string == customHierarchyTreeListString:
-                        mp_klasses.append(klass)
-                if len(mp_klasses):
-                    mp_klasses.sort()
-                    className = mp_klasses[0]
-                    if len(mp_klasses) > 1:
-                        print '## MRT message: Multiple user control rigging classes (%s) found for selected custom joint hierarchy. ##\n## Using \"%s\" control class for rigging options. ##'%(', '.join(mp_klasses), (className))
+                        control_klasses.append(klass)
+                
+                # If multiple control rig classes are found for the custom joint hierarchy,
+                if len(control_klasses):
+                    control_klasses.sort()
+                    
+                    # Use the first control rig class from the list.
+                    className = control_klasses[0]
+                    
+                    if len(control_klasses) > 1:
+                        print '## MRT message: ' \
+                              'Multiple user control rigging classes (%s) found for selected custom joint hierarchy. ' \
+                              '##\n## Using \"%s\" control class for rigging options. ##'
+                                              % (', '.join(control_klasses), (className))
                     else:
-                        print '## MRT message: Using \"%s\" control class for rigging custom hierarchy. ##'%(className)
+                        print '## MRT message: Using \"%s\" control class for rigging custom hierarchy. ##' % (className)
+                
+                # If no control rig class is found.
                 else:
                     className = 'JointControl'
-                    print '## MRT message: No custom control rigging class found for selected custom hierarchy. Using JointControl class. ##'
+                    print '## MRT message: No custom control rigging class found for selected custom hierarchy. ' \
+                          'Using JointControl class. ##'
+            
+            # If the select joint hierarchy was created from a single module.
             else:
+                # Get the module type for the selected joint hierarchy (It was created from).
                 moduleType = cmds.getAttr(rootJoint+'.inheritedNodeType')
                 numNodes = cmds.getAttr(rootJoint+'.numNodes')
+                
                 if moduleType != 'JointNode':
                     className = '%sControl'%(moduleType.partition('Node')[0])
                 if moduleType == 'JointNode' and numNodes < 4:
                     className = 'JointControl'
                 if moduleType == 'JointNode' and numNodes > 3:
                     className = 'JointChainControl'
-                subClasses = [klass.__name__ for klass in eval('mrt_controlRig.%s'%(className)).__subclasses__()]
+                
+                # If class name has subclass(es) that overrides it.
+                subClasses = [klass.__name__ for klass in eval('mrt_controlRig.%s' % (className)).__subclasses__()]
 
                 if subClasses:
                     for klass in subClasses:
                         klass = mfunc.findLastSubClassForSuperClass(klass, 'mrt_controlRig')
-                        mp_klasses.append(klass)
-                        #subs = [sklass.__name__ for sklass in getattr(mrt_controlRig, klass).__subclasses__()]
-                        #if not len(subs):
-                            #mp_klasses.append(klass)
-                    if len(mp_klasses):
-                        mp_klasses.sort()
-                        className = mp_klasses[0]
-                        if len(mp_klasses) > 1:
-                            print '## MRT message: Multiple user control rigging classes (%s) found for selected joint hierarchy. ##\n## Using \"%s\" control class for rigging options. ##'%(', '.join(mp_klasses), (className))
+                        control_klasses.append(klass)
+                    
+                    # If multiple control rig classes are found for the joint hierarchy,
+                    if len(control_klasses):
+                        control_klasses.sort()
+                        
+                        # Use the first control rig class from the list.
+                        className = control_klasses[0]
+                        
+                        if len(control_klasses) > 1:
+                            print '## MRT message: ' \
+                                  'Multiple user control rigging classes (%s) found for selected joint hierarchy. ' \
+                                  '##\n## Using \"%s\" control class for rigging options. ##'
+                                                  % (', '.join(control_klasses), (className))
                         else:
-                            print '## MRT message: Custom user control rigging class found for selected joint hierarchy. ##\n## Using \"%s\" control class for rigging options. ##'%(className)
-            self.controlRiggingAttributes['__klass__'] = '%s'%(className)
+                            print '## MRT message: Custom user control rigging class found for selected joint hierarchy. ' \
+                                  '##\n## Using \"%s\" control class for rigging options. ##' % (className)
+            
+            # Now store the attributes for control rigging for the selected joint hierarchy.
+            # Store the control rig class name
+            self.controlRiggingAttributes['__klass__'] = '%s' % (className)
+            
+            # Get the control rig definitions that can be applied to the selected joint hierarchy.
             funcList = eval('[item for item in dir(mrt_controlRig.%s) if not re.search(\'__\', item)]'%(className))
-            funcNameList = eval('[item.partition(\'apply\')[2].replace(\'_\', \' \') for item in dir(mrt_controlRig.%s) if re.search(\'^apply[A-Z]\', item)]'%(className))
+            funcNameList = eval('[item.partition(\'apply\')[2].replace(\'_\', \' \') for item in dir(mrt_controlRig.%s) 
+                                                                        if re.search(\'^apply[A-Z]\', item)]' % (className))
+            # Store the control rig definitions under the attributes.
             for (funcName, func) in zip(funcNameList, funcList):
                 self.controlRiggingAttributes[funcName] = func
+            
+            # Store the root joint for the selected joint hierarchy.
+            self.controlRiggingAttributes['__rootJoint__'] = rootJoint
 
         if self.controlRiggingAttributes:
-            self.controlRiggingAttributes['__rootJoint__'] = rootJoint
+            # Get the control rig definitions stored previously under "self.controlRiggingAttributes".
+            # They're stored as key names without '__' prefix/suffix.
             appendFuncList = [item for item in self.controlRiggingAttributes if item.find('__') == -1]
+            
+            # Get the list of control rig defitions currently applied to the selected joint hierarchy.
             atRigList = cmds.getAttr(rootJoint+'.rigLayers')
             if atRigList != 'None':
                 atRigList = atRigList.split(',')
                 atRigList = [item.replace('_', ' ') for item in atRigList]
+                
+                # Filter the control rig definitions not currently applied.
                 appendFuncList = [item for item in appendFuncList if not item in atRigList]
+            
+            # Now update the control rig scroll list in the UI.
+            # Get the height of the scroll list.
             if appendFuncList:
                 scrollHeight = len(appendFuncList) * 20
                 if scrollHeight > 100:
                     scrollHeight = 100
                 if scrollHeight == 20:
                     scrollHeight = 40
+                    
                 for funcName in sorted(appendFuncList):
                     cmds.textScrollList(self.uiVars['c_rig_txScList'], edit=True, enable=True, 
-                                                                 height=scrollHeight, append=funcName, font='plainLabelFont')
+                                                            height=scrollHeight, append=funcName, font='plainLabelFont')
+                                
                 cmds.textScrollList(self.uiVars['c_rig_txScList'], edit=True, selectIndexedItem=1)
                 cmds.button(self.uiVars['c_rig_attachRigButton'], edit=True, enable=True)
+                
+            # If no control rig defitions are found for the selected joint hierarchy.
             else:
                 cmds.textScrollList(self.uiVars['c_rig_txScList'], edit=True, enable=True, height=32, 
-                                         append=['         < No unattached rig(s) found for selected character hierarchy >'],
-                                                                                                     font='obliqueLabelFont')
+                                    append=['         < No unattached rig(s) found for selected character hierarchy >'],
+                                                                                                font='obliqueLabelFont')
                 cmds.button(self.uiVars['c_rig_attachRigButton'], edit=True, enable=False)
+                
+        # If no control rig attributes are stored or generated (means bad inputs).
         else:
             cmds.textScrollList(self.uiVars['c_rig_txScList'], edit=True, enable=False, height=32, 
-                                                append=['        < select a character hierarchy to attach control rig(s) >'],
-                                                                                                        font='boldLabelFont')
+                                append=['        < select a character hierarchy to attach control rig(s) >'],
+                                                                                                font='boldLabelFont')
             cmds.button(self.uiVars['c_rig_attachRigButton'], edit=True, enable=False)
 
 
     def attachSelectedControlRigToHierarchy(self, *args):
+        '''
+        Applies or attaches a control rig definition to a selected character joint hierarchy.
+        '''
+        # Get the selected joint hierarchy.
         selection = cmds.ls(selection=True)[-1]
+        
+        # Make sure the selection is not referenced.
         if cmds.ls(selection, referencedNodes=True):
             cmds.warning('MRT Error: Referenced object selected. Aborting.')
             return
+            
+        # Get the control rig definition to be applied from UI.
         selectFunc = cmds.textScrollList(self.uiVars['c_rig_txScList'], query=True, selectItem=True)[-1]
+        
+        # Use the data from "self.controlRiggingAttributes", which was generated previously.
+        # Get the root joint name for the joint hierarchy.
         hierarchyRoot = self.controlRiggingAttributes['__rootJoint__']
+        
+        # Get the control rig(s) currently applied to the joint hierarchy.
         rigLayers = cmds.getAttr(hierarchyRoot+'.rigLayers')
         if rigLayers != 'None':
             rigLayers = rigLayers.split(',')
             for layer in rigLayers:
+            
+                # If the control rig definition is already applied.
                 if selectFunc == layer:
                     cmds.warning('MRT Error: The control rig is already attached. Skipping.')
                     return
+        
+        # Get the control rig class for the joint hierarchy.
         controlClass = self.controlRiggingAttributes['__klass__']
+        
+        # Get the character name.
         characterName = selection.partition('__')[0].partition('MRT_character')[2]
-        controlRigInst = eval('mrt_controlRig.%s(characterName, hierarchyRoot)'%controlClass)
+        
+        # Get the instance for the control rig class.
+        controlRigInst = eval('mrt_controlRig.%s(characterName, hierarchyRoot)' % controlClass)
+        
+        # Get the control rig definition to be applied.
         controlRigApplyFunc = self.controlRiggingAttributes[selectFunc]
-        eval('controlRigInst.%s()'%controlRigApplyFunc)
+        
+        # Apply the control rig definition to the selected joint hierarchy.
+        eval('controlRigInst.%s()' % controlRigApplyFunc)
         del controlRigInst
+        
+        # Add the new control rig definition to the "rigLayers" attribute
+        # on the root joint for the selected joint hierarchy.
         if isinstance(rigLayers, list):
             rigLayers.append(controlRigApplyFunc.split('apply')[1])
             rigLayers = ','.join(rigLayers)
@@ -4633,6 +4849,8 @@ class MRT_UI(object):
         else:
             cmds.setAttr(hierarchyRoot+'.rigLayers', lock=False)
             cmds.setAttr(hierarchyRoot+'.rigLayers', controlRigApplyFunc.split('apply')[1], type='string', lock=True)
+        
+        # Update the UI.
         self.displayAttachedControlRigs(hierarchyRoot)
         cmds.select(selection)
 
