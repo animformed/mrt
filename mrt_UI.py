@@ -5329,7 +5329,8 @@ class MRT_UI(object):
             characterName = selection.partition('__')[0].partition('MRT_character')[2]
             ins_control = ins_control.partition('__')[2]
             ins_control_h_name = re.split('_[A-Z]', ins_control)[0]
-            # Get the root joint in hierarchy for the
+            
+            # Get the root joint in hierarchy for the control.
             ins_control_rootJoint = 'MRT_character%s__%s_root_node_transform'%(characterName, ins_control_h_name)
 
             if not re.match('^MRT_character[A-Za-z0-9]*__root_transform$', selection):
