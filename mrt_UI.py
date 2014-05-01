@@ -5330,17 +5330,20 @@ class MRT_UI(object):
             ins_control = ins_control.partition('__')[2]
             ins_control_h_name = re.split('_[A-Z]', ins_control)[0]
             
-            # Get the root joint in hierarchy for the control.
+            # Get the root joint in its joint hierarchy.
             ins_control_rootJoint = 'MRT_character%s__%s_root_node_transform'%(characterName, ins_control_h_name)
-
+            
+            # If the selected control is not the character root transform
             if not re.match('^MRT_character[A-Za-z0-9]*__root_transform$', selection):
 
                 selectionName = selection.partition('__')[2]
                 selectionUserSpecName = re.split('_[A-Z]', selectionName)[0]
                 rootJoint = 'MRT_character%s__%s_root_node_transform'%(characterName, selectionUserSpecName)
-
+                
+                # If the root joint for the joint hierarchy belonging to the selected control doesn't match.
                 if rootJoint != ins_control_rootJoint:
-
+                    
+                    # Check if the joint hierarchy is not a descendent.
                     result = mfunc.traverseConstrainedParentHierarchiesForSkeleton(rootJoint)
 
                     if ins_control_rootJoint in result:
@@ -5358,9 +5361,9 @@ class MRT_UI(object):
                 if not result:
                     cmds.warning('MRT Warning: The joint hierarchy for the selected control rig has no parent hierarchy. '\
                                  'If you\'re adding the character root transform as a target parent for a root FK control '\
-                                 'assigned to this hierarchy, it\'d have no effect.')
+                                 'assigned to this hierarchy, it will have no effect.')
 
-            #self.controlParentSwitchAddList.append(selection)
+            # Now add the selection to the parent target list in the UI.
             if not cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], query=True, enable=True):
                 cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], edit=True,
                                                                                             height=32, removeAll=True)
@@ -5532,6 +5535,7 @@ class MRT_UI(object):
         """
         # Get all the current parent targets
         allItems = cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], query=True, allItems=True)
+        
         # Get the control to apply changes to parent switching
         ss_control = cmds.textField(self.uiVars['c_rig_prntSwitch_textField'], query=True, text=True)
 
@@ -5618,17 +5622,20 @@ class MRT_UI(object):
                 attrs = cmds.addAttr(ss_control+'.targetParents', query=True, enumName=True)
                 attrs = attrs + ':' + target
                 cmds.addAttr(ss_control+'.targetParents', edit=True, enumName=attrs)
-
+                
+                # Create the parent switch condition
                 parentSwitchCondition = cmds.createNode('condition', name=ss_control+'_'+target+'_parentSwitch_condition',
                                                                                                           skipSelect=True)
-                attrs = attrs.split(':')
-                index = attrs.index(target)
+                # Connect the condition to drive the constraint weight for the new parent target.
+                index = attrs.count(':')
                 cmds.setAttr(parentSwitchCondition+'.firstTerm', index)
                 cmds.connectAttr(ss_control+'.targetParents', parentSwitchCondition+'.secondTerm')
                 cmds.setAttr(parentSwitchCondition+'.colorIfTrueR', 1)
                 cmds.setAttr(parentSwitchCondition+'.colorIfFalseR', 0)
                 weightIndex, ctrlAttr = mfunc.returnConstraintWeightIndexForTransform(target, constraint)
                 cmds.connectAttr(parentSwitchCondition+'.outColorR', constraint+'.'+ctrlAttr)
+                
+                # Update the parent target string list on the control parent switch group.
                 currentTargets = cmds.getAttr(self.controlParentSwitchGrp+'.parentTargetList')
                 if currentTargets != 'None':
                     currentTargets = currentTargets+','+target
@@ -5637,24 +5644,28 @@ class MRT_UI(object):
                 else:
                     cmds.setAttr(self.controlParentSwitchGrp+'.parentTargetList', lock=False)
                     cmds.setAttr(self.controlParentSwitchGrp+'.parentTargetList', target, type='string', lock=True)
-
+        
+        # Check if the parent target string list is valid after updates
         targetInfo = cmds.getAttr(self.controlParentSwitchGrp+'.parentTargetList')
         if not targetInfo:
             cmds.setAttr(self.controlParentSwitchGrp+'.parentTargetList', lock=False)
             cmds.setAttr(self.controlParentSwitchGrp+'.parentTargetList', 'None', type='string', lock=True)
-
+        
+        # Refresh the parent target indices in all parent switch conditions for the control
         allAttrs = cmds.addAttr(ss_control+'.targetParents', query=True, enumName=True)
         allAttrs = allAttrs.split(':')
         for attr in allAttrs[1:]:
             index = allAttrs.index(attr)
             parentSwitchCondition = ss_control+'_'+attr+'_parentSwitch_condition'
             cmds.setAttr(parentSwitchCondition+'.firstTerm', index)
-
+        
+        # Set the default parent target
         if len(allAttrs) == 1:
             cmds.setAttr(ss_control+'.targetParents', 0)
         if len(allAttrs) > 1:
             cmds.setAttr(ss_control+'.targetParents', 1)
-
+        
+        # Cleanup
         self.clearParentSwitchControlField()
         cmds.select(ss_control, replace=True)
         self.insertValidSelectionForParentSwitching()
