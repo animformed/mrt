@@ -161,8 +161,8 @@ def createRawSegmentCurve(modHandleColour):
 
 def createRawOrientationRepresentation(aimAxis):
 	if aimAxis == 'X':
-		representationTransformGroup = cmds.createNode('transform', name='orientation_representation_transformGroup')
-		representationTransform = cmds.createNode('transform', name='orientation_representation_transform', parent='orientation_representation_transformGroup')
+		representationTransformGroup = cmds.createNode('transform', name='orient_repr_transformGrp')
+		representationTransform = cmds.createNode('transform', name='orient_repr_transform', parent='orient_repr_transformGrp')
 		cmds.setAttr(representationTransform+'.translateX', channelBox=False, keyable=False)
 		cmds.setAttr(representationTransform+'.translateY', channelBox=False, keyable=False)
 		cmds.setAttr(representationTransform+'.translateZ', channelBox=False, keyable=False)
@@ -174,7 +174,7 @@ def createRawOrientationRepresentation(aimAxis):
 		cmds.setAttr(representationTransform+'.visibility', channelBox=False, keyable=False)
 		cmds.setAttr('.rotatePivot', 0.090148619726501789, 0, 0, type='double3')
 		cmds.setAttr('.scalePivot', 0.090148619726501789, 0, 0, type='double3')
-		cmds.createNode('nurbsCurve', name='orientation_representation_transform_Z_Shape', parent='orientation_representation_transform')
+		cmds.createNode('nurbsCurve', name='orient_repr_transform_Z_Shape', parent='orient_repr_transform')
 		cmds.setAttr('.overrideEnabled', 1)
 		cmds.setAttr('.overrideColor', 6)
 		mel.eval("""setAttr ".cached" -type "nurbsCurve"
@@ -191,7 +191,7 @@ def createRawOrientationRepresentation(aimAxis):
 	1.0900000000000005 -1.3109908967656421e-016 -0.13193723316589548
 	1.0900000000000005 -1.1623259577623636e-016 -0.046853382922077899
 	0.090148619726501955 -1.2726306795036011e-016 -0.046853382922077899;""")
-		cmds.createNode('nurbsCurve', name='orientation_representation_transform_Y_Shape', parent='orientation_representation_transform')
+		cmds.createNode('nurbsCurve', name='orient_repr_transform_Y_Shape', parent='orient_repr_transform')
 		cmds.setAttr('.overrideEnabled', 1)
 		cmds.setAttr('.overrideColor', 14)
 		mel.eval("""setAttr ".cached" -type "nurbsCurve"
@@ -209,8 +209,8 @@ def createRawOrientationRepresentation(aimAxis):
 	1.0900000000000005 0.04685338292207885 3.8713159508693073e-015
 	0.090148619726501789 0.04685338292207885 1.0556440271853279e-015;""")
 	if aimAxis == 'Z':
-		representationTransformGroup = cmds.createNode('transform', name='orientation_representation_transformGroup')
-		representationTransform = cmds.createNode('transform', name='orientation_representation_transform', parent='orientation_representation_transformGroup')
+		representationTransformGroup = cmds.createNode('transform', name='orient_repr_transformGrp')
+		representationTransform = cmds.createNode('transform', name='orient_repr_transform', parent='orient_repr_transformGrp')
 		cmds.setAttr(representationTransform+'.translateX', channelBox=False, keyable=False)
 		cmds.setAttr(representationTransform+'.translateY', channelBox=False, keyable=False)
 		cmds.setAttr(representationTransform+'.translateZ', channelBox=False, keyable=False)
@@ -222,7 +222,7 @@ def createRawOrientationRepresentation(aimAxis):
 		cmds.setAttr(representationTransform+'.visibility', channelBox=False, keyable=False)
 		cmds.setAttr('.rotatePivot', 0, 0, 0.090148619726501789, type='double3')
 		cmds.setAttr('.scalePivot', 0, 0, 0.090148619726501789, type='double3')
-		cmds.createNode('nurbsCurve', name='orientation_representation_transform_Y_Shape', parent='orientation_representation_transform')
+		cmds.createNode('nurbsCurve', name='orient_repr_transform_Y_Shape', parent='orient_repr_transform')
 		cmds.setAttr('.overrideEnabled', 1)
 		cmds.setAttr('.overrideColor', 14)
 		mel.eval("""setAttr ".cached" -type "nurbsCurve"
@@ -239,7 +239,7 @@ def createRawOrientationRepresentation(aimAxis):
 	1.4468381704134653e-016 -0.13193723316589528 1.0901486197265018
 	1.595503109416743e-016 -0.046853382922077615 1.0901486197265018
 	-9.0222520447843095e-017 -0.046853382922077864 0.090148619726501955;""")
-		cmds.createNode('nurbsCurve', name='orientation_representation_transform_X_Shape', parent='orientation_representation_transform')
+		cmds.createNode('nurbsCurve', name='orient_repr_transform_X_Shape', parent='orient_repr_transform')
 		cmds.setAttr('.overrideEnabled', 1)
 		cmds.setAttr('.overrideColor', 13)
 		mel.eval("""setAttr ".cached" -type "nurbsCurve"
@@ -257,8 +257,8 @@ def createRawOrientationRepresentation(aimAxis):
 	0.04685338292207912 4.1470988575872177e-015 1.0901486197265018
 	0.046853382922078878 1.092684574687845e-015 0.090148619726501844;""")
 	if aimAxis == 'Y':
-		representationTransformGroup = cmds.createNode('transform', name='orientation_representation_transformGroup')
-		representationTransform = cmds.createNode('transform', name='orientation_representation_transform', parent='orientation_representation_transformGroup')
+		representationTransformGroup = cmds.createNode('transform', name='orient_repr_transformGrp')
+		representationTransform = cmds.createNode('transform', name='orient_repr_transform', parent='orient_repr_transformGrp')
 		cmds.setAttr(representationTransform+'.translateX', channelBox=False, keyable=False)
 		cmds.setAttr(representationTransform+'.translateY', channelBox=False, keyable=False)
 		cmds.setAttr(representationTransform+'.translateZ', channelBox=False, keyable=False)
@@ -270,7 +270,7 @@ def createRawOrientationRepresentation(aimAxis):
 		cmds.setAttr(representationTransform+'.visibility', channelBox=False, keyable=False)
 		cmds.setAttr('.rotatePivot', 0, 0.090148619726501789, 0, type='double3')
 		cmds.setAttr('.scalePivot', 0, 0.090148619726501789, 0, type='double3')
-		cmds.createNode('nurbsCurve', name='orientation_representation_transform_Z_Shape', parent='orientation_representation_transform')
+		cmds.createNode('nurbsCurve', name='orient_repr_transform_Z_Shape', parent='orient_repr_transform')
 		cmds.setAttr('.overrideEnabled', 1)
 		cmds.setAttr('.overrideColor', 6)
 		mel.eval("""setAttr ".cached" -type "nurbsCurve"
@@ -287,7 +287,7 @@ def createRawOrientationRepresentation(aimAxis):
 	1.4468381704134653e-016 1.0901486197265018 -0.13193723316589548
 	1.595503109416743e-016 1.0901486197265018 -0.046853382922077899
 	-9.0222520447843095e-017 0.090148619726501955 -0.046853382922077899;""")
-		cmds.createNode('nurbsCurve', name='orientation_representation_transform_X_Shape', parent='orientation_representation_transform')
+		cmds.createNode('nurbsCurve', name='orient_repr_transform_X_Shape', parent='orient_repr_transform')
 		cmds.setAttr('.overrideEnabled', 1)
 		cmds.setAttr('.overrideColor', 13)
 		mel.eval("""setAttr ".cached" -type "nurbsCurve"
@@ -309,7 +309,7 @@ def createRawOrientationRepresentation(aimAxis):
 	return representationTransform, representationTransformGroup
 
 def createRawSingleOrientationRepresentation():
-	orientationTransform = cmds.createNode('transform', name='single_orientation_representation_transform')
+	orientationTransform = cmds.createNode('transform', name='single_orient_repr_transform')
 	cmds.setAttr(orientationTransform+'.translateX', keyable=False)
 	cmds.setAttr(orientationTransform+'.translateY', keyable=False)
 	cmds.setAttr(orientationTransform+'.translateZ', keyable=False)
@@ -318,7 +318,7 @@ def createRawSingleOrientationRepresentation():
 	cmds.setAttr(orientationTransform+'.scaleZ', keyable=False)
 	cmds.setAttr(orientationTransform+'.visibility', keyable=False)
 
-	cmds.createNode('nurbsCurve', name='single_orientation_representation_transform_Y_Shape', parent='single_orientation_representation_transform')
+	cmds.createNode('nurbsCurve', name='single_orient_repr_transform_Y_Shape', parent='single_orient_repr_transform')
 	cmds.setAttr('.overrideEnabled', 1)
 	cmds.setAttr('.overrideColor', 14)
 	mel.eval("""setAttr ".cached" -type "nurbsCurve"
@@ -341,7 +341,7 @@ def createRawSingleOrientationRepresentation():
     0 0.53492264104395215 -0.047224379365857772
     -0.047224379365857772 0.53492264104395215 0
     0 0.53492264104395215 0;""")
-	cmds.createNode('nurbsCurve', name='single_orientation_representation_transform_X_Shape', parent='single_orientation_representation_transform')
+	cmds.createNode('nurbsCurve', name='single_orient_repr_transform_X_Shape', parent='single_orient_repr_transform')
 	cmds.setAttr('.overrideEnabled', 1)
 	cmds.setAttr('.overrideColor', 13)
 	mel.eval("""setAttr ".cached" -type "nurbsCurve"
@@ -364,7 +364,7 @@ def createRawSingleOrientationRepresentation():
     0.53492264104395215 1.9469912278619913e-016 -0.047224379365857772
     0.53492264104395215 0.04722437936585798 0
     0.53492264104395215 1.9469912278619913e-016 0;""")
-	cmds.createNode('nurbsCurve', name='single_orientation_representation_transform_Z_Shape', parent='single_orientation_representation_transform')
+	cmds.createNode('nurbsCurve', name='single_orient_repr_transform_Z_Shape', parent='single_orient_repr_transform')
 	cmds.setAttr('.overrideEnabled', 1)
 	cmds.setAttr('.overrideColor', 6)
 	mel.eval("""setAttr ".cached" -type "nurbsCurve"

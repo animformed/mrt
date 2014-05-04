@@ -15,7 +15,7 @@ import os, sys
 import maya.cmds as cmds
 
 
-def runMRTstartup(__debug = 1):
+def runMRTstartup(__debug = 0):
     """
     Runs with the MRT mel call. This function is executed from this file separate from MRT package import files.
     Does startup checks, to see MRT is supported for the current maya version.
@@ -51,14 +51,14 @@ def runMRTstartup(__debug = 1):
 
         # Check if MRT is being loaded for the first time. If true, configure it.
         firstLoadStatus = mrt_functions.prep_MRTMayaStartupActions()
-        
+
         # If MRT is configured to run, load the UI.
         if firstLoadStatus[0] == False and firstLoadStatus[1] == False:
             import mrt_UI
             mrt_UI.MRT_UI()
         else:
-            cmds.confirmDialog(title='MRT start-up', message='Modular rigging tools has been installed\n. \
-            Please restart maya.', button=['OK'], defaultButton='OK')
+            cmds.confirmDialog(title='MRT Start Up', message='Modular rigging tools has been installed.' \
+            ' Please restart maya.', button=['OK'], defaultButton='OK', messageAlign='center')
     
     # If scripts/MRT directory not found, warn if it doesn't exist. 
     else:

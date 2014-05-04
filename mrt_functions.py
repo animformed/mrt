@@ -10,15 +10,17 @@
 # *************************************************************************************************************
 
 import maya.cmds as cmds
-import maya.
 import maya.mel as mel
 
+import mrt_module
+
 from functools import partial    # Alternative "from pymel.core.windows import Callback"
-import os, math, sys, re, glob, shutil
+import os, math, sys, re, glob, shutil, platform
 
 
 __MRT_utility_tempScriptJob_list = [] # Could've used optionVar for this, best option is melGlobals.
-                                      # But this is just me.
+
+os_name = platform.uname()[0]  # Get the OS type
 
 # -------------------------------------------------------------------------------------------------------------
 #
@@ -42,44 +44,48 @@ def prep_MRTMayaStartupActions():
 
     # Open the userSetup file and check if the string value exists and write if needed.
 
-    userSetup_return = userSetup_return.lower()
+    #userSetup_return = userSetup_return.lower()
 
     if userSetup_return.endswith('mel'):
-
-        userSetupFile = open(userSetup_return, 'a+')
+        userSetupFile = open(userSetup_return, 'r')
         startString = '//MRT_STARTUP//'
-        writeString = '\n' + startString + '\npython("try:\\n\\timport MRT.mrt_functions as mfunc\\nexcept \
-        ImportError:\\n\\tpass\\nelse:\\n\\tmfunc.runDeferredFunction_wrapper(mfunc.moduleUtilitySwitchScriptJob)\\n");'
+        commandString = '\npython("try:\\n\\timport MRT.mrt_functions as mfunc\\nexcept ImportError:\\n\\tpass\\nelse:\\n\\tmfunc.runDeferredFunction_wrapper(mfunc.moduleUtilitySwitchScriptJob)\\n");'
 
         stringList = [string.strip() for string in userSetupFile.readlines()]
-
-        if not startString in stringList:
-            userSetupFile.write(writeString)
-            userSetupStatus = True
-
         userSetupFile.close()
+        
+        for string in stringList:
+            if startString in string:
+                break
+        else:
+            stringList.extend([startString, commandString])
+            userSetupFile = open(userSetup_return, 'w')
+            userSetupFile.writelines(stringList)
+            userSetupStatus = True
+            userSetupFile.close()
 
     if userSetup_return.endswith('py'):
-
-        userSetupFile = open(userSetup_return, 'a+')
+        userSetupFile = open(userSetup_return, 'r')
         startString = '#MRT_STARTUP#'
-        writeString = '\n' + startString + '\ntry:\n\timport MRT.mrt_functions as mfunc\nexcept \
-        ImportError:\n\tpass\nelse:\n\tmfunc.runDeferredFunction_wrapper(mfunc.moduleUtilitySwitchScriptJob)\n'
+        commandString = '\ntry:\n\timport MRT.mrt_functions as mfunc\nexcept ImportError:\n\tpass\nelse:\n\tmfunc.runDeferredFunction_wrapper(mfunc.moduleUtilitySwitchScriptJob)\n'
 
         stringList = [string.strip() for string in userSetupFile.readlines()]
-
-        if not startString in stringList:
-            userSetupFile.write(writeString)
-            userSetupStatus = True
-
         userSetupFile.close()
+        
+        for string in stringList:
+            if startString in string:
+                break
+        else:
+            stringList.extend([startString, commandString])
+            userSetupFile = open(userSetup_return, 'w')
+            userSetupFile.writelines(stringList)
+            userSetupStatus = True
+            userSetupFile.close()
 
     # If not userSetup file, create a default with "mel" extension.
     if userSetup_return.endswith('scripts/'):
-
-        userSetupFile = open(userSetup_return+'userSetup.mel', 'a')
-        userSetupFile.write('//MRT_STARTUP//\npython("try:\\n\\timport MRT.mrt_functions as mfunc\\nexcept \
-        ImportError:\\n\\tpass\\nelse:\\n\\tmfunc.runDeferredFunction_wrapper(mfunc.moduleUtilitySwitchScriptJob)\\n");')
+        userSetupFile = open(userSetup_return+'userSetup.mel', 'w')
+        userSetupFile.write('//MRT_STARTUP//\npython("try:\\n\\timport MRT.mrt_functions as mfunc\\nexcept ImportError:\\n\\tpass\\nelse:\\n\\tmfunc.runDeferredFunction_wrapper(mfunc.moduleUtilitySwitchScriptJob)\\n");')
 
         userSetupStatus = True
 
@@ -95,11 +101,10 @@ def prep_MRTMayaStartupActions():
     envString = cmds.internalVar(userScriptDir=True) + 'MRT/plugin/'
 
     # Get the os separator string for env paths.
-    if os.name == 'nt':
+    if os_name == 'Windows':
         pathSeparator = ';'
-    if os.name == 'posix':
-        pathSeparator = ':'  
-    # Line to be added in future for mac "darwin".
+    if os_name == 'Linux' or os_name == 'Darwin':
+        pathSeparator = ':'
 
     # If "MAYA_PLUG_IN_PATH" variable exists, split its existing string value into individual paths
     if mayaEnv_return:
@@ -526,16 +531,20 @@ def loadXhandleShapePlugin():
     pluginBasePath = cmds.internalVar(userScriptDir=True) + 'MRT/plugin/'
 
     # Find the correct plugin built version.
-    if os.name == 'nt':
+    if os_name == 'Windows':
         plugin_source_path = pluginBasePath + '/builds/windows/mrt_xhandleShape_m%sx64.mll'%(maya_ver)
         plugin_dest_path = pluginBasePath + 'mrt_xhandleShape.mll'
 
-    elif os.name == 'posix':
+    elif os_name == 'Linux':
         plugin_source_path = pluginBasePath + '/builds/linux/mrt_xhandleShape_m%sx64.so'%(maya_ver)
         plugin_dest_path = pluginBasePath + 'mrt_xhandleShape.so'
 
+    elif os_name == 'Darwin':
+        plugin_source_path = pluginBasePath + '/builds/mac/mrt_xhandleShape_m%sx64.bundle'%(maya_ver)
+        plugin_dest_path = pluginBasePath + 'mrt_xhandleShape.bundle'
+
     else:
-        cmds.warning('MRT is not supported on \"'+os.name+'\" platform. Aborting.')
+        cmds.warning('MRT is not supported on \"'+os_name+'\" platform. Aborting.')
         return False
 
     # Copy to plugin path and then load it.
@@ -2103,8 +2112,10 @@ def createFKlayerDriverOnJointHierarchy(*args, **kwargs):
 
     # To get the names of joints in the new driver layer.
     layerJointSet = []
+
     # To collect the constraints for the new driver joint layer to drive the input joint hierarchy.
     driver_constraints = []
+
     # To get the name of the root joint of the new driver joint layer.
     layerRootJoint = ''
 
@@ -2837,6 +2848,7 @@ def changeSplineJointOrientationType(moduleNamespace):
     cmds.lockNode(moduleNamespace+':module_container', lock=True, lockUnpublished=True)
     cmds.select(selection)
 
+
 def changeSplineJointOrientationType_forMirror(moduleNamespace, mirrorModuleNamespace): 
     """
     Executed when one of the mirrored module pairs of a spline module is modified. 
@@ -2882,6 +2894,7 @@ def changeSplineJointOrientationType_forMirror(moduleNamespace, mirrorModuleName
     cmds.lockNode(mirrorModuleNamespace+':module_container', lock=True, lockUnpublished=True)
     cmds.select(selection)
 
+
 def changeProxyGeometryDrawStyle(moduleNamespace):
     """
     Toggle the transparency (vertex) draw style for the module proxy geometry, if it exists.
@@ -2903,6 +2916,7 @@ def changeProxyGeometryDrawStyle(moduleNamespace):
                                                                                            colorDisplayOption=True)
 
     cmds.select(moduleNamespace+':module_transform', replace=True)
+
 
 def changeProxyGeometryDrawStyleForMirror(moduleNamespace, mirrorModuleNamespace):
     """
@@ -2990,5 +3004,3 @@ def changeSplineProxyGeometryDrawStyleForMirror(moduleNamespace, mirrorModuleNam
                 cmds.polyColorPerVertex(transform+'.vtx[*]', alpha=1, rgb=[0.663, 0.561, 0.319], notUndoable=True, \
                                                                                             colorDisplayOption=True)
 
-
-# --------------------------------------------------- END -----------------------------------------------------

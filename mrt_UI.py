@@ -96,6 +96,7 @@ def processItemRenameForTreeViewList(itemName, newName):
     cmds.warning('Please use the \"Rename Selected Module\" feature below')
     return ""
 
+
 def moduleSelectionFromTreeView():
     '''
     Runs when a module's entry in the scene modules treeView is selected. Selects the module
@@ -120,7 +121,7 @@ def moduleSelectionFromTreeView():
 # Now declare MEL and Python UI callbacks calling the defined functions above,
 # depending on the maya's version.
 
-if _maya_version >=2013:
+if _maya_version >= 2013:
     from mrt_sceneCallbacks import *
     def moduleSelectionFromTreeViewCallback():
         moduleSelectionFromTreeView()
@@ -310,7 +311,7 @@ class MRT_UI(object):
         cmds.showWindow(self.uiVars['window'])
 
         # DEPRECATED #
-        # I didn't like the dock control on this haha. You want it? Enable and test it.
+        # I didn't like the dock control on this. You want it? Enable and test it.
         # self.uiVars['dockWindow'] = cmds.dockControl('mrt_UI_dockWindow', label='Modular Rigging Tools',
         #                                                    area='left', content=self.uiVars['window'],
         #                                                    allowedArea=['left', 'right'])
@@ -337,24 +338,24 @@ class MRT_UI(object):
         except IOError:
             ui_preferences_file = open(self.ui_preferences_path, 'wb')
             ui_preferences = {}
-            ui_preferences['startDirectoryForCollectionSave'] =
+            ui_preferences['startDirectoryForCollectionSave'] = \
                                     cmds.internalVar(userScriptDir=True)+'MRT/module_collections/user_collections'
-            ui_preferences['defaultStartDirectoryForCollectionSave'] =
+            ui_preferences['defaultStartDirectoryForCollectionSave'] = \
                                     cmds.internalVar(userScriptDir=True)+'MRT/module_collections/user_collections'
-            ui_preferences['directoryForAutoLoadingCollections'] =
+            ui_preferences['directoryForAutoLoadingCollections'] = \
                                     cmds.internalVar(userScriptDir=True)+'MRT/module_collections/user_collections'
-            ui_preferences['defaultDirectoryForAutoLoadingCollections'] =
+            ui_preferences['defaultDirectoryForAutoLoadingCollections'] = \
                                     cmds.internalVar(userScriptDir=True)+'MRT/module_collections/user_collections'
-            ui_preferences['lastDirectoryForLoadingCollections'] =
+            ui_preferences['lastDirectoryForLoadingCollections'] = \
                                     cmds.internalVar(userScriptDir=True)+'MRT/module_collections/user_collections'
-            ui_preferences['defaultLastDirectoryForLoadingCollections'] =
+            ui_preferences['defaultLastDirectoryForLoadingCollections'] = \
                                     cmds.internalVar(userScriptDir=True)+'MRT/module_collections/user_collections'
-            ui_preferences['directoryForSavingCharacterTemplates'] =
+            ui_preferences['directoryForSavingCharacterTemplates'] = \
                                     cmds.internalVar(userScriptDir=True)+'MRT/character_templates'
-            ui_preferences['defaultDirectoryForSavingCharacterTemplates'] =
+            ui_preferences['defaultDirectoryForSavingCharacterTemplates'] = \
                                     cmds.internalVar(userScriptDir=True)+'MRT/character_templates'
             ui_preferences['directoryForCharacterTemplates'] = cmds.internalVar(userScriptDir=True)+'MRT/character_templates'
-            ui_preferences['defaultDirectoryForCharacterTemplates'] =
+            ui_preferences['defaultDirectoryForCharacterTemplates'] = \
                                     cmds.internalVar(userScriptDir=True)+'MRT/character_templates'
             ui_preferences['loadCharTemplateClearModeStatus'] = True
             ui_preferences['loadNewCharTemplatesToCurrentList'] = True
@@ -421,7 +422,7 @@ class MRT_UI(object):
     def display_mrt_issues(self, *args):
         '''
         First things first. Keep a record of current issues with MRT, displayable to the user.
-        Not sure why I didn't use a txt source haha. Meh, too bad. But you do what you gotta do ;)
+        Not sure why I didn't use a txt source :)
         '''
         printString1 = ' Known Issues with Modular Rigging Tools for Maya' \
                        '\n ------------------------------------------------'
@@ -738,7 +739,7 @@ class MRT_UI(object):
 
         # Create the checkboxes for setting the preferences. Load the previous preferred values.
         cmds.rowLayout(numberOfColumns=1, columnAttach=([1, 'left', 57]))
-        self.uiVars['autoLoadPreviousCollectionListAtStartup_checkBox'] =
+        self.uiVars['autoLoadPreviousCollectionListAtStartup_checkBox'] = \
             cmds.checkBox(label='Preserve and load current list at next startup', value=loadAtStartup,
                                                                                 changeCommand=setAutoLoadSettingsValues)
         cmds.setParent(self.uiVars['autoLoadSettingsWindowColumn'])
@@ -833,7 +834,6 @@ class MRT_UI(object):
 
         # Show the window
         cmds.showWindow(self.uiVars['loadCollectionClearModeWindow'])
-
 
 
     def changeLoadCollectionDirectoryClearMode(self, *args):
@@ -1254,7 +1254,7 @@ class MRT_UI(object):
         cmds.showWindow(self.uiVars['deleteCollectionWindow'])
 
 
-    def installSelectedModuleCollectionToScene(self, *args, autoInstallFile=None):
+    def installSelectedModuleCollectionToScene(self, **kwargs):
         '''
         Performs installation of a selected module collection from the module collection scroll list
         into the maya scene. It also accepts an auto-collection file, which is auto generated by MRT
@@ -1262,8 +1262,8 @@ class MRT_UI(object):
         to its scene modules).
         '''
         # If an auto-install module collection file is passed, use it.
-        if autoInstallFile:
-            collectionFile = autoInstallFile
+        if 'autoInstallFile' in kwargs:
+            collectionFile = kwargs['autoInstallFile']
         else:
             # Get the selected module collection name from the UI scroll list and its
             # associated file.
@@ -1844,7 +1844,7 @@ class MRT_UI(object):
         moduleContainers = [item for item in cmds.ls(type='container') if mfunc.stripMRTNamespace(item)]
         if moduleContainers:
             cmds.warning('MRT Error: Module(s) were found in the scene; cannot import a character template. '   \
-                                                                                Try importing it in a new scene.')
+                                                                                'Try importing it in a new scene.')
             return
 
         # Get the selected character template
@@ -2575,7 +2575,7 @@ class MRT_UI(object):
         cmds.undoInfo(stateWithoutFlush=True)
 
 
-    def makeCollectionFromSceneTreeViewModulesUI(self, *args, allModules=False, auto=None):
+    def makeCollectionFromSceneTreeViewModulesUI(self, **kwargs):
         '''
         Called to make a module collection by selecting scene module(s) from the MRT UI 
         scene module treeView list. This method is also called internally by MRT for creating an
@@ -2699,6 +2699,7 @@ class MRT_UI(object):
                     parentModuleNodeAttr = moduleParentNode.split(',')
                     moduleParent = mfunc.stripMRTNamespace(parentModuleNodeAttr[0])[0]
                     if not moduleParent in modulesToBeCollected:
+                    
                         # Collect the parent module node not included in the modules to be saved as collection
                         modulesToBeUnparented[module] = parentModuleNodeAttr[0]
 
@@ -2847,8 +2848,11 @@ class MRT_UI(object):
 
         # Get the current selection.
         selection = cmds.ls(selection=True) or None
-
-        mrt_namespaces = []
+        
+        # Get the method arguments
+        allModules = kwargs['allModules'] if 'allModules' in kwargs else False
+        auto = kwargs['auto'] if 'auto' in kwargs else None
+        
         if allModules:
             # If all modules in the scene are to be included in the collection,
             namespaces = cmds.namespaceInfo(listOnlyNamespaces=True)
@@ -3844,7 +3848,7 @@ class MRT_UI(object):
         # Check if the parent module node is already assigned.
         child_moduleParentInfo = cmds.getAttr(childFieldInfo+':moduleGrp.moduleParent')
 
-        if child_moduleParentInfo != 'None:
+        if child_moduleParentInfo != 'None':
             child_moduleParentInfo = child_moduleParentInfo.split(',')[0]
             child_moduleParentInfo = mfunc.stripMRTNamespace(child_moduleParentInfo)[0]
 
@@ -4035,7 +4039,7 @@ class MRT_UI(object):
         autoCharacterFile = self.autoCollections_path + '/character__%s.mrtmc'%(fileId)
 
         # Now, save an auto module collection file from scene modules.
-        self.makeCollectionFromSceneTreeViewModulesUI(args=True, allModules=True, auto=autoCharacterFile)
+        self.makeCollectionFromSceneTreeViewModulesUI(allModules=True, auto=autoCharacterFile)
 
         characterJointSet = []
 
@@ -4262,13 +4266,13 @@ class MRT_UI(object):
             autoFile = self.autoCollections_path + '/' + status[1] + '.mrtmc'
 
             # Install scene module(s) from the module collection file.
-            self.installSelectedModuleCollectionToScene(True, autoFile)
+            self.installSelectedModuleCollectionToScene(autoInstallFile=autoFile)
 
 
     def checkMRTcharacter(self):
         '''
         Checks for a character in the current scene. If found, it returns the name
-        of main character group and the auto module collection fle generated while creating the character.
+        of main character group and the auto module collection file generated while creating the character.
         '''
         # Get the cuurent namespace, set to root.
         namespace = cmds.namespaceInfo(currentNamespace=True)
@@ -4285,14 +4289,14 @@ class MRT_UI(object):
         if len(characterGrp) > 1:
             cmds.warning('MRT Error: More than one character exists in the scene. Aborting.')
             return
+        
+        # If a character group is found in the scene.
+        if len(characterGrp) == 1:
+            characterGrp = characterGrp[0]
 
         # If no character main group is found in the scene.
         if len(characterGrp) == 0:
             characterGrp = None
-
-        # If a character group is found in the scene.
-        if len(characterGrp) == 1:
-            characterGrp = characterGrp[0]
 
         autoCollectionFile = ''
 
@@ -4685,7 +4689,7 @@ class MRT_UI(object):
                     if len(control_klasses) > 1:
                         print '## MRT message: ' \
                               'Multiple user control rigging classes (%s) found for selected custom joint hierarchy. ' \
-                              '##\n## Using \"%s\" control class for rigging options. ##'
+                              '##\n## Using \"%s\" control class for rigging options. ##' \
                                               % (', '.join(control_klasses), (className))
                     else:
                         print '## MRT message: Using \"%s\" control class for rigging custom hierarchy. ##' % (className)
@@ -4727,7 +4731,7 @@ class MRT_UI(object):
                         if len(control_klasses) > 1:
                             print '## MRT message: ' \
                                   'Multiple user control rigging classes (%s) found for selected joint hierarchy. ' \
-                                  '##\n## Using \"%s\" control class for rigging options. ##'
+                                  '##\n## Using \"%s\" control class for rigging options. ##' \
                                                   % (', '.join(control_klasses), (className))
                         else:
                             print '## MRT message: Custom user control rigging class found for selected joint hierarchy. ' \
@@ -4739,7 +4743,7 @@ class MRT_UI(object):
             
             # Get the control rig definitions that can be applied to the selected joint hierarchy.
             funcList = eval('[item for item in dir(mrt_controlRig.%s) if not re.search(\'__\', item)]'%(className))
-            funcNameList = eval('[item.partition(\'apply\')[2].replace(\'_\', \' \') for item in dir(mrt_controlRig.%s) 
+            funcNameList = eval('[item.partition(\'apply\')[2].replace(\'_\', \' \') for item in dir(mrt_controlRig.%s) \
                                                                         if re.search(\'^apply[A-Z]\', item)]' % (className))
             # Store the control rig definitions under the attributes.
             for (funcName, func) in zip(funcNameList, funcList):
@@ -5320,7 +5324,7 @@ class MRT_UI(object):
             return
 
         # If a character control or character root transform is selected (to be added as valid parent target).
-        if re.match('^MRT_character[A-Za-z0-9]*__\w+_handle$', selection) or
+        if re.match('^MRT_character[A-Za-z0-9]*__\w+_handle$', selection) or \
                                                     re.match('^MRT_character[A-Za-z0-9]*__root_transform$', selection):
 
             # Get the control to which parent target(s) are to be added.
@@ -5968,7 +5972,7 @@ class MRT_UI(object):
         self.uiVars['moduleList_fLayout'] = cmds.frameLayout(visible=True, borderVisible=False, collapsable=False,
                                                                                         labelVisible=False, height=32)
 
-        self.uiVars['sceneModuleList_treeVie(w'] = cmds.treeView('__MRT_treeView_SceneModulesUI', numberOfButtons=1,
+        self.uiVars['sceneModuleList_treeView'] = cmds.treeView('__MRT_treeView_SceneModulesUI', numberOfButtons=1,
                                                                 allowReparenting=False, preventOverride=True, enable=False)
 
         cmds.setParent(self.uiVars['sceneModules_fLayout'])

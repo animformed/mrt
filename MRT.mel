@@ -1,5 +1,5 @@
-global proc MRT()		// To be executed inside maya
+global proc MRT(int $mode)	// To be executed inside maya
 	{
-		python("import MRTstartup; MRTstartup.runMRTstartup()");
+		python("import MRTstartup; MRTstartup.runMRTstartup("+$mode+")");
 	}
 

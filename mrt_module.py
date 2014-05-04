@@ -152,8 +152,8 @@ class MRT_Module(object):
         for index, joint in enumerate(self.nodeJoints[:-1]):
         
             # Create raw representation objects.
-            hierarchyRepr = objects.createRawHierarchyRepr(self.nodeAxes[0])
-            orientationReprNodes = objects.createRawOrientationRepr(self.nodeAxes[0])
+            hierarchyRepr = objects.createRawHierarchyRepresentation(self.nodeAxes[0])
+            orientationReprNodes = objects.createRawOrientationRepresentation(self.nodeAxes[0])
             if self.mirrorModule and self.mirrorRotationFunc == 'Behaviour':
                 cmds.setAttr(orientationReprNodes[0]+'.scale'+self.nodeAxes[2], -1)
                 cmds.makeIdentity(orientationReprNodes[0], scale=True, apply=True)
@@ -368,7 +368,7 @@ class MRT_Module(object):
         containedNodes  = []
 
         handleSegmentParts = objects.createRawSegmentCurve(3)
-        hierarchyRepr = objects.createRawHierarchyRepr('X')
+        hierarchyRepr = objects.createRawHierarchyRepresentation('X')
         cmds.setAttr(hierarchyRepr+'.scale', 1.0, 1.0, 1.0, type='double3')
         cmds.makeIdentity(hierarchyRepr, scale=True, apply=True)
         hierarchyReprShape = cmds.listRelatives(hierarchyRepr, children=True, shapes=True)[0]
@@ -601,7 +601,7 @@ class MRT_Module(object):
                                                              name=self.moduleNamespace+':moduleSingleOrientationReprGrp',
                                                              parent=self.moduleReprGrp)
                                                              
-            singleOrientationTransform = objects.createRawSingleOrientationRepr()
+            singleOrientationTransform = objects.createRawSingleOrientationRepresentation()
             cmds.setAttr(singleOrientationTransform+'.scale', 0.65, 0.65, 0.65, type='double3')
             cmds.makeIdentity(singleOrientationTransform, scale=True, apply=True)
             cmds.parent(singleOrientationTransform, self.moduleSingleOrientationReprGrp, absolute=True)
@@ -1470,7 +1470,7 @@ class MRT_Module(object):
         index = 0
         for joint in self.nodeJoints[:-1]:
 
-            hierarchyRepr = objects.createRawHierarchyRepr(self.nodeAxes[0])
+            hierarchyRepr = objects.createRawHierarchyRepresentation(self.nodeAxes[0])
 
             ##startLocator = joint + '_handleControlSegmentCurve_startLocator'
             ##endLocator = self.nodeJoints[index+1] + '_handleControlSegmentCurve_endLocator'
@@ -1545,7 +1545,7 @@ class MRT_Module(object):
                 for joint in self.nodeJoints[:-1]:
                     longName = mfunc.stripMRTNamespace(joint)[1]+'_orient_repr_transform'
                     cmds.addAttr(moduleNode, attributeType='enum', longName=longName, enumName='Off:On:', defaultValue=1, keyable=True)
-                    cmds.connectAttr(moduleNode+'.'+longName, joint+'_orientation_repr_transform.visibility')
+                    cmds.connectAttr(moduleNode+'.'+longName, joint+'_orient_repr_transform.visibility')
                     if not self.showOrientation:
                         cmds.setAttr(moduleNode+'.'+longName, 0)
                     cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleNode+'.'+longName, 'module_transform_'+longName+'_toggle'])
