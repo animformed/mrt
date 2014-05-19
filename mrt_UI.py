@@ -3421,9 +3421,10 @@ class MRT_UI(object):
 
         # Get the translation offset to be applied to the new duplicated module.
         offset = cmds.floatFieldGrp(self.uiVars['duplicateActionWindowFloatfieldGrp'], query=True, value=True)
-
+        
         # Apply the offset to new module's module transform.
         if moduleAttrsDict['node_type'] != 'SplineNode':
+
             if cmds.getAttr(moduleAttrsDict['module_Namespace']+':moduleGrp.onPlane')[0] == '+':
                 selection = moduleAttrsDict['module_Namespace']+':module_transform'
                 cmds.evalDeferred(partial(mfunc.moveSelectionOnIdle, selection, offset), lowestPriority=True)
@@ -4064,12 +4065,19 @@ class MRT_UI(object):
             characterJointSet.append( ( moduleAttrsDict['moduleParentInfo'][0][1], joints[:] ) )
 
             # If the module has proxy geometry, generate the proxy geometry for the joint hierarchy as well.
+            #
             # The moduleAttrsDict['proxy_geo_options'] has a list with the following:
             # [ True if it contains bone proxy geo,
             #       True if it contains elbow proxy geo,
             #           elbow proxy type, 'sphere' or 'cube',
             #                  mirror instancing status for all module proxy geo ]
-            if moduleAttrsDict['proxy_geo_options'][3] == 'On':
+            #
+            # The moduleAttrsDict['node_compnts'] has a list with the following:
+            # [True for visibility of module hierarchy representation (set to True as  default),
+            #       True for visibility of module node orientation representation (set to False as default),
+            #               True for creation of proxy geometry (set as False as default)]
+            #
+            if moduleAttrsDict['node_compnts'][2] == True:
                 # Create and return the proxy geo group for the joint hierarchy, if proxy geo exists for the module.
                 proxyGrp = mfunc.createProxyForSkeletonFromModule(characterJointSet, moduleAttrsDict, characterName)
                 if proxyGrp:
@@ -5094,19 +5102,9 @@ class MRT_UI(object):
 
             if matchResult:
 
-                # Get the character name from the joint.
-                characterName = selection.partition('__')[0].partition('MRT_character')[2]
-
-                # Get the skinJointSet set from character name.
-                skinJointSet = 'MRT_character%s__skinJointSet'%(characterName)
-
-                # Check if the joint belongs to the set.
-                status = cmds.sets(selection, isMember=skinJointSet)
-
                 # If valid, return true with the index+1 of the matchObjects index.
                 # This can be used to identify the joint name type.
-                if status:
-                    return True, i+1
+                return True, i+1
 
         # Invalid MRT character joint.
         return False, 0

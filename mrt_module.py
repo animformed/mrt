@@ -915,7 +915,7 @@ class MRT_Module(object):
         collectedNodes.append(self.moduleGrp)
         newRawLocaAxesInfoReprTransforms = []
         for joint in self.nodeJoints:
-            rawLocalAxesInfoReprTransforms = objects.createRawLocalAxesInfoRepr()
+            rawLocalAxesInfoReprTransforms = objects.createRawLocalAxesInfoRepresentation()
             cmds.setAttr(rawLocalAxesInfoReprTransforms[0]+'.scale', 0.8, 0.8, 0.8, type='double3')
             cmds.makeIdentity(rawLocalAxesInfoReprTransforms[0], scale=True, apply=True)
             cmds.parent(rawLocalAxesInfoReprTransforms[0], self.moduleOrientationReprGrp)
@@ -978,7 +978,7 @@ class MRT_Module(object):
                 cmds.connectAttr(newStartHandle+'.Global_size', joint+'_proxy_elbow_geo_scaleTransform.scaleY')
                 cmds.connectAttr(newStartHandle+'.Global_size', joint+'_proxy_elbow_geo_scaleTransform.scaleZ')
 
-        cmds.connectAttr(newStartHandle+'.Node_orient_Info', self.moduleOrientationReprGrp+'.visibility')
+        cmds.connectAttr(newStartHandle+'.Node_Orientation_Info', self.moduleOrientationReprGrp+'.visibility')
         for transform in newRawLocaAxesInfoReprTransforms:
             rotateAxis = self.nodeAxes[0]
             cmds.container(self.moduleContainer, edit=True, publishAndBind=[transform+'.tangent_Up_vector', mfunc.stripMRTNamespace(transform)[1]+'_tangent_Up_Vector'])
@@ -1451,7 +1451,7 @@ class MRT_Module(object):
         cmds.parentConstraint(self.nodeJoints[1], hingeAxisRepr, maintainOffset=False, name=hingeAxisRepr+'_parentConstraint')
         cmds.scaleConstraint(self.moduleTransform, hingeAxisRepr, maintainOffset=False, name=self.moduleTransform+'_scaleConstraint')
 
-        ikPreferredRotationRepresentaton = objects.createRawIKPreferredRotationRepr(self.nodeAxes[2])
+        ikPreferredRotationRepresentaton = objects.createRawIKPreferredRotationRepresentation(self.nodeAxes[2])
         cmds.setAttr(ikPreferredRotationRepresentaton+'.scale', 0.6, 0.6, 0.6, type='double3')
         cmds.makeIdentity(ikPreferredRotationRepresentaton, scale=True, apply=True)
         ikPreferredRotationRepresentaton = cmds.rename(ikPreferredRotationRepresentaton, self.moduleNamespace+':'+ikPreferredRotationRepresentaton)
@@ -1541,7 +1541,9 @@ class MRT_Module(object):
             moduleNode = '|' + self.moduleGrp + '|' + self.moduleTransform
 
             if len(self.nodeJoints) > 1:
-                cmds.addAttr(moduleNode, attributeType='enum', longName='Node_Orientation_Repr_Toggle', enumName='----------------------------:', keyable=True)
+                cmds.addAttr(moduleNode, attributeType='enum', longName='Node_Orientation_Repr_Toggle', enumName=' ')
+                cmds.setAttr(moduleNode+'.Node_Orientation_Repr_Toggle', keyable=False, channelBox=True)
+                
                 for joint in self.nodeJoints[:-1]:
                     longName = mfunc.stripMRTNamespace(joint)[1]+'_orient_repr_transform'
                     cmds.addAttr(moduleNode, attributeType='enum', longName=longName, enumName='Off:On:', defaultValue=1, keyable=True)
@@ -1550,7 +1552,9 @@ class MRT_Module(object):
                         cmds.setAttr(moduleNode+'.'+longName, 0)
                     cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleNode+'.'+longName, 'module_transform_'+longName+'_toggle'])
 
-                cmds.addAttr(moduleNode, attributeType='enum', longName='Node_Hierarchy_Repr_Toggle', enumName='----------------------------:', keyable=True)
+                cmds.addAttr(moduleNode, attributeType='enum', longName='Node_Hierarchy_Repr_Toggle', enumName=' ')
+                cmds.setAttr(moduleNode+'.Node_Hierarchy_Repr_Toggle', keyable=False, channelBox=True)
+                
                 for joint in self.nodeJoints[:-1]:
                     longName = mfunc.stripMRTNamespace(joint)[1]+'_hierarchy_repr'
                     cmds.addAttr(moduleNode, attributeType='enum', longName=longName, enumName='Off:On:', defaultValue=1, keyable=True)
@@ -1562,7 +1566,9 @@ class MRT_Module(object):
                     cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleNode+'.'+longName, 'module_transform_'+longName+'_toggle'])
 
             if len(self.nodeJoints) == 1:
-                cmds.addAttr(moduleNode, attributeType='enum', longName='Node_Orientation_Repr_Toggle', enumName='----------------------------:', keyable=True)
+                cmds.addAttr(moduleNode, attributeType='enum', longName='Node_Orientation_Repr_Toggle', enumName=' ')
+                cmds.setAttr(moduleNode+'.Node_Orientation_Repr_Toggle', keyable=False, channelBox=True)
+                
                 longName = mfunc.stripMRTNamespace(self.nodeJoints[0])[1]+'_single_orient_repr_transform'
                 cmds.addAttr(moduleNode, attributeType='enum', longName=longName, enumName='Off:On:', defaultValue=1, keyable=True)
                 cmds.connectAttr(moduleNode+'.'+longName, mfunc.stripMRTNamespace(self.nodeJoints[0])[0]+':single_orient_repr_transform.visibility')
@@ -1570,7 +1576,9 @@ class MRT_Module(object):
                     cmds.setAttr(moduleNode+'.'+longName, 0)
                 cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleNode+'.'+longName, 'module_transform_'+longName+'_toggle'])
 
-            cmds.addAttr(moduleNode, attributeType='enum', longName='Node_Handle_Size', enumName='---------------------------:', keyable=True)
+            cmds.addAttr(moduleNode, attributeType='enum', longName='Node_Handle_Size', enumName=' ')
+            cmds.setAttr(moduleNode+'.Node_Handle_Size', keyable=False, channelBox=True)
+            
             for joint in self.nodeJoints:
                 longName = mfunc.stripMRTNamespace(joint)[1]+'_handle_size'
                 cmds.addAttr(moduleNode, attributeType='float', longName=longName, hasMinValue=True, minValue=0, defaultValue=1, keyable=True)
@@ -1583,7 +1591,9 @@ class MRT_Module(object):
                 #cmds.setAttr(moduleNode+'.'+longName, 0.2)
                 cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleNode+'.'+longName, 'module_transform_'+longName])
 
-            cmds.addAttr(moduleNode, attributeType='enum', longName='Node_Rotation_Order', enumName='---------------------------:', keyable=True)
+            cmds.addAttr(moduleNode, attributeType='enum', longName='Node_Rotation_Order', enumName=' ')
+            cmds.setAttr(moduleNode+'.Node_Rotation_Order', keyable=False, channelBox=True)
+            
             for joint in self.nodeJoints:
                 longName = mfunc.stripMRTNamespace(joint)[1]+'_rotate_order'
                 cmds.addAttr(moduleNode, attributeType='enum', longName=longName, enumName='xyz:yzx:zxy:xzy:yxz:zyx:', defaultValue=0, keyable=True)
@@ -1591,7 +1601,9 @@ class MRT_Module(object):
                 cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleNode+'.'+longName, 'module_transform_'+longName+'_switch'])
 
             if self.proxyGeoStatus:
-                cmds.addAttr(moduleNode, attributeType='enum', longName='Proxy_Geometry', enumName='---------------------------:', keyable=True)
+                cmds.addAttr(moduleNode, attributeType='enum', longName='Proxy_Geometry', enumName=' ')
+                cmds.setAttr(moduleNode+'.Proxy_Geometry', keyable=False, channelBox=True)
+                
                 cmds.addAttr(moduleNode, attributeType='enum', longName='proxy_geometry_draw', enumName='Opaque:Transparent:', defaultValue=1, keyable=True)
                 cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleNode+'.proxy_geometry_draw', 'module_transform_proxy_geometry_draw_toggle'])
 
@@ -1599,7 +1611,9 @@ class MRT_Module(object):
 
             moduleNode = self.moduleNamespace + ':splineStartHandleTransform'
 
-            cmds.addAttr(moduleNode, attributeType='enum', longName='Node_Repr', enumName='----------------------:', keyable=True)
+            cmds.addAttr(moduleNode, attributeType='enum', longName='Node_Repr', enumName=' ')
+            cmds.setAttr(moduleNode+'.Node_Repr', keyable=False, channelBox=True)
+            
             cmds.addAttr(moduleNode, attributeType='float', longName='Global_size', hasMinValue=True, minValue=0, defaultValue=1, keyable=True)
             cmds.addAttr(moduleNode, attributeType='float', longName='Axis_Rotate', defaultValue=0, keyable=True)
             cmds.addAttr(moduleNode, attributeType='enum', longName='Node_Orientation_Info', enumName='Off:On:', defaultValue=1, keyable=True)
@@ -1612,7 +1626,9 @@ class MRT_Module(object):
             cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleNode+'.Node_Local_Orientation_Repr_Size', 'root_transform_Node_Orientation_Repr_Size'])
 
             if self.proxyGeoStatus:
-                cmds.addAttr(moduleNode, attributeType='enum', longName='Proxy_Geometry', enumName='---------------------------:', keyable=True)
+                cmds.addAttr(moduleNode, attributeType='enum', longName='Proxy_Geometry', enumName=' ')
+                cmds.setAttr(moduleNode+'.Proxy_Geometry', keyable=False, channelBox=True)
+                
                 cmds.addAttr(moduleNode, attributeType='enum', longName='proxy_geometry_draw', enumName='Opaque:Transparent:', defaultValue=1, keyable=True)
                 cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleNode+'.proxy_geometry_draw', 'module_transform_proxy_geometry_draw_toggle'])
 
@@ -1635,7 +1651,9 @@ class MRT_Module(object):
             if not self.showHierarchy:
                 cmds.setAttr(moduleNode+'.Module_Hierarchy_Repr_Toggle', 0)
 
-            cmds.addAttr(moduleNode, attributeType='enum', longName='Node_Handle_Size', enumName='---------------------------:', keyable=True)
+            cmds.addAttr(moduleNode, attributeType='enum', longName='Node_Handle_Size', enumName=' ')
+            cmds.setAttr(moduleNode+'.Node_Handle_Size', keyable=False, channelBox=True)
+
             for joint in self.nodeJoints:
                 longName = mfunc.stripMRTNamespace(joint)[1]+'_handle_size'
                 cmds.addAttr(moduleNode, attributeType='float', longName=longName, hasMinValue=True, minValue=0, defaultValue=1, keyable=True)
@@ -1648,7 +1666,9 @@ class MRT_Module(object):
                 #cmds.setAttr(moduleNode+'.'+longName, 0.2)
                 cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleNode+'.'+longName, 'module_transform_'+longName])
 
-            cmds.addAttr(moduleNode, attributeType='enum', longName='Node_Rotation_Order', enumName='---------------------------:', keyable=True)
+            cmds.addAttr(moduleNode, attributeType='enum', longName='Node_Rotation_Order', enumName=' ')
+            cmds.setAttr(moduleNode+'.Node_Rotation_Order', keyable=False, channelBox=True)
+
             for joint in self.nodeJoints:
                 longName = mfunc.stripMRTNamespace(joint)[1]+'_rotate_order'
                 cmds.addAttr(moduleNode, attributeType='enum', longName=longName, enumName='xyz:yzx:zxy:xzy:yxz:zyx:', defaultValue=0, keyable=True)
@@ -1656,7 +1676,9 @@ class MRT_Module(object):
                 cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleNode+'.'+longName, 'module_transform_'+longName+'_switch'])
 
             if self.proxyGeoStatus:
-                cmds.addAttr(moduleNode, attributeType='enum', longName='Proxy_Geometry', enumName='---------------------------:', keyable=True)
+                cmds.addAttr(moduleNode, attributeType='enum', longName='Proxy_Geometry', enumName=' ')
+                cmds.setAttr(moduleNode+'.Proxy_Geometry', keyable=False, channelBox=True)
+                
                 cmds.addAttr(moduleNode, attributeType='enum', longName='proxy_geometry_draw', enumName='Opaque:Transparent:', defaultValue=1, keyable=True)
                 cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleNode+'.proxy_geometry_draw', 'module_transform_proxy_geometry_draw_toggle'])
 

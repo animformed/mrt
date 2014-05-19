@@ -391,8 +391,8 @@ def createRawSingleOrientationRepresentation():
 
 def createRawHierarchyRepresentation(aimAxis):
 	if aimAxis == 'X':
-		hierarchyRepresentation = cmds.createNode('transform', name='hierarchy_representation')
-		cmds.createNode('nurbsCurve', name='hierarchy_representationShape', parent='hierarchy_representation')
+		hierarchyRepresentation = cmds.createNode('transform', name='hierarchy_repr')
+		cmds.createNode('nurbsCurve', name='hierarchy_reprShape', parent='hierarchy_repr')
 		cmds.setAttr('.overrideEnabled', 1)
 		cmds.setAttr('.overrideColor', 13)
 		mel.eval("""setAttr ".cached" -type "nurbsCurve"
@@ -412,8 +412,8 @@ def createRawHierarchyRepresentation(aimAxis):
 	-0.08799383886043731 -0.039018907513668655 0.039018907513668655
 	-0.08799383886043731 0.039018907513668655 0.039018907513668655;""")
 	if aimAxis == 'Y':
-		hierarchyRepresentation = cmds.createNode('transform', name='hierarchy_representation')
-		cmds.createNode('nurbsCurve', name='hierarchy_representationShape', parent='hierarchy_representation')
+		hierarchyRepresentation = cmds.createNode('transform', name='hierarchy_repr')
+		cmds.createNode('nurbsCurve', name='hierarchy_reprShape', parent='hierarchy_repr')
 		cmds.setAttr('.overrideEnabled', 1)
 		cmds.setAttr('.overrideColor', 14)
 		mel.eval("""setAttr ".cached" -type "nurbsCurve"
@@ -433,8 +433,8 @@ def createRawHierarchyRepresentation(aimAxis):
 	0.039018907513668655 -0.087993758182295295 0.039018907513668655
 	-0.039018907513668655 -0.087993758182295295 0.039018907513668655;""")
 	if aimAxis == 'Z':
-		hierarchyRepresentation = cmds.createNode('transform', name='hierarchy_representation')
-		cmds.createNode('nurbsCurve', name='hierarchy_representationShape', parent='hierarchy_representation')
+		hierarchyRepresentation = cmds.createNode('transform', name='hierarchy_repr')
+		cmds.createNode('nurbsCurve', name='hierarchy_reprShape', parent='hierarchy_repr')
 		cmds.setAttr('.overrideEnabled', 1)
 		cmds.setAttr('.overrideColor', 6)
 		mel.eval("""setAttr ".cached" -type "nurbsCurve"
@@ -504,8 +504,8 @@ def createRawSplineAdjustCurveTransform(modHandleColour):
 	return splineAdjustCurvePreTransform, splineAdjustCurveTransform
 
 def createRawLocalAxesInfoRepresentation():
-	axesInfoPreTransform = cmds.createNode('transform', name='localAxesInfoRepresentation_preTransform')
-	axesInfoTransform = cmds.createNode('transform', name='localAxesInfoRepresentation', parent=axesInfoPreTransform)
+	axesInfoPreTransform = cmds.createNode('transform', name='localAxesInfoRepr_preTransform')
+	axesInfoTransform = cmds.createNode('transform', name='localAxesInfoRepr', parent=axesInfoPreTransform)
 	cmds.setAttr('.translateX', keyable=False)
 	cmds.setAttr('.translateY', keyable=False)
 	cmds.setAttr('.translateZ', keyable=False)
@@ -516,7 +516,7 @@ def createRawLocalAxesInfoRepresentation():
 	cmds.setAttr('.scaleY', keyable=False)
 	cmds.setAttr('.scaleZ', keyable=False)
 	cmds.setAttr('.visibility', keyable=False)
-	cmds.createNode('nurbsCurve', name='localAxesInfoRepresentation_XShape', parent=axesInfoTransform)
+	cmds.createNode('nurbsCurve', name='localAxesInfoRepr_XShape', parent=axesInfoTransform)
 	cmds.setAttr('.overrideEnabled', 1)
 	cmds.setAttr('.overrideColor', 13)
 	mel.eval("""setAttr ".cached" -type "nurbsCurve"
@@ -525,7 +525,7 @@ def createRawLocalAxesInfoRepresentation():
     2
     -2.8101674601366001e-018 0 0
     0.83251896000000003 0 0;""")
-	cmds.createNode('nurbsCurve', name='localAxesInfoRepresentation_ZShape', parent=axesInfoTransform)
+	cmds.createNode('nurbsCurve', name='localAxesInfoRepr_ZShape', parent=axesInfoTransform)
 	cmds.setAttr('.overrideEnabled', 1)
 	cmds.setAttr('.overrideColor', 6)
 	mel.eval("""setAttr ".cached" -type "nurbsCurve"
@@ -534,7 +534,7 @@ def createRawLocalAxesInfoRepresentation():
     2
     0 0 -2.6450977786373555e-018
     0 0 0.83251896000000003;""")
-	cmds.createNode('nurbsCurve', name='localAxesInfoRepresentation_YShape', parent=axesInfoTransform)
+	cmds.createNode('nurbsCurve', name='localAxesInfoRepr_YShape', parent=axesInfoTransform)
 	cmds.setAttr('.overrideEnabled', 1)
 	cmds.setAttr('.overrideColor', 14)
 	mel.eval("""setAttr ".cached" -type "nurbsCurve"
@@ -546,7 +546,7 @@ def createRawLocalAxesInfoRepresentation():
 	return axesInfoPreTransform, axesInfoTransform
 
 def createRawIKPreferredRotationRepresentation(planeAxis):
-	representationTransform = cmds.createNode('transform', name='IKPreferredRotationRepresentation')
+	representationTransform = cmds.createNode('transform', name='IKPreferredRotationRepr')
 	cmds.setAttr('.visibility', keyable=False)
 	cmds.setAttr('.translateX', keyable=False)
 	cmds.setAttr('.translateY', keyable=False)
@@ -557,7 +557,7 @@ def createRawIKPreferredRotationRepresentation(planeAxis):
 	cmds.setAttr('.scaleX', keyable=False)
 	cmds.setAttr('.scaleY', keyable=False)
 	cmds.setAttr('.scaleZ', keyable=False)
-	shape = cmds.createNode('nurbsCurve', name='IKPreferredRotationRepresentationShape', parent='IKPreferredRotationRepresentation')
+	shape = cmds.createNode('nurbsCurve', name='IKPreferredRotationReprShape', parent='IKPreferredRotationRepr')
 	cmds.setAttr('.overrideEnabled', 1)
 	mel.eval('''setAttr ".cached" -type "nurbsCurve"
     1 20 0 no 3
