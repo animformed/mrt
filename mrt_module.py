@@ -90,7 +90,6 @@ class MRT_Module(object):
         # Module container name.
         self.moduleContainer = self.moduleNamespace + ':module_container'
         
-        
         # Attribute to store values for operations:
         
         # To calculate and store the initial "creation" positions of module nodes.
@@ -104,7 +103,7 @@ class MRT_Module(object):
         '''
         This method calculates the position(s) for module node(s) to be created based on their quantity and 
         provided length from the UI. It also takes into account the offset position of the module from the 
-        origin on an axis, based on the creation plane for the module.
+        creation plane, specified in the UI.
         '''
         # Reset initial module node positions.
         self.initNodePos = []
@@ -114,7 +113,7 @@ class MRT_Module(object):
         if self.mirrorModule:
             self.moduleOffset = self.moduleOffset * -1
         
-        # Axis for offset.
+        # Axis for offset, based on the module creation plane.
         axisForOffset = {'XY':'Z', 'YZ':'X', 'XZ':'Y'}[self.onPlane]
         
         # Record the position of the root node for the module.
@@ -124,6 +123,7 @@ class MRT_Module(object):
             self.initNodePos.append([0, self.moduleOffset, 0])
         if axisForOffset == 'Z':
             self.initNodePos.append([0, 0, self.moduleOffset])
+            
         # If the module has single node, return.
         if self.moduleLen == 0 or self.numNodes == 1:
             return
@@ -237,7 +237,7 @@ class MRT_Module(object):
 
     def createJointNodeControlHandleRepr(self):
         '''
-        Creates handle control representation objects on module nodes when called. It also creates segments 
+        Creates handle control representation/helper objects on module nodes when called. It also creates segments 
         between node(s) to represent how the module nodes are connected.
         '''
         mfunc.updateAllTransforms()
@@ -252,21 +252,21 @@ class MRT_Module(object):
             handleNodes = objects.createRawControlSurface(joint, self.modHandleColour)
             
             # Parent and then rename their shapes with the joint node.
-            newHandleShape = handleNodes[1]
+            handleShape = handleNodes[1]
             
             # Delete the empty transform for the raw handle objects.
             # Select and add a cluster to the joint node, which will affect its shape node. The selection command is
             # important here since it'll update the DG in context to the joint with its new shape node. Otherwise the
             # cluster will report 'no deformable objects' when directly processing the joint or its shape node when
             # passed in as the first argument.
-            handleShapeScaleCluster = cmds.cluster(newHandleShape, relative=True, name=newHandleShape+'_scaleCluster')
+            handleShapeScaleCluster = cmds.cluster(handleShape, relative=True, name=handleShape+'_scaleCluster')
             
             # Parent the cluster handle appropriately and turn off its visibility.
             cmds.parent(handleShapeScaleCluster[1], self.moduleNodeHandleShapeScaleClusterGrp, absolute=True)
             cmds.setAttr(handleShapeScaleCluster[1]+'.visibility', 0)
             
             # Collect the cluster nodes.
-            clusterNodes = cmds.listConnections(newHandleShape, source=True, destination=True)
+            clusterNodes = cmds.listConnections(handleShape, source=True, destination=True)
             
             # Remove the tweak node.
             for node in clusterNodes:
@@ -275,7 +275,7 @@ class MRT_Module(object):
                     break
             
             # Update the cluster node list and collect it.
-            clusterNodes = cmds.listConnections(newHandleShape, source=True, destination=True)
+            clusterNodes = cmds.listConnections(handleShape, source=True, destination=True)
             containedNodes.extend(clusterNodes)
             
             # Create a locator and point constrain it to the joint node in iteration for indicating its
@@ -286,7 +286,7 @@ class MRT_Module(object):
             
             # Turn off its visibility and parent it accordingly.
             cmds.setAttr(worldPosLocator + '.visibility', 0)
-            cmds.setAttr(newHandleShape+'.visibility', 0)
+            cmds.setAttr(handleShape+'.visibility', 0)
             cmds.parent(worldPosLocator, self.moduleHandleSegmentGrp, absolute=True)
     
         # If the module contains more the one node (joint), create segment representations between
@@ -365,9 +365,15 @@ class MRT_Module(object):
         return containedNodes
     
 
-    def createHierarchySegmentForModuleParentingRepr(self, *args):
+    def createHierarchySegmentForModuleParentingRepr(self):
+        '''
+        Creates module parenting representation objects for a module. These objects are visible when
+        a module is connected to a parent in the scene. It is indicated by a line segment with
+        an arrow showing the parent-child relationship between two modules.
+        '''
         containedNodes  = []
-
+        
+        # Create a segment curve with hierarchy representation.
         handleSegmentParts = objects.createRawSegmentCurve(3)
         hierarchyRepr = objects.createRawHierarchyRepresentation('X')
         cmds.setAttr(hierarchyRepr+'.scale', 1.0, 1.0, 1.0, type='double3')
@@ -375,16 +381,22 @@ class MRT_Module(object):
         hierarchyReprShape = cmds.listRelatives(hierarchyRepr, children=True, shapes=True)[0]
         cmds.setAttr(hierarchyReprShape+'.overrideColor', 2)
         
+        # Add their parts to the module container.
         for node in handleSegmentParts[4]:
             if cmds.objExists(node):
                 containedNodes.append(cmds.rename(node, self.moduleNamespace+':moduleParentReprSegment_clusterParts_'+node))
         
+        # Place them under the module parenting representation group.
+        cmds.parent([handleSegmentParts[1], handleSegmentParts[2][1], handleSegmentParts[3][1], handleSegmentParts[5],
+                                                handleSegmentParts[6]], self.moduleParentReprGrp, absolute=True)
+                                                        
+        # Constrain the start handle for the hierarchy "module parenting" representation
+        # to the root node of the current module.
         cmds.pointConstraint(self.nodeJoints[0], handleSegmentParts[5], maintainOffset=False,
                             name=self.moduleNamespace+':moduleParentRepresentationSegment_startLocator_pointConstraint')
-                            
-        cmds.parent([handleSegmentParts[1], handleSegmentParts[2][1], handleSegmentParts[3][1], handleSegmentParts[5],
-                                                        handleSegmentParts[6]], self.moduleParentReprGrp, absolute=True)
-                                                        
+        
+        # Constrain the module parenting hierarchy representation arrow (So that it stays at the mid
+        # position of the segment curve as created above.
         cmds.pointConstraint(handleSegmentParts[5], handleSegmentParts[6], hierarchyRepr, maintainOffset=False,
                                         name=self.moduleNamespace+':moduleParentReprSegment_hierarchyRepr_pointConstraint')
                                         
@@ -450,6 +462,8 @@ class MRT_Module(object):
         
         # Create an empty group for containing module handle segments.
         self.moduleHandleSegmentGrp = cmds.group(empty=True, name=self.moduleNamespace+':moduleHandleSegmentCurveGrp')
+        
+        # Create an empty group for containing module parenting representations.
         self.moduleParentReprGrp = cmds.group(empty=True, name=self.moduleNamespace+':moduleParentReprGrp')
         
         # Create an empty group for containing module hierarchy/orientation representations.
@@ -480,15 +494,20 @@ class MRT_Module(object):
         cmds.setAttr(self.moduleGrp+'.onPlane', '+'+self.onPlane, type='string')
         cmds.addAttr(self.moduleGrp, dataType='string', longName='mirrorTranslation', keyable=False)
         cmds.setAttr(self.moduleGrp+'.mirrorTranslation', self.mirrorTranslationFunc, type='string')
+        
+        # If the current module to be created is a mirror module (on the -ve side of the creation plane).
         if self.mirrorModule:
             cmds.setAttr(self.moduleGrp+'.onPlane', '-'+self.onPlane, type='string')
+            
+        # If the module is a part of a mirrored module pair. In other words, if module mirroring is turned on.
+        # Add module mirroring attributes to the module group. 
         if self.mirrorModuleStatus == 'On':
             cmds.addAttr(self.moduleGrp, dataType='string', longName='mirrorModuleNamespace', keyable=False)
             cmds.setAttr(self.moduleGrp+'.mirrorModuleNamespace', self.mirror_moduleNamespace, type='string')
             cmds.addAttr(self.moduleGrp, dataType='string', longName='mirrorRotation', keyable=False)
             cmds.setAttr(self.moduleGrp+'.mirrorRotation', self.mirrorRotationFunc, type='string')
         
-        # Create a group for proxy geometry.
+        # Create groups for proxy geometry, if they're enabled.
         if self.proxyGeoStatus:
             if self.proxyGeoElbow or self.proxyGeoBones:
                 self.proxyGeoGrp = cmds.group(empty=True, name=self.moduleNamespace+':proxyGeometryGrp')
@@ -542,7 +561,9 @@ class MRT_Module(object):
         secondAxisOrientation = {'XY':'z', 'YZ':'x', 'XZ':'y'}[self.onPlane] + 'up'
         cmds.joint(edit=True, orientJoint=self.nodeAxes.lower(), secondaryAxisOrient=secondAxisOrientation,
                                                                                 zeroScaleOrient=True, children=True)
-
+                                                                                
+        # Mirror the module node joints (for the mirrored module) if the module mirroring is enabled,
+        # and if the mirror rotation function is set to "Behaviour".
         if self.mirrorModule and self.mirrorRotationFunc == 'Behaviour':
             mirrorPlane = {'XY':False, 'YZ':False, 'XZ':False}
             mirrorPlane[self.onPlane] = True
@@ -564,6 +585,7 @@ class MRT_Module(object):
         cmds.select(clear=True)
 
         # Add the module transform to the module, at the position of the root node.
+        # Add custom attributes to it.
         moduleTransform = objects.load_xhandleShape(self.moduleNamespace+'_handle', 24, True)
         cmds.setAttr(moduleTransform[0]+'.localScaleX', 0.26)
         cmds.setAttr(moduleTransform[0]+'.localScaleY', 0.26)
@@ -613,6 +635,8 @@ class MRT_Module(object):
                                                         name=self.moduleSingleOrientationReprGrp+'_parentConstraint')
             cmds.scaleConstraint(self.moduleTransform, self.moduleSingleOrientationReprGrp, maintainOffset=False,
                                                         name=self.moduleSingleOrientationReprGrp+'_scaleConstraint')
+        
+        # Set the sizes for the module node handle shapes.
         for joint in self.nodeJoints:
             xhandle = objects.load_xhandleShape(joint, self.modHandleColour)
             cmds.setAttr(xhandle[0]+'.localScaleX', 0.089)
@@ -636,9 +660,11 @@ class MRT_Module(object):
         # representation groups, since they're not needed.
         if self.numNodes == 1:
             cmds.delete([self.moduleHandleSegmentGrp, self.moduleOrientationHierarchyReprGrp])
-
+        
+        # Create module parenting representation objects.
         containedNodes += self.createHierarchySegmentForModuleParentingRepr()
-
+        
+        # Create the proxy geometry for the module if it is enabled.
         if self.proxyGeoStatus:
             if self.proxyGeoElbow:
                 self.createProxyGeo_elbows(self.proxyElbowType)
@@ -680,8 +706,9 @@ class MRT_Module(object):
                                                                            'single_orient_repr_transform_rotate'])
         # Add and publish custom attributes on the module transform.
         self.addCustomAttributesOnModuleTransform()
+        
         if self.numNodes > 1:
-            self.connectCustomOrientationReprToBoneProxies()
+            self.connectCustomOrientationReprToModuleProxies()
 
 
     def createSplineNodeModule(self, *args):
@@ -699,6 +726,9 @@ class MRT_Module(object):
         
         # Create the module container.
         moduleContainer = cmds.container(name=self.moduleContainer)
+        
+        # Initialize a list to collect non DAG nodes, for adding to the module container.
+        collectedNodes = []
         
         # Create an empty group for containing module handle segments.
         self.moduleSplineCurveGrp = cmds.group(empty=True, name=self.moduleNamespace+':moduleSplineCurveGrp')
@@ -733,11 +763,14 @@ class MRT_Module(object):
         cmds.addAttr(self.moduleGrp, dataType='string', longName='mirrorTranslation', keyable=False)
         cmds.setAttr(self.moduleGrp+'.mirrorTranslation', self.mirrorTranslationFunc, type='string')
         
+        collectedNodes.append(self.moduleGrp)
+        
         # If the current module to be created is a mirror module (on the -ve side of the creation plane).
         if self.mirrorModule:
             cmds.setAttr(self.moduleGrp+'.onPlane', '-'+self.onPlane, type='string')
     
         # If the module is a part of a mirrored module pair. In other words, if module mirroring is turned on.
+        # Add module mirroring attributes to the module group. 
         if self.mirrorModuleStatus == 'On':
             cmds.addAttr(self.moduleGrp, dataType='string', longName='mirrorModuleNamespace', keyable=False)
             cmds.setAttr(self.moduleGrp+'.mirrorModuleNamespace', self.mirror_moduleNamespace, type='string')
@@ -763,9 +796,6 @@ class MRT_Module(object):
         
         # Get the positions of the module nodes, where the called method updates the self.initNodePos.
         self.returnNodeInfoTransformation(numNodes=4)
-        
-        # Initialize a list to collect non DAG nodes, for adding to the module container.
-        collectedNodes = []
         
         # Create the spline module curve
         splineNodeCurve = cmds.curve(degree=3, point=self.initNodePos, worldSpace=True)
@@ -801,7 +831,8 @@ class MRT_Module(object):
                                                                         zeroScaleOrient=True, children=True)
         cmds.parent(self.nodeJoints[0], self.moduleJointsGrp, absolute=True)
 
-        # Mirror the module node joints (for the mirrored module) if the module mirroring is enabled.
+        # Mirror the module node joints (for the mirrored module) if the module mirroring is enabled,
+        # and if the mirror rotation function is set to "Behaviour".
         if self.mirrorModule and self.mirrorRotationFunc == 'Behaviour':
             mirrorPlane = {'XY':False, 'YZ':False, 'XZ':False}
             mirrorPlane[self.onPlane] = True
@@ -834,13 +865,17 @@ class MRT_Module(object):
             cmds.connectAttr(pointOnCurveInfo+'.position', self.nodeJoints[index]+'.translate')
             cmds.setAttr(pointOnCurveInfo+'.parameter', u_parametersOnCurve[index])
             collectedNodes.append(pointOnCurveInfo)
-
+        
+        # Create the weighted clusters on the spline module curve for the start and end module transform handles.
+        # The spline module has two module transforms at either end of the spline module curve.
         clusterWeights = sorted([1.0/3*c for c in xrange(4)], reverse=True)[:-1]
+        # Start cluster at the root node position
         startCluster = cmds.cluster([splineNodeCurve+'.cv[%s]'%(cv) for cv in xrange(0, 3)], relative=True, name=splineNodeCurve+'_startCluster')
         cmds.setAttr(startCluster[1]+'.visibility', 0)
         cmds.parent(startCluster[1], self.moduleSplineCurveGrp, absolute=True)
         for (cv, weight) in zip(xrange(0, 3), clusterWeights):
             cmds.percent(startCluster[0], '%s.cv[%s]'%(splineNodeCurve, cv), value=weight)
+        # End cluster at the end (last) node position.
         endCluster = cmds.cluster([splineNodeCurve+'.cv[%s]'%(cv) for cv in xrange(3, 0, -1)], relative=True, name=splineNodeCurve+'_endCluster')
         cmds.setAttr(endCluster[1]+'.visibility', 0)
         cmds.parent(endCluster[1], self.moduleSplineCurveGrp, absolute=True)
@@ -848,8 +883,7 @@ class MRT_Module(object):
             cmds.percent(endCluster[0], '%s.cv[%s]'%(splineNodeCurve, cv), value=weight)
         collectedNodes.extend([startCluster[0], endCluster[0]])
 
-        # Add the module transform to the module, at the position of the root node.
-
+        # Create the start module transform to the module, at the position of the root node.
         startHandle = objects.load_xhandleShape(self.moduleNamespace+'_startHandle', 11, True)
         cmds.setAttr(startHandle[0]+'.localScaleX', 0.4)
         cmds.setAttr(startHandle[0]+'.localScaleY', 0.4)
@@ -863,13 +897,15 @@ class MRT_Module(object):
         cmds.setAttr(startHandle[1]+'.scaleY', keyable=False)
         cmds.setAttr(startHandle[1]+'.scaleZ', keyable=False)
         cmds.setAttr(startHandle[1]+'.visibility', keyable=False)
-        newStartHandle = cmds.rename(startHandle[1], self.moduleNamespace+':splineStartHandleTransform')
-
-        tempConstraint = cmds.pointConstraint(self.nodeJoints[0], newStartHandle, maintainOffset=False)
+        startHandle = cmds.rename(startHandle[1], self.moduleNamespace+':splineStartHandleTransform')
+        
+        # Position the start module transform and constrain the start cluster to it.
+        tempConstraint = cmds.pointConstraint(self.nodeJoints[0], startHandle, maintainOffset=False)
         cmds.delete(tempConstraint)
-        cmds.pointConstraint(newStartHandle, startCluster[1], maintainOffset=True, name=startCluster[1]+'_parentConstraint')
-        cmds.parent(newStartHandle, self.moduleHandleGrp, absolute=True)
-
+        cmds.pointConstraint(startHandle, startCluster[1], maintainOffset=True, name=startCluster[1]+'_parentConstraint')
+        cmds.parent(startHandle, self.moduleHandleGrp, absolute=True)
+        
+        # Create the end module transform, at the position of the last node for the module.
         endHandle = objects.load_xhandleShape(self.moduleNamespace+'_endHandle', 10, True)
         cmds.setAttr(endHandle[0]+'.localScaleX', 0.35)
         cmds.setAttr(endHandle[0]+'.localScaleY', 0.35)
@@ -883,41 +919,53 @@ class MRT_Module(object):
         cmds.setAttr(endHandle[1]+'.scaleY', keyable=False)
         cmds.setAttr(endHandle[1]+'.scaleZ', keyable=False)
         cmds.setAttr(endHandle[1]+'.visibility', keyable=False)
-        newEndHandle = cmds.rename(endHandle[1], self.moduleNamespace+':splineEndHandleTransform')
+        endHandle = cmds.rename(endHandle[1], self.moduleNamespace+':splineEndHandleTransform')
 
-        tempConstraint = cmds.pointConstraint(self.nodeJoints[-1], newEndHandle, maintainOffset=False)
+        # Position the end module transform and constrain the end cluster to it.
+        tempConstraint = cmds.pointConstraint(self.nodeJoints[-1], endHandle, maintainOffset=False)
         cmds.delete(tempConstraint)
-        cmds.pointConstraint(newEndHandle, endCluster[1], maintainOffset=True, name=endCluster[1]+'_parentConstraint')
-        cmds.parent(newEndHandle, self.moduleHandleGrp, absolute=True)
-
+        cmds.pointConstraint(endHandle, endCluster[1], maintainOffset=True, name=endCluster[1]+'_parentConstraint')
+        cmds.parent(endHandle, self.moduleHandleGrp, absolute=True)
+        
+        # Create the spline module curve adjust control transforms. These are used to modify the 
+        # spline curve and hence affect the positions of the module nodes.
         splineAdjustCurveTransformList = []
         for (index, startWeight, endWeight) in [(0, 1, 0), (1, 0.66, 0.33), (2, 0.33, 0.66), (3, 0, 1)]:
+            
+            # Create the curve adjust control transform.
             splineAdjustCurveTransforms = objects.createRawSplineAdjustCurveTransform(self.modHandleColour)
             cmds.setAttr(splineAdjustCurveTransforms[0]+'.scale', 0.8, 0.8, 0.8, type='double3')
             cmds.makeIdentity(splineAdjustCurveTransforms[0], scale=True, apply=True)
-            newSplineAdjustCurvePreTransform = cmds.rename(splineAdjustCurveTransforms[0], self.moduleNamespace+':'+splineAdjustCurveTransforms[0].partition('_')[0]+'_'+str(index+1)+'_'+splineAdjustCurveTransforms[0].partition('_')[2])
-            newSplineAdjustCurveTransform = cmds.rename(splineAdjustCurveTransforms[1], self.moduleNamespace+':'+splineAdjustCurveTransforms[1].partition('_')[0]+'_'+str(index+1)+'_'+splineAdjustCurveTransforms[1].partition('_')[2])
-            splineAdjustCurveTransformList.append(newSplineAdjustCurveTransform)
-
-            splineAdjustCurveCluster = cmds.cluster('%s.cv[%s]'%(splineNodeCurve, index), relative=True, name=newSplineAdjustCurveTransform+'_Cluster')
+            splineAdjustCurvePreTransform = cmds.rename(splineAdjustCurveTransforms[0], self.moduleNamespace+':'+splineAdjustCurveTransforms[0].partition('_')[0]+'_'+str(index+1)+'_'+splineAdjustCurveTransforms[0].partition('_')[2])
+            splineAdjustCurveTransform = cmds.rename(splineAdjustCurveTransforms[1], self.moduleNamespace+':'+splineAdjustCurveTransforms[1].partition('_')[0]+'_'+str(index+1)+'_'+splineAdjustCurveTransforms[1].partition('_')[2])
+            splineAdjustCurveTransformList.append(splineAdjustCurveTransform)
+            
+            # Create the cluster on spline module curve to be driven by curve adjust control transform.
+            splineAdjustCurveCluster = cmds.cluster('%s.cv[%s]'%(splineNodeCurve, index), relative=True, name=splineAdjustCurveTransform+'_Cluster')
             cmds.setAttr(splineAdjustCurveCluster[1]+'.visibility', 0)
             collectedNodes.append(splineAdjustCurveCluster[0])
-
-            tempConstraint = cmds.pointConstraint(splineAdjustCurveCluster[1], newSplineAdjustCurvePreTransform, maintainOffset=False)
+            
+            # Position the curve adjust control transform.
+            tempConstraint = cmds.pointConstraint(splineAdjustCurveCluster[1], splineAdjustCurvePreTransform, maintainOffset=False)
             cmds.delete(tempConstraint)
-
-            startPointConstraint = cmds.pointConstraint(newStartHandle, newSplineAdjustCurvePreTransform, maintainOffset=False, weight=startWeight, name=newSplineAdjustCurvePreTransform+'_startHandle_pointConstraint')
-            endPointConstraint = cmds.pointConstraint(newEndHandle, newSplineAdjustCurvePreTransform, maintainOffset=False, weight=endWeight, name=newSplineAdjustCurvePreTransform+'_endHandle_pointConstraint')
-
+            
+            # Constrain the curve adjust control pre-transform to spline module start and end transforms.
+            startPointConstraint = cmds.pointConstraint(startHandle, splineAdjustCurvePreTransform, maintainOffset=False, weight=startWeight, name=splineAdjustCurvePreTransform+'_startHandle_pointConstraint')
+            endPointConstraint = cmds.pointConstraint(endHandle, splineAdjustCurvePreTransform, maintainOffset=False, weight=endWeight, name=splineAdjustCurvePreTransform+'_endHandle_pointConstraint')
+            
+            # Constrain the adjust curve cluster to its control transform as created above.
             clusterGroup = cmds.group(splineAdjustCurveCluster[1], name=splineAdjustCurveCluster[1]+'_preTransform')
-            cmds.parent(clusterGroup, newSplineAdjustCurvePreTransform, absolute=True)
-            cmds.pointConstraint(newSplineAdjustCurveTransform, splineAdjustCurveCluster[1], maintainOffset=True, name=splineAdjustCurveCluster[1]+'_pointConstraint')
+            cmds.parent(clusterGroup, splineAdjustCurvePreTransform, absolute=True)
+            cmds.pointConstraint(splineAdjustCurveTransform, splineAdjustCurveCluster[1], maintainOffset=True, name=splineAdjustCurveCluster[1]+'_pointConstraint')
 
-            cmds.parent(newSplineAdjustCurvePreTransform, self.moduleSplineAdjustCurveGrp, absolute=True)
-
+            cmds.parent(splineAdjustCurvePreTransform, self.moduleSplineAdjustCurveGrp, absolute=True)
+            
+            # Get the last spline curve adjust transform as the up vector target object for orienting 
+            # the module nodes attached to the spline module curve.
             if index == 3:
-                tangentConstraintTargetObject = newSplineAdjustCurveTransform
-
+                tangentConstraintTargetObject = splineAdjustCurveTransform
+        
+        # Set-up / connect orientations for the module node joints attached to the spline module curves.
         worldReferenceTransform = cmds.createNode('transform', name=self.moduleNamespace+':orientationWorldReferenceTransform', parent=self.moduleOrientationReprGrp)
         aimVector={'X':[1.0, 0.0, 0.0], 'Y':[0.0, 1.0, 0.0], 'Z':[0.0, 0.0, 1.0]}[self.nodeAxes[0]]
         upVector = {'X':[1.0, 0.0, 0.0], 'Y':[0.0, 1.0, 0.0], 'Z':[0.0, 0.0, 1.0]}[self.nodeAxes[1]]
@@ -947,29 +995,34 @@ class MRT_Module(object):
             cmds.connectAttr(pairBlend+'.outRotateZ', self.nodeJoints[index]+'.rotateZ')
             cmds.setAttr(pairBlend+'.rotateMode', 2)
         collectedNodes.extend(pairBlend_inputDriven)
-
+        
+        # Remove all tweaks from spline module curve history.
         clusterNodes = cmds.listConnections(splineNodeCurve+'Shape', source=True, destination=True)
         for node in clusterNodes:
             if cmds.nodeType(node) == 'tweak':
                 cmds.delete(node)
                 break
-        collectedNodes.append(self.moduleGrp)
-        newRawLocaAxesInfoReprTransforms = []
+        
+        # Create the local axes info representation objects for the module nodes.
+        # These objects indicate the current orientation of the module nodes.
+        rawLocaAxesInfoReprTransforms = []
         for joint in self.nodeJoints:
             rawLocalAxesInfoReprTransforms = objects.createRawLocalAxesInfoRepresentation()
             cmds.setAttr(rawLocalAxesInfoReprTransforms[0]+'.scale', 0.8, 0.8, 0.8, type='double3')
             cmds.makeIdentity(rawLocalAxesInfoReprTransforms[0], scale=True, apply=True)
             cmds.parent(rawLocalAxesInfoReprTransforms[0], self.moduleOrientationReprGrp)
 
-            newRawLocaAxesInfoReprPreTransform = cmds.rename(rawLocalAxesInfoReprTransforms[0], joint+'_'+rawLocalAxesInfoReprTransforms[0])
-            newRawLocaAxesInfoReprTransform = cmds.rename(rawLocalAxesInfoReprTransforms[1], joint+'_'+rawLocalAxesInfoReprTransforms[1])
-
-            cmds.addAttr(newRawLocaAxesInfoReprTransform, attributeType='enum', longName='tangent_Up_vector', enumName='Original:Reversed:', defaultValue=0, keyable=True)
+            rawLocaAxesInfoReprPreTransform = cmds.rename(rawLocalAxesInfoReprTransforms[0], joint+'_'+rawLocalAxesInfoReprTransforms[0])
+            rawLocaAxesInfoReprTransform = cmds.rename(rawLocalAxesInfoReprTransforms[1], joint+'_'+rawLocalAxesInfoReprTransforms[1])
+            
+            # Add an attribute to modify the up vector rotation for the axes info object.
+            # Can be used to flip the axial orientation for the module node.
+            cmds.addAttr(rawLocaAxesInfoReprTransform, attributeType='enum', longName='tangent_Up_vector', enumName='Original:Reversed:', defaultValue=0, keyable=True)
 
             for (driver, driven) in ((1, -1), (0, 1)):
-                cmds.setAttr(newRawLocaAxesInfoReprTransform+'.tangent_Up_vector', driver)
+                cmds.setAttr(rawLocaAxesInfoReprTransform+'.tangent_Up_vector', driver)
                 cmds.setAttr(joint+'_tangentConstraint.upVector'+self.nodeAxes[1].upper(), driven)
-                cmds.setDrivenKeyframe(joint+'_tangentConstraint.upVector'+self.nodeAxes[1].upper(), currentDriver=newRawLocaAxesInfoReprTransform+'.tangent_Up_vector')
+                cmds.setDrivenKeyframe(joint+'_tangentConstraint.upVector'+self.nodeAxes[1].upper(), currentDriver=rawLocaAxesInfoReprTransform+'.tangent_Up_vector')
 
             xhandle = objects.load_xhandleShape(joint, 2)
             cmds.setAttr(xhandle[0]+'.localScaleX', 0.09)
@@ -977,122 +1030,133 @@ class MRT_Module(object):
             cmds.setAttr(xhandle[0]+'.localScaleZ', 0.09)
             cmds.setAttr(xhandle[0]+'.ds', 5)
 
-            cmds.pointConstraint(joint, newRawLocaAxesInfoReprPreTransform, maintainOffset=False, name=newRawLocaAxesInfoReprPreTransform+'_pointConstraint')
-            cmds.orientConstraint(joint, newRawLocaAxesInfoReprPreTransform, maintainOffset=False, name=newRawLocaAxesInfoReprPreTransform+'_orientConstraint')
+            cmds.pointConstraint(joint, rawLocaAxesInfoReprPreTransform, maintainOffset=False, name=rawLocaAxesInfoReprPreTransform+'_pointConstraint')
+            cmds.orientConstraint(joint, rawLocaAxesInfoReprPreTransform, maintainOffset=False, name=rawLocaAxesInfoReprPreTransform+'_orientConstraint')
 
-            newRawLocaAxesInfoReprTransforms.append(newRawLocaAxesInfoReprTransform)
+            rawLocaAxesInfoReprTransforms.append(rawLocaAxesInfoReprTransform)
 
         cmds.select(clear=True)
-
+        
+        # Create module parenting representation objects.
         collectedNodes += self.createHierarchySegmentForModuleParentingRepr()
-
+        
+        # Create the proxy geometry for the module if enabled.
         if self.proxyGeoStatus and self.proxyGeoElbow:
             self.createProxyGeo_elbows(self.proxyElbowType)
 
         mfunc.addNodesToContainer(self.moduleContainer, collectedNodes, includeHierarchyBelow=True, includeShapes=True)
-
-        cmds.container(self.moduleContainer, edit=True, publishAndBind=[newStartHandle+'.translate', mfunc.stripMRTNamespace(newStartHandle)[1]+'_translate'])
-        cmds.container(self.moduleContainer, edit=True, publishAndBind=[newEndHandle+'.translate', mfunc.stripMRTNamespace(newEndHandle)[1]+'_translate'])
+        
+        # Publish the translation attributes for the start and end module transforms.
+        cmds.container(self.moduleContainer, edit=True, publishAndBind=[startHandle+'.translate', mfunc.stripMRTNamespace(startHandle)[1]+'_translate'])
+        cmds.container(self.moduleContainer, edit=True, publishAndBind=[endHandle+'.translate', mfunc.stripMRTNamespace(endHandle)[1]+'_translate'])
         for transform in splineAdjustCurveTransformList:
             cmds.container(self.moduleContainer, edit=True, publishAndBind=[transform+'.translate', mfunc.stripMRTNamespace(transform)[1]+'_translate'])
-
+        
+        # Add the necessary module attributes on the start module transform.
         self.addCustomAttributesOnModuleTransform()
-        cmds.connectAttr(newStartHandle+'.Global_size', newStartHandle+'.scaleX')
-        cmds.connectAttr(newStartHandle+'.Global_size', newStartHandle+'.scaleY')
-        cmds.connectAttr(newStartHandle+'.Global_size', newStartHandle+'.scaleZ')
-        cmds.connectAttr(newStartHandle+'.Global_size', newEndHandle+'.scaleX')
-        cmds.connectAttr(newStartHandle+'.Global_size', newEndHandle+'.scaleY')
-        cmds.connectAttr(newStartHandle+'.Global_size', newEndHandle+'.scaleZ')
-
+        cmds.connectAttr(startHandle+'.Global_size', startHandle+'.scaleX')
+        cmds.connectAttr(startHandle+'.Global_size', startHandle+'.scaleY')
+        cmds.connectAttr(startHandle+'.Global_size', startHandle+'.scaleZ')
+        cmds.connectAttr(startHandle+'.Global_size', endHandle+'.scaleX')
+        cmds.connectAttr(startHandle+'.Global_size', endHandle+'.scaleY')
+        cmds.connectAttr(startHandle+'.Global_size', endHandle+'.scaleZ')
+        
+        # Connect the module global scaling to the spline module curve adjust transforms.
         for i in range(1, 5):
             for j in ['X', 'Y', 'Z']:
-                cmds.connectAttr(newStartHandle+'.Global_size', self.moduleNamespace+':spline_'+str(i)+'_adjustCurve_transform.scale'+str(j))
+                cmds.connectAttr(startHandle+'.Global_size', self.moduleNamespace+':spline_'+str(i)+'_adjustCurve_transform.scale'+str(j))
+        
+        # Connect the module global scaling to the module node joints.
         for joint in self.nodeJoints:
-            cmds.connectAttr(newStartHandle+'.Global_size', joint+'Shape.addScaleX')
-            cmds.connectAttr(newStartHandle+'.Global_size', joint+'Shape.addScaleY')
-            cmds.connectAttr(newStartHandle+'.Global_size', joint+'Shape.addScaleZ')
-            cmds.connectAttr(newStartHandle+'.Global_size', joint+'_localAxesInfoRepr_preTransform.scaleX')
-            cmds.connectAttr(newStartHandle+'.Global_size', joint+'_localAxesInfoRepr_preTransform.scaleY')
-            cmds.connectAttr(newStartHandle+'.Global_size', joint+'_localAxesInfoRepr_preTransform.scaleZ')
+            cmds.connectAttr(startHandle+'.Global_size', joint+'Shape.addScaleX')
+            cmds.connectAttr(startHandle+'.Global_size', joint+'Shape.addScaleY')
+            cmds.connectAttr(startHandle+'.Global_size', joint+'Shape.addScaleZ')
+            cmds.connectAttr(startHandle+'.Global_size', joint+'_localAxesInfoRepr_preTransform.scaleX')
+            cmds.connectAttr(startHandle+'.Global_size', joint+'_localAxesInfoRepr_preTransform.scaleY')
+            cmds.connectAttr(startHandle+'.Global_size', joint+'_localAxesInfoRepr_preTransform.scaleZ')
+            
+            # Connect the module global scaling to the proxy elbow transforms. 
             if self.proxyGeoStatus and self.proxyGeoElbow:
-                cmds.connectAttr(newStartHandle+'.Global_size', joint+'_proxy_elbow_geo_scaleTransform.scaleX')
-                cmds.connectAttr(newStartHandle+'.Global_size', joint+'_proxy_elbow_geo_scaleTransform.scaleY')
-                cmds.connectAttr(newStartHandle+'.Global_size', joint+'_proxy_elbow_geo_scaleTransform.scaleZ')
-
-        cmds.connectAttr(newStartHandle+'.Node_Orientation_Info', self.moduleOrientationReprGrp+'.visibility')
-        for transform in newRawLocaAxesInfoReprTransforms:
+                cmds.connectAttr(startHandle+'.Global_size', joint+'_proxy_elbow_geo_scaleTransform.scaleX')
+                cmds.connectAttr(startHandle+'.Global_size', joint+'_proxy_elbow_geo_scaleTransform.scaleY')
+                cmds.connectAttr(startHandle+'.Global_size', joint+'_proxy_elbow_geo_scaleTransform.scaleZ')
+        
+        # Connect the module node orientation attributes on the start module transform.
+        cmds.connectAttr(startHandle+'.Node_Orientation_Info', self.moduleOrientationReprGrp+'.visibility')
+        for transform in rawLocaAxesInfoReprTransforms:
             rotateAxis = self.nodeAxes[0]
             cmds.container(self.moduleContainer, edit=True, publishAndBind=[transform+'.tangent_Up_vector', mfunc.stripMRTNamespace(transform)[1]+'_tangent_Up_Vector'])
-            cmds.connectAttr(newStartHandle+'.Axis_Rotate', transform+'.rotate'+rotateAxis)
-            cmds.connectAttr(newStartHandle+'.Node_Local_Orientation_Repr_Size', transform+'.scaleX')
-            cmds.connectAttr(newStartHandle+'.Node_Local_Orientation_Repr_Size', transform+'.scaleY')
-            cmds.connectAttr(newStartHandle+'.Node_Local_Orientation_Repr_Size', transform+'.scaleZ')
+            cmds.connectAttr(startHandle+'.Axis_Rotate', transform+'.rotate'+rotateAxis)
+            cmds.connectAttr(startHandle+'.Node_Local_Orientation_Repr_Size', transform+'.scaleX')
+            cmds.connectAttr(startHandle+'.Node_Local_Orientation_Repr_Size', transform+'.scaleY')
+            cmds.connectAttr(startHandle+'.Node_Local_Orientation_Repr_Size', transform+'.scaleZ')
 
-        cmds.setAttr(newStartHandle+'.Node_Local_Orientation_Repr_Size', 0.7)
-
+        cmds.setAttr(startHandle+'.Node_Local_Orientation_Repr_Size', 0.7)
+        
+        # Add any previous set-driven keyframe nodes to the module container.
         cmds.namespace(setNamespace=self.moduleNamespace)
         namespaceNodes = cmds.namespaceInfo(listOnlyDependencyNodes=True)
         animCurveNodes = cmds.ls(namespaceNodes, type='animCurve')
         mfunc.addNodesToContainer(self.moduleContainer, animCurveNodes)
+        
         cmds.namespace(setNamespace=':')
-
+        
+        # If orientation representation is turned off for modules, turn off 
+        # node orientation representation objects.
         if not self.showOrientation:
-            cmds.setAttr(newStartHandle+'.Node_Orientation_Info', 0)
-        self.connectCustomOrientationReprToBoneProxies()
-        #cmds.setAttr(newStartHandle+'.Global_size', 4)
-
-    def checkPlaneAxisDirectionForIKhingeForOrientationRepr(self):
-        offsetAxisVectorTransforms = {'XY':[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]], 'YZ':[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], 'XZ':[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]]}[self.onPlane]
-        planeAxisOffset = {'X':[1.0, 0.0, 0.0], 'Y':[0.0, 1.0, 0.0], 'Z':[0.0, 0.0, 1.0]}
-        IKhingePlaneAxisVectorTransforms = []
-        tempLocatorForWorldTransformInfo_IKhingeOrientationVector = cmds.spaceLocator()[0]
-        tempConstraint = cmds.parentConstraint(self.nodeJoints[1], tempLocatorForWorldTransformInfo_IKhingeOrientationVector, maintainOffset=False)
-        cmds.delete(tempConstraint)
-        cmds.parent(tempLocatorForWorldTransformInfo_IKhingeOrientationVector, self.nodeJoints[1])
-        IKhingePlaneAxisVectorTransforms.append(cmds.xform(tempLocatorForWorldTransformInfo_IKhingeOrientationVector, query=True, worldSpace=True, translation=True))
-        cmds.xform(tempLocatorForWorldTransformInfo_IKhingeOrientationVector, objectSpace=True, relative=True, translation=planeAxisOffset[self.nodeAxes[2]])
-        IKhingePlaneAxisVectorTransforms.append(cmds.xform(tempLocatorForWorldTransformInfo_IKhingeOrientationVector, query=True, worldSpace=True, translation=True))
-        cmds.delete(tempLocatorForWorldTransformInfo_IKhingeOrientationVector)
-
-        direction_cosine = mfunc.returnDotProductDirection(offsetAxisVectorTransforms[0], offsetAxisVectorTransforms[1], IKhingePlaneAxisVectorTransforms[0], IKhingePlaneAxisVectorTransforms[1])[0]
-
-        hingePreferredOrientationReprAffectDueToIKRotation_directionCheck = {'XY':1.0, 'YZ':-1.0, 'XZ':1.0}[self.onPlane]
-
-        if hingePreferredOrientationReprAffectDueToIKRotation_directionCheck == direction_cosine:
-            return True
-        else:
-            return False
+            cmds.setAttr(startHandle+'.Node_Orientation_Info', 0)
+            
+        # Connect module orientation representation objects to drive 
+        # orientation for module proxy geometry.
+        self.connectCustomOrientationReprToModuleProxies()
+        
 
     def createHingeNodeModule(self):
-        #mfunc.forceSceneUpdate()
+        '''
+        Create a Hinge Node module type.
+        '''
         mfunc.updateAllTransforms()
+        
         # Set the current namespace to root.
         cmds.namespace(setNamespace=':')
+        
         # Create a new namespace for the module.
         cmds.namespace(add=self.moduleNamespace)
+        
         # Clear selection.
         cmds.select(clear=True)
+        
         # Create the module container.
         moduleContainer = cmds.container(name=self.moduleContainer)
+        
         # Create an empty group for containing module handle segments.
         self.moduleHandleSegmentGrp = cmds.group(empty=True, name=self.moduleNamespace+':moduleHandleSegmentCurveGrp')
+        
+        # Create an empty group for containing module parenting representations.
         self.moduleParentReprGrp = cmds.group(empty=True, name=self.moduleNamespace+':moduleParentReprGrp')
+        
         # Create an empty group for containing module hand hierarchy representations.
         self.moduleHierarchyReprGrp = cmds.group(empty=True, name=self.moduleNamespace+':moduleHierarchyReprGrp')
+        
         # Create a module representation group containing the above two groups.
         self.moduleReprGrp = cmds.group([self.moduleHandleSegmentGrp, self.moduleHierarchyReprGrp, self.moduleParentReprGrp], name=self.moduleNamespace+':moduleReprObjGrp')
+        
         # Create a module extras group.
         self.moduleExtrasGrp = cmds.group(empty=True, name=self.moduleNamespace+':moduleExtrasGrp')
+        
         # Create a group under module extras to keep clusters for scaling node handle shapes.
         self.moduleNodeHandleShapeScaleClusterGrp = cmds.group(empty=True, name=self.moduleNamespace+':moduleNodeHandleShapeScaleClusterGrp', parent=self.moduleExtrasGrp)
+        
         # Create a group under module extras to keep the IK segment aim nodes.
         self.moduleIKsegmentMidAimGrp = cmds.group(empty=True, name=self.moduleNamespace+':moduleIKsegmentMidAimGrp', parent=self.moduleExtrasGrp)
+        
         # Create a group to contain the IK nodes and handles.
         self.moduleIKnodesGrp = cmds.group(empty=True, name=self.moduleNamespace+':moduleIKnodesGrp')
+        
         # Create a main module group.
         self.moduleGrp = cmds.group([self.moduleReprGrp, self.moduleExtrasGrp, self.moduleIKnodesGrp], name=self.moduleNamespace+':moduleGrp')
 
-        # Add a custom attribute to the module group to store the number of nodes.
+        # Add a custom attributes to the module group to store module creation attributes.
         cmds.addAttr(self.moduleGrp, attributeType='short', longName='numberOfNodes', defaultValue=self.numNodes, keyable=False)
         cmds.addAttr(self.moduleGrp, dataType='string', longName='nodeOrient', keyable=False)
         cmds.setAttr(self.moduleGrp+'.nodeOrient', self.nodeAxes, type='string')
@@ -1102,14 +1166,20 @@ class MRT_Module(object):
         cmds.setAttr(self.moduleGrp+'.onPlane', '+'+self.onPlane, type='string')
         cmds.addAttr(self.moduleGrp, dataType='string', longName='mirrorTranslation', keyable=False)
         cmds.setAttr(self.moduleGrp+'.mirrorTranslation', self.mirrorTranslationFunc, type='string')
+        
+        # If the current module to be created is a mirror module (on the -ve side of the creation plane).
         if self.mirrorModule:
             cmds.setAttr(self.moduleGrp+'.onPlane', '-'+self.onPlane, type='string')
+            
+        # If the module is a part of a mirrored module pair. In other words, if module mirroring is turned on.
+        # Add module mirroring attributes to the module group. 
         if self.mirrorModuleStatus == 'On':
             cmds.addAttr(self.moduleGrp, dataType='string', longName='mirrorModuleNamespace', keyable=False)
             cmds.setAttr(self.moduleGrp+'.mirrorModuleNamespace', self.mirror_moduleNamespace, type='string')
             cmds.addAttr(self.moduleGrp, dataType='string', longName='mirrorRotation', keyable=False)
             cmds.setAttr(self.moduleGrp+'.mirrorRotation', self.mirrorRotationFunc, type='string')
-        # Create a group for proxy geometry.
+        
+        # Create groups for proxy geometry, if they're enabled.
         if self.proxyGeoStatus:
             if self.proxyGeoElbow or self.proxyGeoBones:
                 self.proxyGeoGrp = cmds.group(empty=True, name=self.moduleNamespace+':proxyGeometryGrp')
@@ -1121,12 +1191,16 @@ class MRT_Module(object):
                 if self.mirrorModuleStatus == 'On':
                     cmds.addAttr(self.proxyGeoGrp, dataType='string', longName='mirrorInstance', keyable=False)
                     cmds.setAttr(self.proxyGeoGrp+'.mirrorInstance', self.proxyGeoMirrorInstance, type='string', lock=True)
+        
         # Create a main module joints group, under the module group.
         self.moduleJointsGrp = cmds.group(empty=True, parent=self.moduleGrp, name=self.moduleNamespace+':moduleJointsGrp')
+        
         # Initialize a list to contain created module node joints.
         self.nodeJoints = []
+        
         # Get the positions of the module nodes, where the called method updates the self.initNodePos.
         self.returnNodeInfoTransformation(self.numNodes)
+        
         # Move the joints group and the nodule IK nodes to the start position for the first joint node.
         cmds.xform(self.moduleJointsGrp, worldSpace=True, translation=self.initNodePos[0])
         cmds.xform(self.moduleIKnodesGrp, worldSpace=True, translation=self.initNodePos[0])
@@ -1208,7 +1282,7 @@ class MRT_Module(object):
 
         ##endHandle = objects.createRawHandle(self.modHandleColour)
         endHandle = objects.createRawControlSurface(self.nodeJoints[-1], self.modHandleColour, True)
-        ##newEndHandle = cmds.rename(endHandle[0], self.nodeJoints[-1]+'_'+endHandle[0])
+        ##endHandle = cmds.rename(endHandle[0], self.nodeJoints[-1]+'_'+endHandle[0])
         cmds.setAttr(endHandle[0]+'.rotateX', keyable=False)
         cmds.setAttr(endHandle[0]+'.rotateY', keyable=False)
         cmds.setAttr(endHandle[0]+'.rotateZ', keyable=False)
@@ -1575,7 +1649,31 @@ class MRT_Module(object):
 
         ##mfunc.forceSceneUpdate()
         #cmds.setAttr(self.moduleTransform+'.globalScale', 4)
+        
+        
+    def checkPlaneAxisDirectionForIKhingeForOrientationRepr(self):
+        offsetAxisVectorTransforms = {'XY':[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]], 'YZ':[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], 'XZ':[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]]}[self.onPlane]
+        planeAxisOffset = {'X':[1.0, 0.0, 0.0], 'Y':[0.0, 1.0, 0.0], 'Z':[0.0, 0.0, 1.0]}
+        IKhingePlaneAxisVectorTransforms = []
+        tempLocatorForWorldTransformInfo_IKhingeOrientationVector = cmds.spaceLocator()[0]
+        tempConstraint = cmds.parentConstraint(self.nodeJoints[1], tempLocatorForWorldTransformInfo_IKhingeOrientationVector, maintainOffset=False)
+        cmds.delete(tempConstraint)
+        cmds.parent(tempLocatorForWorldTransformInfo_IKhingeOrientationVector, self.nodeJoints[1])
+        IKhingePlaneAxisVectorTransforms.append(cmds.xform(tempLocatorForWorldTransformInfo_IKhingeOrientationVector, query=True, worldSpace=True, translation=True))
+        cmds.xform(tempLocatorForWorldTransformInfo_IKhingeOrientationVector, objectSpace=True, relative=True, translation=planeAxisOffset[self.nodeAxes[2]])
+        IKhingePlaneAxisVectorTransforms.append(cmds.xform(tempLocatorForWorldTransformInfo_IKhingeOrientationVector, query=True, worldSpace=True, translation=True))
+        cmds.delete(tempLocatorForWorldTransformInfo_IKhingeOrientationVector)
 
+        direction_cosine = mfunc.returnDotProductDirection(offsetAxisVectorTransforms[0], offsetAxisVectorTransforms[1], IKhingePlaneAxisVectorTransforms[0], IKhingePlaneAxisVectorTransforms[1])[0]
+
+        hingePreferredOrientationReprAffectDueToIKRotation_directionCheck = {'XY':1.0, 'YZ':-1.0, 'XZ':1.0}[self.onPlane]
+
+        if hingePreferredOrientationReprAffectDueToIKRotation_directionCheck == direction_cosine:
+            return True
+        else:
+            return False
+
+            
     def addCustomAttributesOnModuleTransform(self):
         if self.moduleName == 'JointNode':
 
@@ -1872,7 +1970,7 @@ class MRT_Module(object):
             index += 1
         cmds.select(clear=True)
 
-    def connectCustomOrientationReprToBoneProxies(self):
+    def connectCustomOrientationReprToModuleProxies(self):
         if self.moduleName == 'JointNode':
             rotAxis = cmds.getAttr(self.moduleGrp+'.nodeOrient')
             rotAxis = rotAxis[0]
