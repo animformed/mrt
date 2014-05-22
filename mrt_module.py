@@ -24,6 +24,7 @@ module class, "MRT_Module".
 '''
 
 class MRT_Module(object):
+
     def __init__(self, moduleInfo):
         '''
         Common module creation attributes for all module types. The "moduleInfo"
@@ -684,29 +685,44 @@ class MRT_Module(object):
 
 
     def createSplineNodeModule(self, *args):
-        """Create a spline node module."""
-        #mfunc.forceSceneUpdate()
+        '''
+        Create a Spline Node module type.
+        Unlike other module node types, the nodes cannot be translated directly.
+        '''
         mfunc.updateAllTransforms()
+        
         # Set the current namespace to root.
         cmds.namespace(setNamespace=':')
+        
         # Create a new namespace for the module.
         cmds.namespace(add=self.moduleNamespace)
+        
         # Create the module container.
         moduleContainer = cmds.container(name=self.moduleContainer)
+        
         # Create an empty group for containing module handle segments.
         self.moduleSplineCurveGrp = cmds.group(empty=True, name=self.moduleNamespace+':moduleSplineCurveGrp')
+        
         # Create an empty group for containing module hierarchy/orientation representations.
         self.moduleHandleGrp = cmds.group(empty=True, name=self.moduleNamespace+':moduleHandleGrp')
+        
+        # Create an empty group for containing module parenting representations.
         self.moduleParentReprGrp = cmds.group(empty=True, name=self.moduleNamespace+':moduleParentReprGrp')
+        
         # Create an empty group for containing splineAdjustCurveTransform.
         self.moduleSplineAdjustCurveGrp = cmds.group(empty=True, name=self.moduleNamespace+':moduleSplineAdjustCurveGrp')
+        
         # Create an empty group for containing orientation representation transforms and nodes.
         self.moduleOrientationReprGrp = cmds.group(empty=True, name=self.moduleNamespace+':moduleOrientationReprGrp')
+        
         # Create a module representation group containing the above four groups.
-        self.moduleReprGrp = cmds.group([self.moduleSplineAdjustCurveGrp, self.moduleSplineCurveGrp, self.moduleHandleGrp, self.moduleOrientationReprGrp, self.moduleParentReprGrp], name=self.moduleNamespace+':moduleReprObjGrp')
+        self.moduleReprGrp = cmds.group([self.moduleSplineAdjustCurveGrp, self.moduleSplineCurveGrp, self.moduleHandleGrp, 
+                    self.moduleOrientationReprGrp, self.moduleParentReprGrp], name=self.moduleNamespace+':moduleReprObjGrp')
+
         # Create a main module group, with the representation group as the child.
         self.moduleGrp = cmds.group([self.moduleReprGrp], name=self.moduleNamespace+':moduleGrp')
-        # Add a custom attribute to the module group to store the number of nodes.
+        
+        # Add a custom attributes to the module group to store module creation attributes.
         cmds.addAttr(self.moduleGrp, attributeType='short', longName='numberOfNodes', defaultValue=self.numNodes, keyable=False)
         cmds.addAttr(self.moduleGrp, dataType='string', longName='nodeOrient', keyable=False)
         cmds.setAttr(self.moduleGrp+'.nodeOrient', self.nodeAxes, type='string')
@@ -716,13 +732,18 @@ class MRT_Module(object):
         cmds.setAttr(self.moduleGrp+'.onPlane', '+'+self.onPlane, type='string')
         cmds.addAttr(self.moduleGrp, dataType='string', longName='mirrorTranslation', keyable=False)
         cmds.setAttr(self.moduleGrp+'.mirrorTranslation', self.mirrorTranslationFunc, type='string')
+        
+        # If the current module to be created is a mirror module (on the -ve side of the creation plane).
         if self.mirrorModule:
             cmds.setAttr(self.moduleGrp+'.onPlane', '-'+self.onPlane, type='string')
+    
+        # If the module is a part of a mirrored module pair. In other words, if module mirroring is turned on.
         if self.mirrorModuleStatus == 'On':
             cmds.addAttr(self.moduleGrp, dataType='string', longName='mirrorModuleNamespace', keyable=False)
             cmds.setAttr(self.moduleGrp+'.mirrorModuleNamespace', self.mirror_moduleNamespace, type='string')
             cmds.addAttr(self.moduleGrp, dataType='string', longName='mirrorRotation', keyable=False)
             cmds.setAttr(self.moduleGrp+'.mirrorRotation', self.mirrorRotationFunc, type='string')
+        
         # Create a group for proxy geometry.
         if self.proxyGeoStatus and self.proxyGeoElbow:
             self.proxyGeoGrp = cmds.group(empty=True, name=self.moduleNamespace+':proxyGeometryGrp')
@@ -733,25 +754,35 @@ class MRT_Module(object):
             if self.mirrorModuleStatus == 'On':
                 cmds.addAttr(self.proxyGeoGrp, dataType='string', longName='mirrorInstance', keyable=False)
                 cmds.setAttr(self.proxyGeoGrp+'.mirrorInstance', self.proxyGeoMirrorInstance, type='string', lock=True)
+        
         # Create a module joints group, under the module group.
         self.moduleJointsGrp = cmds.group(empty=True, parent=self.moduleGrp, name=self.moduleNamespace+':moduleJointsGrp')
+        
         # Initialize a list to contain created module node joints.
         self.nodeJoints = []
+        
         # Get the positions of the module nodes, where the called method updates the self.initNodePos.
         self.returnNodeInfoTransformation(numNodes=4)
+        
         # Initialize a list to collect non DAG nodes, for adding to the module container.
         collectedNodes = []
-
+        
+        # Create the spline module curve
         splineNodeCurve = cmds.curve(degree=3, point=self.initNodePos, worldSpace=True)
         cmds.xform(splineNodeCurve, centerPivots=True)
-        cmds.rebuildCurve(splineNodeCurve, constructionHistory=False, replaceOriginal=True, rebuildType=0, degree=3, endKnots=True, keepEndPoints=True, keepRange=0, keepControlPoints=False, keepTangents=False, spans=cmds.getAttr(splineNodeCurve+'.spans'), tolerance=0.01)
-        newSplineNodeCurve = cmds.rename(splineNodeCurve, self.moduleNamespace+':splineNode_curve')
-        cmds.displaySmoothness(newSplineNodeCurve, pointsWire=32)
-        cmds.toggle(newSplineNodeCurve, template=True, state=True)
-        cmds.parent(newSplineNodeCurve, self.moduleSplineCurveGrp, absolute=True)
+        cmds.rebuildCurve(splineNodeCurve, constructionHistory=False, replaceOriginal=True, rebuildType=0, degree=3,
+                          endKnots=True, keepEndPoints=True, keepRange=0, keepControlPoints=False, keepTangents=False,
+                          spans=cmds.getAttr(splineNodeCurve+'.spans'), tolerance=0.01)
+        splineNodeCurve = cmds.rename(splineNodeCurve, self.moduleNamespace+':splineNode_curve')
+        cmds.displaySmoothness(splineNodeCurve, pointsWire=32)
+        cmds.toggle(splineNodeCurve, template=True, state=True)
+        cmds.parent(splineNodeCurve, self.moduleSplineCurveGrp, absolute=True)
 
         cmds.select(clear=True)
+
         self.returnNodeInfoTransformation(self.numNodes)
+        
+        # Create the module node joints, to be attached to the spline module curve.
         self.nodeJoints = []
         for index in range(len(self.initNodePos)):
             if index == 0:
@@ -761,50 +792,60 @@ class MRT_Module(object):
             else:
                 jointName = cmds.joint(name=self.moduleNamespace+':node_%s_transform'%(index), position=self.initNodePos[index], radius=0.0)
             self.nodeJoints.append(jointName)
-        # Orient the joints.
-        cmds.select(self.nodeJoints[0], replace=True)
+
+        # Orient the node joints.
         # For orientation we'll use the axis perpendicular to the creation plane as the up axis for secondary axis orient.
+        cmds.select(self.nodeJoints[0], replace=True)
         secondAxisOrientation = {'XY':'z', 'YZ':'x', 'XZ':'y'}[self.onPlane] + 'up'
-        cmds.joint(edit=True, orientJoint=self.nodeAxes.lower(), secondaryAxisOrient=secondAxisOrientation, zeroScaleOrient=True, children=True)
+        cmds.joint(edit=True, orientJoint=self.nodeAxes.lower(), secondaryAxisOrient=secondAxisOrientation,
+                                                                        zeroScaleOrient=True, children=True)
         cmds.parent(self.nodeJoints[0], self.moduleJointsGrp, absolute=True)
+
+        # Mirror the module node joints (for the mirrored module) if the module mirroring is enabled.
         if self.mirrorModule and self.mirrorRotationFunc == 'Behaviour':
             mirrorPlane = {'XY':False, 'YZ':False, 'XZ':False}
             mirrorPlane[self.onPlane] = True
-            mirroredJoints = cmds.mirrorJoint(self.nodeJoints[0], mirrorXY=mirrorPlane['XY'], mirrorYZ=mirrorPlane['YZ'], mirrorXZ=mirrorPlane['XZ'], mirrorBehavior=True)
+            mirroredJoints = cmds.mirrorJoint(self.nodeJoints[0], mirrorXY=mirrorPlane['XY'], mirrorYZ=mirrorPlane['YZ'],
+                                                                        mirrorXZ=mirrorPlane['XZ'], mirrorBehavior=True)
             cmds.delete(self.nodeJoints[0])
             self.nodeJoints = []
             for joint in mirroredJoints:
                 newJoint = cmds.rename(joint, self.moduleNamespace+':'+joint)
                 self.nodeJoints.append(newJoint)
+
         # Orient the end joint node.
         cmds.setAttr(self.nodeJoints[-1]+'.jointOrientX', 0)
         cmds.setAttr(self.nodeJoints[-1]+'.jointOrientY', 0)
         cmds.setAttr(self.nodeJoints[-1]+'.jointOrientZ', 0)
+
         # Clear selection after joint orientation.
         cmds.select(clear=True)
+
         # Unparent the spline node joints.
         for joint in self.nodeJoints[1:]:
             cmds.parent(joint, self.moduleJointsGrp, absolute=True)
 
+        # Attach the module nodes to the spline module curve.
         u_parametersOnCurve = [1.0/(len(self.nodeJoints)-1)*c for c in xrange(len(self.nodeJoints))]
         for index in range(len(self.nodeJoints)):
-            pointOnCurveInfo = cmds.createNode('pointOnCurveInfo', name=self.moduleNamespace+':'+mfunc.stripMRTNamespace(self.nodeJoints[index])[1]+'_pointOnCurveInfo')
+            pointOnCurveInfo = cmds.createNode('pointOnCurveInfo', name='%s:%s_pointOnCurveInfo' % (self.moduleNamespace,
+                                                                        mfunc.stripMRTNamespace(self.nodeJoints[index])[1])
             cmds.connectAttr(self.moduleNamespace+':splineNode_curveShape.worldSpace', pointOnCurveInfo+'.inputCurve')
             cmds.connectAttr(pointOnCurveInfo+'.position', self.nodeJoints[index]+'.translate')
             cmds.setAttr(pointOnCurveInfo+'.parameter', u_parametersOnCurve[index])
             collectedNodes.append(pointOnCurveInfo)
 
         clusterWeights = sorted([1.0/3*c for c in xrange(4)], reverse=True)[:-1]
-        startCluster = cmds.cluster([newSplineNodeCurve+'.cv[%s]'%(cv) for cv in xrange(0, 3)], relative=True, name=newSplineNodeCurve+'_startCluster')
+        startCluster = cmds.cluster([splineNodeCurve+'.cv[%s]'%(cv) for cv in xrange(0, 3)], relative=True, name=splineNodeCurve+'_startCluster')
         cmds.setAttr(startCluster[1]+'.visibility', 0)
         cmds.parent(startCluster[1], self.moduleSplineCurveGrp, absolute=True)
         for (cv, weight) in zip(xrange(0, 3), clusterWeights):
-            cmds.percent(startCluster[0], '%s.cv[%s]'%(newSplineNodeCurve, cv), value=weight)
-        endCluster = cmds.cluster([newSplineNodeCurve+'.cv[%s]'%(cv) for cv in xrange(3, 0, -1)], relative=True, name=newSplineNodeCurve+'_endCluster')
+            cmds.percent(startCluster[0], '%s.cv[%s]'%(splineNodeCurve, cv), value=weight)
+        endCluster = cmds.cluster([splineNodeCurve+'.cv[%s]'%(cv) for cv in xrange(3, 0, -1)], relative=True, name=splineNodeCurve+'_endCluster')
         cmds.setAttr(endCluster[1]+'.visibility', 0)
         cmds.parent(endCluster[1], self.moduleSplineCurveGrp, absolute=True)
         for (cv, weight) in zip(xrange(3, 0, -1), clusterWeights):
-            cmds.percent(endCluster[0], '%s.cv[%s]'%(newSplineNodeCurve, cv), value=weight)
+            cmds.percent(endCluster[0], '%s.cv[%s]'%(splineNodeCurve, cv), value=weight)
         collectedNodes.extend([startCluster[0], endCluster[0]])
 
         # Add the module transform to the module, at the position of the root node.
@@ -858,7 +899,7 @@ class MRT_Module(object):
             newSplineAdjustCurveTransform = cmds.rename(splineAdjustCurveTransforms[1], self.moduleNamespace+':'+splineAdjustCurveTransforms[1].partition('_')[0]+'_'+str(index+1)+'_'+splineAdjustCurveTransforms[1].partition('_')[2])
             splineAdjustCurveTransformList.append(newSplineAdjustCurveTransform)
 
-            splineAdjustCurveCluster = cmds.cluster('%s.cv[%s]'%(newSplineNodeCurve, index), relative=True, name=newSplineAdjustCurveTransform+'_Cluster')
+            splineAdjustCurveCluster = cmds.cluster('%s.cv[%s]'%(splineNodeCurve, index), relative=True, name=newSplineAdjustCurveTransform+'_Cluster')
             cmds.setAttr(splineAdjustCurveCluster[1]+'.visibility', 0)
             collectedNodes.append(splineAdjustCurveCluster[0])
 
@@ -907,7 +948,7 @@ class MRT_Module(object):
             cmds.setAttr(pairBlend+'.rotateMode', 2)
         collectedNodes.extend(pairBlend_inputDriven)
 
-        clusterNodes = cmds.listConnections(newSplineNodeCurve+'Shape', source=True, destination=True)
+        clusterNodes = cmds.listConnections(splineNodeCurve+'Shape', source=True, destination=True)
         for node in clusterNodes:
             if cmds.nodeType(node) == 'tweak':
                 cmds.delete(node)
