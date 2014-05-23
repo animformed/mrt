@@ -278,16 +278,14 @@ class MRT_Module(object):
             clusterNodes = cmds.listConnections(handleShape, source=True, destination=True)
             containedNodes.extend(clusterNodes)
             
-            # Create a locator and point constrain it to the joint node in iteration for indicating its
+            # Create a locator for the joint node in iteration for indicating its
             # world position. This will be needed later for utility purposes.
-            worldPosLocator = cmds.spaceLocator(name=joint+'_worldPosLocator')[0]
-            cmds.pointConstraint(joint, worldPosLocator, maintainOffset=False,
-                    name=self.moduleNamespace+':'+mfunc.stripMRTNamespace(joint)[1]+'_worldPosLocator_pointConstraint')
+            worldPosLocator = cmds.createNode('locator', parent=joint, name=joint+'_worldPosLocator')
             
-            # Turn off its visibility and parent it accordingly.
+            # Turn off its visibility.
             cmds.setAttr(worldPosLocator + '.visibility', 0)
             cmds.setAttr(handleShape+'.visibility', 0)
-            cmds.parent(worldPosLocator, self.moduleHandleSegmentGrp, absolute=True)
+
     
         # If the module contains more the one node (joint), create segment representations between
         # the joints in hierarchy.
@@ -313,13 +311,13 @@ class MRT_Module(object):
                                                               name=joint+'_'+handleSegmentParts[5]+'_closestPointOnSurface')
                 
                 cmds.connectAttr(joint+'_controlShape.worldSpace[0]', startClosestPointOnSurface+'.inputSurface')
-                cmds.connectAttr(self.nodeJoints[j+1]+'_worldPosLocator.translate', startClosestPointOnSurface+'.inPosition')
+                cmds.connectAttr(self.nodeJoints[j+1]+'_worldPosLocator.worldPosition', startClosestPointOnSurface+'.inPosition')
                 cmds.connectAttr(startClosestPointOnSurface+'.position', handleSegmentParts[5]+'.translate')
                 endClosestPointOnSurface = cmds.createNode('closestPointOnSurface',
                                             name=self.nodeJoints[j+1]+'_'+handleSegmentParts[6]+'_closestPointOnSurface')
 
                 cmds.connectAttr(self.nodeJoints[j+1]+'_controlShape.worldSpace[0]', endClosestPointOnSurface+'.inputSurface')
-                cmds.connectAttr(joint+'_worldPosLocator.translate', endClosestPointOnSurface+'.inPosition')
+                cmds.connectAttr(joint+'_worldPosLocator.worldPosition', endClosestPointOnSurface+'.inPosition')
                 cmds.connectAttr(endClosestPointOnSurface+'.position', handleSegmentParts[6]+'.translate')
                 
                 # Parent the segment and its related nodes to their associated group.
@@ -562,7 +560,8 @@ class MRT_Module(object):
         cmds.joint(edit=True, orientJoint=self.nodeAxes.lower(), secondaryAxisOrient=secondAxisOrientation,
                                                                                 zeroScaleOrient=True, children=True)
                                                                                 
-        # Mirror the module node joints (for the mirrored module) if the module mirroring is enabled,
+        # Mirror the module node joints (for the mirrored module) if the module mirroring is enabled
+        # and the current module to be created is a mirrored module on the -ve side of the creation plane,
         # and if the mirror rotation function is set to "Behaviour".
         if self.mirrorModule and self.mirrorRotationFunc == 'Behaviour':
             mirrorPlane = {'XY':False, 'YZ':False, 'XZ':False}
@@ -831,7 +830,8 @@ class MRT_Module(object):
                                                                         zeroScaleOrient=True, children=True)
         cmds.parent(self.nodeJoints[0], self.moduleJointsGrp, absolute=True)
 
-        # Mirror the module node joints (for the mirrored module) if the module mirroring is enabled,
+        # Mirror the module node joints (for the mirrored module) if the module mirroring is enabled
+        # and the current module to be created is a mirrored module on the -ve side of the creation plane,
         # and if the mirror rotation function is set to "Behaviour".
         if self.mirrorModule and self.mirrorRotationFunc == 'Behaviour':
             mirrorPlane = {'XY':False, 'YZ':False, 'XZ':False}
@@ -860,7 +860,7 @@ class MRT_Module(object):
         u_parametersOnCurve = [1.0/(len(self.nodeJoints)-1)*c for c in xrange(len(self.nodeJoints))]
         for index in range(len(self.nodeJoints)):
             pointOnCurveInfo = cmds.createNode('pointOnCurveInfo', name='%s:%s_pointOnCurveInfo' % (self.moduleNamespace,
-                                                                        mfunc.stripMRTNamespace(self.nodeJoints[index])[1])
+                                                                        mfunc.stripMRTNamespace(self.nodeJoints[index])[1]))
             cmds.connectAttr(self.moduleNamespace+':splineNode_curveShape.worldSpace', pointOnCurveInfo+'.inputCurve')
             cmds.connectAttr(pointOnCurveInfo+'.position', self.nodeJoints[index]+'.translate')
             cmds.setAttr(pointOnCurveInfo+'.parameter', u_parametersOnCurve[index])
@@ -1204,7 +1204,8 @@ class MRT_Module(object):
         # Move the joints group and the nodule IK nodes to the start position for the first joint node.
         cmds.xform(self.moduleJointsGrp, worldSpace=True, translation=self.initNodePos[0])
         cmds.xform(self.moduleIKnodesGrp, worldSpace=True, translation=self.initNodePos[0])
-
+        
+        # Calculate the position of the mid hinge node.
         containedNodes = []
         offset = self.moduleLen / 10.0
         hingeOffset = {'YZ':[offset, 0.0, 0.0], 'XZ':[0.0, offset, 0.0], 'XY':[0.0, 0.0, offset]}[self.onPlane]
@@ -1222,39 +1223,55 @@ class MRT_Module(object):
             cmds.setAttr(jointName+'.drawStyle', 2)
             self.nodeJoints.append(jointName)
             index += 1
+            
         # Orient the joints.
         cmds.select(self.nodeJoints[0], replace=True)
+        
         # For orientation we'll use the axis perpendicular to the creation plane as the up axis for secondary axis orient.
         secondAxisOrientation = {'XY':'z', 'YZ':'x', 'XZ':'y'}[self.onPlane] + 'up'
         cmds.joint(edit=True, orientJoint=self.nodeAxes.lower(), secondaryAxisOrient=secondAxisOrientation, zeroScaleOrient=True, children=True)
-
+        
+        # Mirror the module node joints (for the mirrored module) if the module mirroring is enabled
+        # and the current module to be created is a mirrored module on the -ve side of the creation plane,
+        # and if the mirror rotation function is set to "Behaviour".
         if self.mirrorModule and self.mirrorRotationFunc == 'Behaviour':
             mirrorPlane = {'XY':False, 'YZ':False, 'XZ':False}
             mirrorPlane[self.onPlane] = True
-            mirroredJoints = cmds.mirrorJoint(self.nodeJoints[0], mirrorXY=mirrorPlane['XY'], mirrorYZ=mirrorPlane['YZ'], mirrorXZ=mirrorPlane['XZ'], mirrorBehavior=True)
+            mirroredJoints = cmds.mirrorJoint(self.nodeJoints[0], mirrorXY=mirrorPlane['XY'], mirrorYZ=mirrorPlane['YZ'],
+                                                                        mirrorXZ=mirrorPlane['XZ'], mirrorBehavior=True)
             cmds.delete(self.nodeJoints[0])
             self.nodeJoints = []
             for joint in mirroredJoints:
                 newJoint = cmds.rename(joint, self.moduleNamespace+':'+joint)
                 self.nodeJoints.append(newJoint)
+                
         # Orient the end joint node.
         cmds.setAttr(self.nodeJoints[-1]+'.jointOrientX', 0)
         cmds.setAttr(self.nodeJoints[-1]+'.jointOrientY', 0)
         cmds.setAttr(self.nodeJoints[-1]+'.jointOrientZ', 0)
+        
         # Clear selection after joint orientation.
         cmds.select(clear=True)
-
-        ikNodes = cmds.ikHandle(startJoint=self.nodeJoints[0], endEffector=self.nodeJoints[-1], name=self.moduleNamespace+':rootToEndNode_ikHandle', solver='ikRPsolver')
+        
+        # Create the IK handle to drive the module nodes.
+        ikNodes = cmds.ikHandle(startJoint=self.nodeJoints[0], endEffector=self.nodeJoints[-1],
+                                                    name=self.moduleNamespace+':rootToEndNode_ikHandle', solver='ikRPsolver')
         ikEffector = cmds.rename(ikNodes[1], self.moduleNamespace+':rootToEndNode_ikEffector')
         ikHandle = ikNodes[0]
         cmds.parent(ikHandle, self.moduleIKnodesGrp, absolute=True)
         cmds.setAttr(ikHandle + '.visibility', 0)
-
-        cmds.xform(ikHandle, worldSpace=True, absolute=True, rotation=cmds.xform(self.nodeJoints[-1], query=True, worldSpace=True, absolute=True, rotation=True))
-
-        ##rootHandle = objects.createRawHandle(self.modHandleColour)
+        
+        # Place the IK handle at the last module node position.
+        cmds.xform(ikHandle, worldSpace=True, absolute=True, rotation=cmds.xform(self.nodeJoints[-1], query=True,
+                                                                    worldSpace=True, absolute=True, rotation=True))
+        
+        # Create the node handle objects.
+        # For hinge module, the nodes will not be translated directly. They will be driven by
+        # control handles on top of them.
+        
+        # Root node handle.
         rootHandle = objects.createRawControlSurface(self.nodeJoints[0], self.modHandleColour, True)
-        ##newRootHandle = cmds.rename(rootHandle[0], self.nodeJoints[0]+'_'+rootHandle[0])
+
         cmds.setAttr(rootHandle[0]+'.rotateX', keyable=False)
         cmds.setAttr(rootHandle[0]+'.rotateY', keyable=False)
         cmds.setAttr(rootHandle[0]+'.rotateZ', keyable=False)
@@ -1263,12 +1280,13 @@ class MRT_Module(object):
         cmds.setAttr(rootHandle[0]+'.scaleZ', keyable=False)
         cmds.setAttr(rootHandle[0]+'.visibility', keyable=False)
         cmds.xform(rootHandle[0], worldSpace=True, absolute=True, translation=self.initNodePos[0])
-        rootHandleConstraint = cmds.pointConstraint(rootHandle[0], self.nodeJoints[0], maintainOffset=False, name=self.nodeJoints[0]+'_pointConstraint')
+        rootHandleConstraint = cmds.pointConstraint(rootHandle[0], self.nodeJoints[0], maintainOffset=False,
+                                                                    name=self.nodeJoints[0]+'_pointConstraint')
         cmds.parent(rootHandle[0], self.moduleIKnodesGrp, absolute=True)
 
-        ##elbowHandle = objects.createRawHandle(self.modHandleColour)
+        # Mid hinge or elbow node handle.
         elbowHandle = objects.createRawControlSurface(self.nodeJoints[1], self.modHandleColour, True)
-        ##newElbowHandle = cmds.rename(elbowHandle[0], self.nodeJoints[1]+'_'+elbowHandle[0])
+
         cmds.setAttr(elbowHandle[0]+'.rotateX', keyable=False)
         cmds.setAttr(elbowHandle[0]+'.rotateY', keyable=False)
         cmds.setAttr(elbowHandle[0]+'.rotateZ', keyable=False)
@@ -1280,9 +1298,9 @@ class MRT_Module(object):
         elbowHandleConstraint = cmds.poleVectorConstraint(elbowHandle[0], ikHandle, name=ikHandle+'_poleVectorConstraint')
         cmds.parent(elbowHandle[0], self.moduleIKnodesGrp, absolute=True)
 
-        ##endHandle = objects.createRawHandle(self.modHandleColour)
+        # End node handle.
         endHandle = objects.createRawControlSurface(self.nodeJoints[-1], self.modHandleColour, True)
-        ##endHandle = cmds.rename(endHandle[0], self.nodeJoints[-1]+'_'+endHandle[0])
+
         cmds.setAttr(endHandle[0]+'.rotateX', keyable=False)
         cmds.setAttr(endHandle[0]+'.rotateY', keyable=False)
         cmds.setAttr(endHandle[0]+'.rotateZ', keyable=False)
@@ -1293,58 +1311,70 @@ class MRT_Module(object):
         cmds.xform(endHandle[0], worldSpace=True, absolute=True, translation=self.initNodePos[2])
         endHandleConstraint = cmds.pointConstraint(endHandle[0], ikHandle, maintainOffset=False, name=ikHandle+'_pointConstraint')
         cmds.parent(endHandle[0], self.moduleIKnodesGrp, absolute=True)
-
-        for startPos, endPos, drivenJoint in [(rootHandle[0], elbowHandle[0], self.nodeJoints[1]), (elbowHandle[0], endHandle[0], self.nodeJoints[2])]:
-            # Create a distance node to measure the distance between two joint handles, and connect the worldSpace translate values.
+        
+        # Use the node handle objects to drive the axial distance for the node joints.
+        for startPos, endPos, drivenJoint in [(rootHandle[0], elbowHandle[0], self.nodeJoints[1]),
+                                              (elbowHandle[0], endHandle[0], self.nodeJoints[2])]:
+                                              
+            # Create a distance node to measure the distance between two joint handles, and connect
+            # the worldSpace translate values.
             segmentDistance = cmds.createNode('distanceBetween', name=drivenJoint+'_distanceNode')
             cmds.connectAttr(startPos+'.translate', segmentDistance+'.point1')
             cmds.connectAttr(endPos+'.translate', segmentDistance+'.point2')
-            #
+            
+            # Get the aim axis, the axis down the module node chain.
+            aimAxis = self.nodeAxes[0]
+            
+            # Get the distance factor to multiply the original length of the node joint length.
             distanceDivideFactor = cmds.createNode('multiplyDivide', name=drivenJoint+'_distanceDivideFactor')
             cmds.setAttr(distanceDivideFactor + '.operation', 2)
-            aimAxis = self.nodeAxes[0]
             originalLength = cmds.getAttr(drivenJoint+'.translate'+aimAxis)
             cmds.connectAttr(segmentDistance+'.distance', distanceDivideFactor+'.input1'+aimAxis)
             cmds.setAttr(distanceDivideFactor+'.input2'+aimAxis, originalLength)
-
+            
+            # Finally, drive the position of node joints using the multiplied distance.
             drivenJointAimTranslateMultiply = cmds.createNode('multiplyDivide', name=drivenJoint+'_drivenJointAimTranslateMultiply')
             cmds.connectAttr(distanceDivideFactor+'.output'+aimAxis, drivenJointAimTranslateMultiply+'.input1'+aimAxis)
             cmds.setAttr(drivenJointAimTranslateMultiply+'.input2'+aimAxis, math.fabs(originalLength))
             cmds.connectAttr(drivenJointAimTranslateMultiply+'.output'+aimAxis, drivenJoint+'.translate'+aimAxis)
             containedNodes.extend([segmentDistance, distanceDivideFactor, drivenJointAimTranslateMultiply])
+            
         mfunc.updateAllTransforms()
-        #mfunc.forceSceneUpdate()
-        i = 0
-        for joint in self.nodeJoints:
-
-            ##handleShape = joint+'_handleControlShape'
+        
+        # Prepare the module node control handle objects for scaling.
+        for i, joint in enumerate(self.nodeJoints):
+            
+            # Get the "rig" surface for the control handle.
             handleShape = joint+'_controlShape'
-            ##handleShapeScaleCluster = cmds.cluster(handleShape, relative=True, name=handleShape+'_handleShapeScaleCluster')
+            
+            # Drive it using a cluster for scaling and parent it accordingly.
             handleShapeScaleCluster = cmds.cluster(handleShape, relative=True, name=handleShape+'_scaleCluster')
             cmds.parent(handleShapeScaleCluster[1], self.moduleNodeHandleShapeScaleClusterGrp, absolute=True)
             cmds.setAttr(handleShapeScaleCluster[1]+'.visibility', 0)
+            
             # Collect the cluster nodes.
             clusterNodes = cmds.listConnections(handleShape, source=True, destination=True)
+            
             # Remove the tweak node.
             for node in clusterNodes:
                 if cmds.nodeType(node) == 'tweak':
                     cmds.delete(node)
                     break
+            
             # Update the cluster node list.
             clusterNodes = cmds.listConnections(handleShape, source=True, destination=True)
             containedNodes.extend(clusterNodes)
-
-            worldPosLocator = cmds.spaceLocator(name=joint+'_worldPosLocator')[0]
+            
+            # Additionally, create a world position locator for the node joint.
+            worldPosLocator = cmds.createNode('locator', parent=joint, name=joint+'_worldPosLocator')
             cmds.setAttr(worldPosLocator + '.visibility', 0)
-            worldPosLocator_constraint = cmds.pointConstraint(joint, worldPosLocator, maintainOffset=False, name=self.moduleNamespace+':'+mfunc.stripMRTNamespace(joint)[1]+'_worldPosLocator_pointConstraint')
-            cmds.parent(worldPosLocator, self.moduleHandleSegmentGrp, absolute=True)
-            i += 1
+            
+            
 
-        j = 0
-        for joint in self.nodeJoints:
+        for j, joint in enumerate(self.nodeJoints):
             if joint == self.nodeJoints[-1]:
                 break
-            #handleSegmentParts = objects.createRawHandleSegment(self.modHandleColour)
+
             handleSegmentParts = objects.createRawSegmentCurve(self.modHandleColour)
             extra_nodes = []
             for node in handleSegmentParts[4]:
@@ -1353,17 +1383,19 @@ class MRT_Module(object):
             containedNodes.extend(extra_nodes)
 
             startClosestPointOnSurface = cmds.createNode('closestPointOnSurface', name=joint+'_'+handleSegmentParts[5]+'_closestPointOnSurface')
-            ##cmds.connectAttr(joint+'_handleControlShape.worldSpace[0]', startClosestPointOnSurface+'.inputSurface')
+
             cmds.connectAttr(joint+'_controlShape.worldSpace[0]', startClosestPointOnSurface+'.inputSurface')
-            cmds.connectAttr(self.nodeJoints[j+1]+'_worldPosLocator.translate', startClosestPointOnSurface+'.inPosition')
+            cmds.connectAttr(self.nodeJoints[j+1]+'_worldPosLocator.worldPosition', startClosestPointOnSurface+'.inPosition')
             cmds.connectAttr(startClosestPointOnSurface+'.position', handleSegmentParts[5]+'.translate')
-            endClosestPointOnSurface = cmds.createNode('closestPointOnSurface', name=self.nodeJoints[j+1]+'_'+handleSegmentParts[6]+'_closestPointOnSurface')
-            ##cmds.connectAttr(self.nodeJoints[j+1]+'_handleControlShape.worldSpace[0]', endClosestPointOnSurface+'.inputSurface')
+            endClosestPointOnSurface = cmds.createNode('closestPointOnSurface', name='%s_%s_closestPointOnSurface' \
+                                                                        % (self.nodeJoints[j+1], handleSegmentParts[6]))
+
             cmds.connectAttr(self.nodeJoints[j+1]+'_controlShape.worldSpace[0]', endClosestPointOnSurface+'.inputSurface')
-            cmds.connectAttr(joint+'_worldPosLocator.translate', endClosestPointOnSurface+'.inPosition')
+            cmds.connectAttr(joint+'_worldPosLocator.worldPosition', endClosestPointOnSurface+'.inPosition')
             cmds.connectAttr(endClosestPointOnSurface+'.position', handleSegmentParts[6]+'.translate')
 
-            cmds.parent([handleSegmentParts[1], handleSegmentParts[2][1], handleSegmentParts[3][1], handleSegmentParts[5], handleSegmentParts[6]], self.moduleHandleSegmentGrp, absolute=True)
+            cmds.parent([handleSegmentParts[1], handleSegmentParts[2][1], handleSegmentParts[3][1], handleSegmentParts[5],
+                                                        handleSegmentParts[6]], self.moduleHandleSegmentGrp, absolute=True)
 
             cmds.rename(handleSegmentParts[1], self.moduleNamespace+':'+mfunc.stripMRTNamespace(joint)[1]+'_'+handleSegmentParts[1])
 
@@ -1374,8 +1406,7 @@ class MRT_Module(object):
             newEndClusterHandle = cmds.rename(handleSegmentParts[3][1], self.moduleNamespace+':'+mfunc.stripMRTNamespace(self.nodeJoints[j+1])[1]+'_'+handleSegmentParts[3][1])
             cmds.rename(newStartClusterHandle+'|'+handleSegmentParts[7].rpartition('|')[2], joint+'_'+handleSegmentParts[7].rpartition('|')[2])
             cmds.rename(newEndClusterHandle+'|'+handleSegmentParts[8].rpartition('|')[2], self.nodeJoints[j+1]+'_'+handleSegmentParts[8].rpartition('|')[2])
-            ##startClusterGrpParts = cmds.rename('handleControlSegmentCurve_StartClusterGroupParts', newStartClusterHandle+'_ClusterGroupParts')
-            ##endClusterGrpParts = cmds.rename('handleControlSegmentCurve_EndClusterGroupParts', newEndClusterHandle+'_ClusterGroupParts')
+
             startClusterGrpParts = cmds.rename('segmentCurve_startClusterGroupParts', newStartClusterHandle+'_clusterGroupParts')
             endClusterGrpParts = cmds.rename('segmentCurve_endClusterGroupParts', newEndClusterHandle+'_clusterGroupParts')
 
@@ -1388,7 +1419,7 @@ class MRT_Module(object):
 
             cmds.select(clear=True)
             containedNodes.extend([newStartClusterHandle, newEndClusterHandle, newStartClusterHandle+'Cluster', newEndClusterHandle+'Cluster', startClosestPointOnSurface, endClosestPointOnSurface, namedArclen, startClusterGrpParts, endClusterGrpParts])
-            j += 1
+
 
         #rootEndHandleSegmentParts = objects.createRawHandleSegment(3)
         rootEndHandleSegmentParts = objects.createRawSegmentCurve(3)
@@ -1403,12 +1434,12 @@ class MRT_Module(object):
         startClosestPointOnSurface = cmds.createNode('closestPointOnSurface', name=self.moduleNamespace+':startHandleIKsegment_'+rootEndHandleSegmentParts[5]+'_closestPointOnSurface')
         ##cmds.connectAttr(self.nodeJoints[0]+'_handleControlShape.worldSpace[0]', startClosestPointOnSurface+'.inputSurface')
         cmds.connectAttr(self.nodeJoints[0]+'_controlShape.worldSpace[0]', startClosestPointOnSurface+'.inputSurface')
-        cmds.connectAttr(self.nodeJoints[-1]+'_worldPosLocator.translate', startClosestPointOnSurface+'.inPosition')
+        cmds.connectAttr(self.nodeJoints[-1]+'_worldPosLocator.worldPosition', startClosestPointOnSurface+'.inPosition')
         cmds.connectAttr(startClosestPointOnSurface+'.position', rootEndHandleSegmentParts[5]+'.translate')
         endClosestPointOnSurface = cmds.createNode('closestPointOnSurface', name=self.moduleNamespace+':endHandleIKsegment_'+rootEndHandleSegmentParts[6]+'_closestPointOnSurface')
         ##cmds.connectAttr(self.nodeJoints[-1]+'_handleControlShape.worldSpace[0]', endClosestPointOnSurface+'.inputSurface')
         cmds.connectAttr(self.nodeJoints[-1]+'_controlShape.worldSpace[0]', endClosestPointOnSurface+'.inputSurface')
-        cmds.connectAttr(self.nodeJoints[0]+'_worldPosLocator.translate', endClosestPointOnSurface+'.inPosition')
+        cmds.connectAttr(self.nodeJoints[0]+'_worldPosLocator.worldPosition', endClosestPointOnSurface+'.inPosition')
         cmds.connectAttr(endClosestPointOnSurface+'.position', rootEndHandleSegmentParts[6]+'.translate')
 
         cmds.parent([rootEndHandleSegmentParts[1], rootEndHandleSegmentParts[2][1], rootEndHandleSegmentParts[3][1], rootEndHandleSegmentParts[5], rootEndHandleSegmentParts[6]], self.moduleHandleSegmentGrp, absolute=True)
