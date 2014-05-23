@@ -334,29 +334,29 @@ class MRT_Module(object):
                 cmds.rename(handleSegmentParts[6], self.nodeJoints[j+1]+'_'+handleSegmentParts[6])
                 
                 # Rename the cluster handles.
-                newStartClusterHandle = cmds.rename(handleSegmentParts[2][1],
+                startClusterHandle = cmds.rename(handleSegmentParts[2][1],
                                 self.moduleNamespace+':'+mfunc.stripMRTNamespace(joint)[1]+'_'+handleSegmentParts[2][1])
-                newEndClusterHandle = cmds.rename(handleSegmentParts[3][1],
+                endClusterHandle = cmds.rename(handleSegmentParts[3][1],
                     self.moduleNamespace+':'+mfunc.stripMRTNamespace(self.nodeJoints[j+1])[1]+'_'+handleSegmentParts[3][1])
                 
                 # Rename the constraints on the cluster handles. Here, it is necessary to specify the
                 # constraints by their DAG path.
-                cmds.rename(newStartClusterHandle+'|'+handleSegmentParts[7].rpartition('|')[2],
+                cmds.rename(startClusterHandle+'|'+handleSegmentParts[7].rpartition('|')[2],
                                                             joint+'_'+handleSegmentParts[7].rpartition('|')[2])
-                cmds.rename(newEndClusterHandle + '|'+handleSegmentParts[8].rpartition('|')[2],
+                cmds.rename(endClusterHandle + '|'+handleSegmentParts[8].rpartition('|')[2],
                                              self.nodeJoints[j+1]+'_'+handleSegmentParts[8].rpartition('|')[2])
                                              
                 startClusterGrpParts = cmds.rename('segmentCurve_startClusterGroupParts',
-                                                    newStartClusterHandle+'_clusterGroupParts')
+                                                    startClusterHandle+'_clusterGroupParts')
                                                     
                 endClusterGrpParts = cmds.rename('segmentCurve_endClusterGroupParts',
-                                                  newEndClusterHandle+'_clusterGroupParts')
+                                                  endClusterHandle+'_clusterGroupParts')
                 
                 # Clear the selection, and force an update on DG.
                 cmds.select(clear=True)
                 
                 # Collect the nodes.
-                containedNodes.extend([newStartClusterHandle+'Cluster', newEndClusterHandle+'Cluster',
+                containedNodes.extend([startClusterHandle+'Cluster', endClusterHandle+'Cluster',
                                        startClosestPointOnSurface, endClosestPointOnSurface,
                                        startClusterGrpParts, endClusterGrpParts])
 
@@ -418,27 +418,27 @@ class MRT_Module(object):
         cmds.rename(handleSegmentParts[6], self.moduleNamespace+':moduleParentReprSegment_'+handleSegmentParts[6])
         
         # Rename the cluster handles.
-        newStartClusterHandle = cmds.rename(handleSegmentParts[2][1],
+        startClusterHandle = cmds.rename(handleSegmentParts[2][1],
                                             self.moduleNamespace+':moduleParentReprSegment_'+handleSegmentParts[2][1])
-        newEndClusterHandle = cmds.rename(handleSegmentParts[3][1],
+        endClusterHandle = cmds.rename(handleSegmentParts[3][1],
                                           self.moduleNamespace+':moduleParentReprSegment_'+handleSegmentParts[3][1])
                                           
         # Rename the constraints on the cluster handles. Here, it is necessary to specify the
         # constraints by their DAG path.
-        cmds.rename(newStartClusterHandle+'|'+handleSegmentParts[7].rpartition('|')[2],
+        cmds.rename(startClusterHandle+'|'+handleSegmentParts[7].rpartition('|')[2],
                     self.moduleNamespace+':moduleParentReprSegment_'+handleSegmentParts[7].rpartition('|')[2])
-        cmds.rename(newEndClusterHandle + '|'+handleSegmentParts[8].rpartition('|')[2],
+        cmds.rename(endClusterHandle + '|'+handleSegmentParts[8].rpartition('|')[2],
                     self.moduleNamespace+':moduleParentReprSegment_'+handleSegmentParts[8].rpartition('|')[2])
                     
-        startClusterGrpParts = cmds.rename('segmentCurve_startClusterGroupParts', newStartClusterHandle+'_clusterGroupParts')
-        endClusterGrpParts = cmds.rename('segmentCurve_endClusterGroupParts', newEndClusterHandle+'_clusterGroupParts')
+        startClusterGrpParts = cmds.rename('segmentCurve_startClusterGroupParts', startClusterHandle+'_clusterGroupParts')
+        endClusterGrpParts = cmds.rename('segmentCurve_endClusterGroupParts', endClusterHandle+'_clusterGroupParts')
         
         # Clear the selection, and force an update on DG.
         cmds.select(clear=True)
         cmds.setAttr(self.moduleParentReprGrp+'.visibility', 0)
         
         # Collect the nodes.
-        containedNodes.extend([newStartClusterHandle+'Cluster', newEndClusterHandle+'Cluster',
+        containedNodes.extend([startClusterHandle+'Cluster', endClusterHandle+'Cluster',
                                                     startClusterGrpParts, endClusterGrpParts])
         return containedNodes
 
@@ -1370,19 +1370,24 @@ class MRT_Module(object):
             cmds.setAttr(worldPosLocator + '.visibility', 0)
             
             
-
+        # Create the segment curves between the control handle shapes.
         for j, joint in enumerate(self.nodeJoints):
             if joint == self.nodeJoints[-1]:
                 break
-
+            
+            # Create the raw segment parts and rename them.
             handleSegmentParts = objects.createRawSegmentCurve(self.modHandleColour)
             extra_nodes = []
+            
             for node in handleSegmentParts[4]:
                 if cmds.objExists(node):
-                    extra_nodes.append(cmds.rename(node, self.moduleNamespace+':'+mfunc.stripMRTNamespace(joint)[1]+'_clusterParts_'+node))
+                    extra_nodes.append(cmds.rename(node, '%s:%s_clusterParts_%s' \
+                                                    % (self.moduleNamespace, mfunc.stripMRTNamespace(joint)[1], node))
             containedNodes.extend(extra_nodes)
-
-            startClosestPointOnSurface = cmds.createNode('closestPointOnSurface', name=joint+'_'+handleSegmentParts[5]+'_closestPointOnSurface')
+            
+            # Connect the segment between two consecutive nodes with their control handle surfaces.
+            startClosestPointOnSurface = cmds.createNode('closestPointOnSurface', name='%s_%s_closestPointOnSurface' \
+                                                                                        % (joint, handleSegmentParts[5]))
 
             cmds.connectAttr(joint+'_controlShape.worldSpace[0]', startClosestPointOnSurface+'.inputSurface')
             cmds.connectAttr(self.nodeJoints[j+1]+'_worldPosLocator.worldPosition', startClosestPointOnSurface+'.inPosition')
@@ -1397,34 +1402,41 @@ class MRT_Module(object):
             cmds.parent([handleSegmentParts[1], handleSegmentParts[2][1], handleSegmentParts[3][1], handleSegmentParts[5],
                                                         handleSegmentParts[6]], self.moduleHandleSegmentGrp, absolute=True)
 
-            cmds.rename(handleSegmentParts[1], self.moduleNamespace+':'+mfunc.stripMRTNamespace(joint)[1]+'_'+handleSegmentParts[1])
+            cmds.rename(handleSegmentParts[1], '%s:%s_%s' \
+                                                % (self.moduleNamespace, mfunc.stripMRTNamespace(joint)[1], handleSegmentParts[1])
 
-            newStartLocator = cmds.rename(handleSegmentParts[5], joint+'_'+handleSegmentParts[5])
-            newEndLocator = cmds.rename(handleSegmentParts[6], self.nodeJoints[j+1]+'_'+handleSegmentParts[6])
+            newStartLocator = cmds.rename(handleSegmentParts[5], '%s_%s' % (joint, handleSegmentParts[5]))
+            newEndLocator = cmds.rename(handleSegmentParts[6], '%s_%s' % (self.nodeJoints[j+1], handleSegmentParts[6]))
 
-            newStartClusterHandle = cmds.rename(handleSegmentParts[2][1], self.moduleNamespace+':'+mfunc.stripMRTNamespace(joint)[1]+'_'+handleSegmentParts[2][1])
-            newEndClusterHandle = cmds.rename(handleSegmentParts[3][1], self.moduleNamespace+':'+mfunc.stripMRTNamespace(self.nodeJoints[j+1])[1]+'_'+handleSegmentParts[3][1])
-            cmds.rename(newStartClusterHandle+'|'+handleSegmentParts[7].rpartition('|')[2], joint+'_'+handleSegmentParts[7].rpartition('|')[2])
-            cmds.rename(newEndClusterHandle+'|'+handleSegmentParts[8].rpartition('|')[2], self.nodeJoints[j+1]+'_'+handleSegmentParts[8].rpartition('|')[2])
+            startClusterHandle = cmds.rename(handleSegmentParts[2][1], '%s:%s_%s' \ 
+                                                                            % (self.moduleNamespace, 
+                                                                               mfunc.stripMRTNamespace(joint)[1], 
+                                                                               handleSegmentParts[2][1]))
+                                                                               
+            endClusterHandle = cmds.rename(handleSegmentParts[3][1], '%s:%s_%s' \
+                                                                            % (self.moduleNamespace, 
+                                                                               mfunc.stripMRTNamespace(self.nodeJoints[j+1])[1], 
+                                                                               handleSegmentParts[3][1]))
+                                                                               
+            cmds.rename('%s|%s' % (startClusterHandle, handleSegmentParts[7].rpartition('|')[2]), 
+                                    '%s_%s' % (joint, handleSegmentParts[7].rpartition('|')[2]))
+                                    
+            cmds.rename('%s|%s' % (endClusterHandle, handleSegmentParts[8].rpartition('|')[2]), 
+                                    '%s_%s' % (self.nodeJoints[j+1], handleSegmentParts[8].rpartition('|')[2]))
 
-            startClusterGrpParts = cmds.rename('segmentCurve_startClusterGroupParts', newStartClusterHandle+'_clusterGroupParts')
-            endClusterGrpParts = cmds.rename('segmentCurve_endClusterGroupParts', newEndClusterHandle+'_clusterGroupParts')
+            startClusterGrpParts = cmds.rename('segmentCurve_startClusterGroupParts', startClusterHandle+'_clusterGroupParts')
+            endClusterGrpParts = cmds.rename('segmentCurve_endClusterGroupParts', endClusterHandle+'_clusterGroupParts')
 
-
-
-            ##arclen = cmds.arclen(joint+'_handleControlSegmentCurve', constructionHistory=True)
-            ##namedArclen = cmds.rename(arclen, joint+'_handleControlSegmentCurve_curveInfo')
             arclen = cmds.arclen(joint+'_segmentCurve', constructionHistory=True)
             namedArclen = cmds.rename(arclen, joint+'_segmentCurve_curveInfo')
 
             cmds.select(clear=True)
-            containedNodes.extend([newStartClusterHandle, newEndClusterHandle, newStartClusterHandle+'Cluster', newEndClusterHandle+'Cluster', startClosestPointOnSurface, endClosestPointOnSurface, namedArclen, startClusterGrpParts, endClusterGrpParts])
+            
+            containedNodes.extend([startClusterHandle, endClusterHandle, startClusterHandle+'Cluster', 
+                                   endClusterHandle+'Cluster', startClosestPointOnSurface, endClosestPointOnSurface, 
+                                   namedArclen, startClusterGrpParts, endClusterGrpParts])
 
-
-        #rootEndHandleSegmentParts = objects.createRawHandleSegment(3)
         rootEndHandleSegmentParts = objects.createRawSegmentCurve(3)
-        #cmds.setAttr(rootEndHandleSegmentParts[0]+'.overrideEnabled', 1)
-        #cmds.setAttr(rootEndHandleSegmentParts[0]+'.overrideColor', 3)
         extra_nodes = []
         for node in rootEndHandleSegmentParts[4]:
             if cmds.objExists(node):
@@ -1432,12 +1444,10 @@ class MRT_Module(object):
         containedNodes.extend(extra_nodes)
 
         startClosestPointOnSurface = cmds.createNode('closestPointOnSurface', name=self.moduleNamespace+':startHandleIKsegment_'+rootEndHandleSegmentParts[5]+'_closestPointOnSurface')
-        ##cmds.connectAttr(self.nodeJoints[0]+'_handleControlShape.worldSpace[0]', startClosestPointOnSurface+'.inputSurface')
         cmds.connectAttr(self.nodeJoints[0]+'_controlShape.worldSpace[0]', startClosestPointOnSurface+'.inputSurface')
         cmds.connectAttr(self.nodeJoints[-1]+'_worldPosLocator.worldPosition', startClosestPointOnSurface+'.inPosition')
         cmds.connectAttr(startClosestPointOnSurface+'.position', rootEndHandleSegmentParts[5]+'.translate')
         endClosestPointOnSurface = cmds.createNode('closestPointOnSurface', name=self.moduleNamespace+':endHandleIKsegment_'+rootEndHandleSegmentParts[6]+'_closestPointOnSurface')
-        ##cmds.connectAttr(self.nodeJoints[-1]+'_handleControlShape.worldSpace[0]', endClosestPointOnSurface+'.inputSurface')
         cmds.connectAttr(self.nodeJoints[-1]+'_controlShape.worldSpace[0]', endClosestPointOnSurface+'.inputSurface')
         cmds.connectAttr(self.nodeJoints[0]+'_worldPosLocator.worldPosition', endClosestPointOnSurface+'.inPosition')
         cmds.connectAttr(endClosestPointOnSurface+'.position', rootEndHandleSegmentParts[6]+'.translate')
@@ -1449,18 +1459,16 @@ class MRT_Module(object):
         newStartLocator = cmds.rename(rootEndHandleSegmentParts[5], self.moduleNamespace+':startHandleIKsegment_'+rootEndHandleSegmentParts[5])
         newEndLocator = cmds.rename(rootEndHandleSegmentParts[6], self.moduleNamespace+':endHandleIKsegment_'+rootEndHandleSegmentParts[6])
 
-        newStartClusterHandle = cmds.rename(rootEndHandleSegmentParts[2][1], self.moduleNamespace+':startHandleIKsegment_'+rootEndHandleSegmentParts[2][1])
-        newEndClusterHandle = cmds.rename(rootEndHandleSegmentParts[3][1], self.moduleNamespace+':endHandleIKsegment_'+rootEndHandleSegmentParts[3][1])
-        cmds.rename(newStartClusterHandle+'|'+rootEndHandleSegmentParts[7].rpartition('|')[2], self.moduleNamespace+':startHandleIKsegment_'+rootEndHandleSegmentParts[7].rpartition('|')[2])
-        cmds.rename(newEndClusterHandle + '|'+rootEndHandleSegmentParts[8].rpartition('|')[2], self.moduleNamespace+':endHandleIKsegment_'+rootEndHandleSegmentParts[8].rpartition('|')[2])
-        #startClusterGrpParts = cmds.rename('handleControlSegmentCurve_StartClusterGroupParts', newStartClusterHandle+'_ClusterGroupParts')
-        #endClusterGrpParts = cmds.rename('handleControlSegmentCurve_EndClusterGroupParts', newEndClusterHandle+'_ClusterGroupParts')
-        startClusterGrpParts = cmds.rename('segmentCurve_startClusterGroupParts', newStartClusterHandle+'_clusterGroupParts')
-        endClusterGrpParts = cmds.rename('segmentCurve_endClusterGroupParts', newEndClusterHandle+'_clusterGroupParts')
+        startClusterHandle = cmds.rename(rootEndHandleSegmentParts[2][1], self.moduleNamespace+':startHandleIKsegment_'+rootEndHandleSegmentParts[2][1])
+        endClusterHandle = cmds.rename(rootEndHandleSegmentParts[3][1], self.moduleNamespace+':endHandleIKsegment_'+rootEndHandleSegmentParts[3][1])
+        cmds.rename(startClusterHandle+'|'+rootEndHandleSegmentParts[7].rpartition('|')[2], self.moduleNamespace+':startHandleIKsegment_'+rootEndHandleSegmentParts[7].rpartition('|')[2])
+        cmds.rename(endClusterHandle + '|'+rootEndHandleSegmentParts[8].rpartition('|')[2], self.moduleNamespace+':endHandleIKsegment_'+rootEndHandleSegmentParts[8].rpartition('|')[2])
+        startClusterGrpParts = cmds.rename('segmentCurve_startClusterGroupParts', startClusterHandle+'_clusterGroupParts')
+        endClusterGrpParts = cmds.rename('segmentCurve_endClusterGroupParts', endClusterHandle+'_clusterGroupParts')
 
         cmds.select(clear=True)
 
-        containedNodes.extend([newStartClusterHandle, newEndClusterHandle, newStartClusterHandle+'Cluster', newEndClusterHandle+'Cluster', startClosestPointOnSurface, endClosestPointOnSurface, startClusterGrpParts, endClusterGrpParts])
+        containedNodes.extend([startClusterHandle, endClusterHandle, startClusterHandle+'Cluster', endClusterHandle+'Cluster', startClosestPointOnSurface, endClosestPointOnSurface, startClusterGrpParts, endClusterGrpParts])
 
         rootEndHandleIKsegmentMidLocator = cmds.spaceLocator(name=self.moduleNamespace+':rootEndHandleIKsegmentMidLocator')[0]
         cmds.setAttr(rootEndHandleIKsegmentMidLocator+'.translateX', keyable=False)
@@ -1497,10 +1505,8 @@ class MRT_Module(object):
         cmds.parent(ikSegmentAimEndLocator, self.moduleIKsegmentMidAimGrp, absolute=True)
 
         cmds.geometryConstraint(rootEndHandleIKsegmentCurve, ikSegmentAimStartLocator, name=ikSegmentAimStartLocator+'_geoConstraint')
-        #cmds.pointConstraint(self.nodeJoints[1]+'_handleControl', ikSegmentAimStartLocator, maintainOffset=False, name=ikSegmentAimStartLocator+'_pointConstraint')
         cmds.pointConstraint(self.nodeJoints[1]+'_control', ikSegmentAimStartLocator, maintainOffset=False, name=ikSegmentAimStartLocator+'_pointConstraint')
         ikSegmentAimStartClosestPointOnSurface = cmds.createNode('closestPointOnSurface', name=self.moduleNamespace+':ikSegmentAimClosestPointOnSurface')
-        ##cmds.connectAttr(self.nodeJoints[1]+'_handleControlShape.worldSpace[0]', ikSegmentAimStartClosestPointOnSurface+'.inputSurface')
         cmds.connectAttr(self.nodeJoints[1]+'_controlShape.worldSpace[0]', ikSegmentAimStartClosestPointOnSurface+'.inputSurface')
         cmds.connectAttr(ikSegmentAimStartLocator+'Shape.worldPosition[0]', ikSegmentAimStartClosestPointOnSurface+'.inPosition')
         cmds.connectAttr(ikSegmentAimStartClosestPointOnSurface+'.position', ikSegmentAimEndLocator+'.translate')
@@ -1569,15 +1575,6 @@ class MRT_Module(object):
         cmds.connectAttr(self.moduleTransform+'.globalScale', self.moduleTransform+'.scaleZ')
 
         # Connect the globalScale attribute of the module transform to the xhandleShape(s).
-        #for handle in [rootHandle[0], elbowHandle[0], endHandle[0]]:
-            #xhandle = objects.load_xhandleShape(handle, self.modHandleColour)
-            #cmds.setAttr(xhandle[0]+'.localScaleX', 0.145)
-            #cmds.setAttr(xhandle[0]+'.localScaleY', 0.145)
-            #cmds.setAttr(xhandle[0]+'.localScaleZ', 0.145)
-            ##cmds.parent(xhandle[0], handle, shape=True, relative=True)
-            ##cmds.delete(xhandle[1])
-            #cmds.setAttr(xhandle[0]+'.ds', 5)
-            #cmds.setAttr(handle+'Shape.visibility', 0)
 
         for handle in [rootHandle[0], elbowHandle[0], endHandle[0]]:
             xhandle = objects.load_xhandleShape(handle+'X', self.modHandleColour, True)
@@ -1606,20 +1603,12 @@ class MRT_Module(object):
         cmds.scaleConstraint(self.moduleTransform, ikPreferredRotationRepresentaton, maintainOffset=False, name=self.moduleTransform+'_ikPreferredRotRepr_scaleConstraint')
         orientConstraint = cmds.orientConstraint(self.moduleNamespace+':rootEndHandleIKsegmentMidLocator', ikPreferredRotationRepresentaton, maintainOffset=False, name=ikPreferredRotationRepresentaton+'_orientConstraint')[0]
         cmds.setAttr(orientConstraint+'.offsetY', -45)
-        #modifyIKhingePreferredOrientationRepr = self.checkPlaneAxisDirectionForIKhingeForOrientationRepr()
-        #if modifyIKhingePreferredOrientationRepr and self.mirrorRotationFunc == 'Behaviour':
-            #scaleAxisApply = {'X':[-1.0, 1.0, 1.0], 'Y':[1.0, -1.0, 1.0], 'Z':[1.0, 1.0, -1.0]}[self.nodeAxes[1]]
-            #cmds.select(['{0}_hingeRotate_Shape.cv[{1}]'.format(hingeOrientationRepr, cv) for cv in range(41)])
-            #cmds.xform(scale=scaleAxisApply, absolute=True)
-            #cmds.select(clear=True)
 
         index = 0
         for joint in self.nodeJoints[:-1]:
 
             hierarchyRepr = objects.createRawHierarchyRepresentation(self.nodeAxes[0])
 
-            ##startLocator = joint + '_handleControlSegmentCurve_startLocator'
-            ##endLocator = self.nodeJoints[index+1] + '_handleControlSegmentCurve_endLocator'
             startLocator = joint + '_segmentCurve_startLocator'
             endLocator = self.nodeJoints[index+1] + '_segmentCurve_endLocator'
             cmds.pointConstraint(startLocator, endLocator, hierarchyRepr, maintainOffset=False, name=joint+'_hierarchy_repr_pointConstraint')
@@ -1668,19 +1657,12 @@ class MRT_Module(object):
             cmds.setAttr(self.moduleNamespace+':node_1_transform_control.translateY', 0)
             cmds.setAttr(self.moduleNamespace+':node_1_transform_control.translateZ', offset)
         if self.onPlane == 'XY' and self.mirrorModule:
-            ##offset = cmds.getAttr(self.moduleNamespace+':node_1_transform_handleControl.translateZ')
-            ##cmds.setAttr(self.moduleNamespace+':node_1_transform_handleControl.translateZ', offset*-1)
             offset = cmds.getAttr(self.moduleNamespace+':node_1_transform_control.translateZ')
             cmds.setAttr(self.moduleNamespace+':node_1_transform_control.translateZ', offset*-1)
         if self.onPlane == 'YZ' and self.mirrorModule:
-            ##offset = cmds.getAttr(self.moduleNamespace+':node_1_transform_handleControl.translateX')
-            ##cmds.setAttr(self.moduleNamespace+':node_1_transform_handleControl.translateX', offset*-1)
             offset = cmds.getAttr(self.moduleNamespace+':node_1_transform_control.translateX')
             cmds.setAttr(self.moduleNamespace+':node_1_transform_control.translateX', offset*-1)
 
-        ##mfunc.forceSceneUpdate()
-        #cmds.setAttr(self.moduleTransform+'.globalScale', 4)
-        
         
     def checkPlaneAxisDirectionForIKhingeForOrientationRepr(self):
         offsetAxisVectorTransforms = {'XY':[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]], 'YZ':[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], 'XZ':[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]]}[self.onPlane]
