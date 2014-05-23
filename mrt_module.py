@@ -7,6 +7,9 @@
 #    of Maya. This was originally written for Maya 2011, and updated for 2013 and then for 2014.
 #
 #    Written by Himanish Bhattacharya.
+#    
+#    You may notice that I use descriptive variable names. It just makes more sense to me
+#    and helps avoid over-commenting.
 #
 # *************************************************************************************************************
 
@@ -1425,59 +1428,100 @@ class MRT_Module(object):
                                                                                mfunc.stripMRTNamespace(self.nodeJoints[j+1])[1], 
                                                                                handleSegmentParts[3][1]))
                                                                                
+            # Rename the constraints for the cluster handles (from the start and end position locators).                                  
             cmds.rename('%s|%s' % (startClusterHandle, handleSegmentParts[7].rpartition('|')[2]), 
                                     '%s_%s' % (joint, handleSegmentParts[7].rpartition('|')[2]))
                                     
             cmds.rename('%s|%s' % (endClusterHandle, handleSegmentParts[8].rpartition('|')[2]), 
                                     '%s_%s' % (self.nodeJoints[j+1], handleSegmentParts[8].rpartition('|')[2]))
-
+            
+            # Rename the groupParts for the start and end clusters.
             startClusterGrpParts = cmds.rename('segmentCurve_startClusterGroupParts', startClusterHandle+'_clusterGroupParts')
             endClusterGrpParts = cmds.rename('segmentCurve_endClusterGroupParts', endClusterHandle+'_clusterGroupParts')
-
+            
+            # Attach an arclen to measure the length of the segment curve.
             arclen = cmds.arclen(joint+'_segmentCurve', constructionHistory=True)
             namedArclen = cmds.rename(arclen, joint+'_segmentCurve_curveInfo')
 
             cmds.select(clear=True)
             
+            # Add the created nodes to the module container.
             containedNodes.extend([startClusterHandle, endClusterHandle, startClusterHandle+'Cluster', 
                                    endClusterHandle+'Cluster', startClosestPointOnSurface, endClosestPointOnSurface, 
                                    namedArclen, startClusterGrpParts, endClusterGrpParts])
-
+        
+        # Create a segment curve between the root and the end node.
         rootEndHandleSegmentParts = objects.createRawSegmentCurve(3)
         extra_nodes = []
         for node in rootEndHandleSegmentParts[4]:
             if cmds.objExists(node):
                 extra_nodes.append(cmds.rename(node, self.moduleNamespace+':'+'rootEndHandleIKsegment_clusterParts_'+node))
         containedNodes.extend(extra_nodes)
-
-        startClosestPointOnSurface = cmds.createNode('closestPointOnSurface', name=self.moduleNamespace+':startHandleIKsegment_'+rootEndHandleSegmentParts[5]+'_closestPointOnSurface')
+        
+        # Connect the start and end segment position locators to the node control handle surfaces.
+        startClosestPointOnSurface = cmds.createNode('closestPointOnSurface', name='%s:startHandleIKsegment_%s_closestPointOnSurface' \
+                                                                                    % (self.moduleNamespace,
+                                                                                       rootEndHandleSegmentParts[5]))
+                                                                                       
         cmds.connectAttr(self.nodeJoints[0]+'_controlShape.worldSpace[0]', startClosestPointOnSurface+'.inputSurface')
         cmds.connectAttr(self.nodeJoints[-1]+'_worldPosLocator.worldPosition', startClosestPointOnSurface+'.inPosition')
         cmds.connectAttr(startClosestPointOnSurface+'.position', rootEndHandleSegmentParts[5]+'.translate')
-        endClosestPointOnSurface = cmds.createNode('closestPointOnSurface', name=self.moduleNamespace+':endHandleIKsegment_'+rootEndHandleSegmentParts[6]+'_closestPointOnSurface')
+        
+        endClosestPointOnSurface = cmds.createNode('closestPointOnSurface', name='%s:endHandleIKsegment_%s_closestPointOnSurface' \
+                                                                                   % (self.moduleNamespace,
+                                                                                      rootEndHandleSegmentParts[6]))
+                                                                                      
         cmds.connectAttr(self.nodeJoints[-1]+'_controlShape.worldSpace[0]', endClosestPointOnSurface+'.inputSurface')
         cmds.connectAttr(self.nodeJoints[0]+'_worldPosLocator.worldPosition', endClosestPointOnSurface+'.inPosition')
         cmds.connectAttr(endClosestPointOnSurface+'.position', rootEndHandleSegmentParts[6]+'.translate')
 
-        cmds.parent([rootEndHandleSegmentParts[1], rootEndHandleSegmentParts[2][1], rootEndHandleSegmentParts[3][1], rootEndHandleSegmentParts[5], rootEndHandleSegmentParts[6]], self.moduleHandleSegmentGrp, absolute=True)
-
-        rootEndHandleIKsegmentCurve = cmds.rename(rootEndHandleSegmentParts[1], self.moduleNamespace+':rootEndHandleIKsegment_'+rootEndHandleSegmentParts[1])
-
-        newStartLocator = cmds.rename(rootEndHandleSegmentParts[5], self.moduleNamespace+':startHandleIKsegment_'+rootEndHandleSegmentParts[5])
-        newEndLocator = cmds.rename(rootEndHandleSegmentParts[6], self.moduleNamespace+':endHandleIKsegment_'+rootEndHandleSegmentParts[6])
-
-        startClusterHandle = cmds.rename(rootEndHandleSegmentParts[2][1], self.moduleNamespace+':startHandleIKsegment_'+rootEndHandleSegmentParts[2][1])
-        endClusterHandle = cmds.rename(rootEndHandleSegmentParts[3][1], self.moduleNamespace+':endHandleIKsegment_'+rootEndHandleSegmentParts[3][1])
-        cmds.rename(startClusterHandle+'|'+rootEndHandleSegmentParts[7].rpartition('|')[2], self.moduleNamespace+':startHandleIKsegment_'+rootEndHandleSegmentParts[7].rpartition('|')[2])
-        cmds.rename(endClusterHandle + '|'+rootEndHandleSegmentParts[8].rpartition('|')[2], self.moduleNamespace+':endHandleIKsegment_'+rootEndHandleSegmentParts[8].rpartition('|')[2])
+        cmds.parent([rootEndHandleSegmentParts[1], rootEndHandleSegmentParts[2][1], rootEndHandleSegmentParts[3][1], 
+                     rootEndHandleSegmentParts[5], rootEndHandleSegmentParts[6]], self.moduleHandleSegmentGrp, absolute=True)
+        
+        # Rename the root-end segment curve.
+        rootEndHandleIKsegmentCurve = cmds.rename(rootEndHandleSegmentParts[1], '%s:rootEndHandleIKsegment_%s' \
+                                                                                  % (self.moduleNamespace,
+                                                                                     rootEndHandleSegmentParts[1]))
+        # Rename the root-end segment curve start/end position locators.
+        newStartLocator = cmds.rename(rootEndHandleSegmentParts[5], '%s:startHandleIKsegment_%s' \
+                                                                      % (self.moduleNamespace,
+                                                                         rootEndHandleSegmentParts[5]))
+                                                                         
+        newEndLocator = cmds.rename(rootEndHandleSegmentParts[6], '%s:endHandleIKsegment_%s' \
+                                                                      % (self.moduleNamespace,
+                                                                         rootEndHandleSegmentParts[6]))
+                                                                         
+        # Rename the cluster handles for start and end positions (clusters for their control handle shapes).
+        startClusterHandle = cmds.rename(rootEndHandleSegmentParts[2][1], '%s:startHandleIKsegment_%s' \
+                                                                            % (self.moduleNamespace,
+                                                                               rootEndHandleSegmentParts[2][1]))
+                                                                               
+        endClusterHandle = cmds.rename(rootEndHandleSegmentParts[3][1], '%s:endHandleIKsegment_%s' \
+                                                                          % (self.moduleNamespace,
+                                                                             rootEndHandleSegmentParts[3][1]))
+        
+        # Rename the constraints for the cluster handles (from the start and end position locators).      
+        cmds.rename('%s|%s' % (startClusterHandle, rootEndHandleSegmentParts[7].rpartition('|')[2]),
+                    '%s:startHandleIKsegment_%s' % (self.moduleNamespace, rootEndHandleSegmentParts[7].rpartition('|')[2]))
+        cmds.rename('%s|%s' % (endClusterHandle, rootEndHandleSegmentParts[8].rpartition('|')[2]), 
+                    '%s:endHandleIKsegment_%s' % (self.moduleNamespace, rootEndHandleSegmentParts[8].rpartition('|')[2]))
+        
+        # Rename the groupParts for the start and end clusters.
         startClusterGrpParts = cmds.rename('segmentCurve_startClusterGroupParts', startClusterHandle+'_clusterGroupParts')
         endClusterGrpParts = cmds.rename('segmentCurve_endClusterGroupParts', endClusterHandle+'_clusterGroupParts')
 
         cmds.select(clear=True)
-
-        containedNodes.extend([startClusterHandle, endClusterHandle, startClusterHandle+'Cluster', endClusterHandle+'Cluster', startClosestPointOnSurface, endClosestPointOnSurface, startClusterGrpParts, endClusterGrpParts])
-
-        rootEndHandleIKsegmentMidLocator = cmds.spaceLocator(name=self.moduleNamespace+':rootEndHandleIKsegmentMidLocator')[0]
+        
+        # Add the created nodes to the module container.
+        containedNodes.extend([startClusterHandle, endClusterHandle, startClusterHandle+'Cluster', 
+                               endClusterHandle+'Cluster', startClosestPointOnSurface, endClosestPointOnSurface, 
+                               startClusterGrpParts, endClusterGrpParts])
+        
+        # Create a locator attached at the mid position on the root-end segment curve.
+        # This locator will be used to visually identify the mid position of the IK chain,
+        # represented here by the hinge module nodes. 
+        rootEndHandleIKsegmentMidLocator = cmds.spaceLocator(name='%s:rootEndHandleIKsegmentMidLocator' \
+                                                                    % self.moduleNamespace)[0]
         cmds.setAttr(rootEndHandleIKsegmentMidLocator+'.translateX', keyable=False)
         cmds.setAttr(rootEndHandleIKsegmentMidLocator+'.translateY', keyable=False)
         cmds.setAttr(rootEndHandleIKsegmentMidLocator+'.translateZ', keyable=False)
@@ -1490,33 +1534,60 @@ class MRT_Module(object):
         cmds.setAttr(rootEndHandleIKsegmentMidLocator+'.visibility', keyable=False)
 
         cmds.parent(rootEndHandleIKsegmentMidLocator, self.moduleIKsegmentMidAimGrp, absolute=True)
-        rootEndHandleIKsegmentMidLocator_pointOnCurveInfo = cmds.createNode('pointOnCurveInfo', name=self.moduleNamespace+':rootEndHandleIKsegmentCurveMidLocator_pointOnCurveInfo')
-        cmds.connectAttr(rootEndHandleIKsegmentCurve+'Shape.worldSpace[0]', rootEndHandleIKsegmentMidLocator_pointOnCurveInfo+'.inputCurve')
+        
+        # Attach the IK segment mid position locator on the start-end segment curve.
+        rootEndHandleIKsegmentMidLocator_pointOnCurveInfo = \
+            cmds.createNode('pointOnCurveInfo', name='%s:rootEndHandleIKsegmentCurveMidLocator_pointOnCurveInfo' \
+                                                        % self.moduleNamespace)
+                                                        
+        cmds.connectAttr(rootEndHandleIKsegmentCurve+'Shape.worldSpace[0]', 
+                         rootEndHandleIKsegmentMidLocator_pointOnCurveInfo+'.inputCurve')
+                         
         cmds.setAttr(rootEndHandleIKsegmentMidLocator_pointOnCurveInfo+'.turnOnPercentage', True)
         cmds.setAttr(rootEndHandleIKsegmentMidLocator_pointOnCurveInfo+'.parameter', 0.5)
-        cmds.connectAttr(rootEndHandleIKsegmentMidLocator_pointOnCurveInfo+'.position', rootEndHandleIKsegmentMidLocator+'.translate')
+        cmds.connectAttr(rootEndHandleIKsegmentMidLocator_pointOnCurveInfo+'.position', 
+                                            rootEndHandleIKsegmentMidLocator+'.translate')
         containedNodes.append(rootEndHandleIKsegmentMidLocator_pointOnCurveInfo)
-
+        
+        # Set the display attributes.
         cmds.setAttr(rootEndHandleIKsegmentMidLocator+'Shape.localScaleX', 0.1)
         cmds.setAttr(rootEndHandleIKsegmentMidLocator+'Shape.localScaleY', 0)
         cmds.setAttr(rootEndHandleIKsegmentMidLocator+'Shape.localScaleZ', 0.1)
         cmds.setAttr(rootEndHandleIKsegmentMidLocator+'Shape.overrideEnabled', 1)
         cmds.setAttr(rootEndHandleIKsegmentMidLocator+'Shape.overrideColor', 2)
 
+        # Manually set-up a segment curve from position of hinge node to the 
+        # root-end segment curve. The curve should follow with the translation of the 
+        # hinge node. It's simply a representation for how far the hinge node is positioned
+        # with respect to the mid position between the root and end module nodes.
+        
+        # The start position of the curve should slide on the root-end segment curve.
         ikSegmentAimStartLocator = cmds.spaceLocator(name=self.moduleNamespace+':ikSegmentAimStartLocator')[0]
         cmds.setAttr(ikSegmentAimStartLocator+'.visibility', 0)
+        
         cmds.parent(ikSegmentAimStartLocator, self.moduleIKsegmentMidAimGrp, absolute=True)
-
+        
+        cmds.geometryConstraint(rootEndHandleIKsegmentCurve, ikSegmentAimStartLocator, 
+                                        name=ikSegmentAimStartLocator+'_geoConstraint')
+                                        
+        cmds.pointConstraint(self.nodeJoints[1]+'_control', ikSegmentAimStartLocator, 
+                                maintainOffset=False, name=ikSegmentAimStartLocator+'_pointConstraint')
+                                
+        ikSegmentAimStartClosestPointOnSurface = cmds.createNode('closestPointOnSurface', 
+                                name=self.moduleNamespace+':ikSegmentAimClosestPointOnSurface')
+                                
+        cmds.connectAttr(self.nodeJoints[1]+'_controlShape.worldSpace[0]', 
+                                        ikSegmentAimStartClosestPointOnSurface+'.inputSurface')
+                                        
+        cmds.connectAttr(ikSegmentAimStartLocator+'Shape.worldPosition[0]', 
+                                        ikSegmentAimStartClosestPointOnSurface+'.inPosition')
+        
         ikSegmentAimEndLocator = cmds.spaceLocator(name=self.moduleNamespace+':ikSegmentAimEndLocator')[0]
         cmds.setAttr(ikSegmentAimEndLocator+'.visibility', 0)
         cmds.parent(ikSegmentAimEndLocator, self.moduleIKsegmentMidAimGrp, absolute=True)
-
-        cmds.geometryConstraint(rootEndHandleIKsegmentCurve, ikSegmentAimStartLocator, name=ikSegmentAimStartLocator+'_geoConstraint')
-        cmds.pointConstraint(self.nodeJoints[1]+'_control', ikSegmentAimStartLocator, maintainOffset=False, name=ikSegmentAimStartLocator+'_pointConstraint')
-        ikSegmentAimStartClosestPointOnSurface = cmds.createNode('closestPointOnSurface', name=self.moduleNamespace+':ikSegmentAimClosestPointOnSurface')
-        cmds.connectAttr(self.nodeJoints[1]+'_controlShape.worldSpace[0]', ikSegmentAimStartClosestPointOnSurface+'.inputSurface')
-        cmds.connectAttr(ikSegmentAimStartLocator+'Shape.worldPosition[0]', ikSegmentAimStartClosestPointOnSurface+'.inPosition')
+        
         cmds.connectAttr(ikSegmentAimStartClosestPointOnSurface+'.position', ikSegmentAimEndLocator+'.translate')
+        
         containedNodes.append(ikSegmentAimStartClosestPointOnSurface)
 
         ikSegmentAimCurve = cmds.createNode('transform', name=self.moduleNamespace+':ikSegmentAimCurve')
@@ -1541,13 +1612,20 @@ class MRT_Module(object):
         1 0 0;''')
         cmds.parent(ikSegmentAimCurve, self.moduleIKsegmentMidAimGrp, absolute=True)
 
-        cmds.pointConstraint(ikSegmentAimStartLocator, ikSegmentAimCurve, maintainOffset=False, name=ikSegmentAimCurve+'_pointConstraint')
-        cmds.aimConstraint(ikSegmentAimEndLocator, ikSegmentAimCurve, maintainOffset=False, aimVector=[1.0, 0.0, 0.0], upVector=[0.0, 1.0, 0.0], worldUpType='scene', name=ikSegmentAimCurve+'_aimConstraint')
+        cmds.pointConstraint(ikSegmentAimStartLocator, ikSegmentAimCurve, maintainOffset=False, 
+                                                        name=ikSegmentAimCurve+'_pointConstraint')
+        cmds.aimConstraint(ikSegmentAimEndLocator, ikSegmentAimCurve, maintainOffset=False, aimVector=[1.0, 0.0, 0.0], 
+                                upVector=[0.0, 1.0, 0.0], worldUpType='scene', name=ikSegmentAimCurve+'_aimConstraint')
 
-        rootEndHandleIKsegmentMidLocatorAimConstraint = cmds.aimConstraint(self.nodeJoints[-1], rootEndHandleIKsegmentMidLocator, maintainOffset=False, aimVector=[0.0, 1.0, 0.0], upVector=[0.0, 0.0, 1.0], worldUpType='object', worldUpObject=ikSegmentAimEndLocator, name=rootEndHandleIKsegmentMidLocator+'_aimConstraint')[0]
+        rootEndHandleIKsegmentMidLocatorAimConstraint = \
+            cmds.aimConstraint(self.nodeJoints[-1], rootEndHandleIKsegmentMidLocator, maintainOffset=False, 
+                               aimVector=[0.0, 1.0, 0.0], upVector=[0.0, 0.0, 1.0], worldUpType='object', 
+                               worldUpObject=ikSegmentAimEndLocator, name=rootEndHandleIKsegmentMidLocator+'_aimConstraint')[0]
+                               
         cmds.setAttr(rootEndHandleIKsegmentMidLocatorAimConstraint+'.offsetY', 45)
 
-        ikSegmentAimCurveLength_distance = cmds.createNode('distanceBetween', name=self.moduleNamespace+':ikSegmentAimCurveLength_distanceNode')
+        ikSegmentAimCurveLength_distance = cmds.createNode('distanceBetween', 
+                                                            name=self.moduleNamespace+':ikSegmentAimCurveLength_distanceNode')
         cmds.connectAttr(ikSegmentAimStartLocator+'Shape.worldPosition[0]', ikSegmentAimCurveLength_distance+'.point1')
         cmds.connectAttr(ikSegmentAimEndLocator+'Shape.worldPosition[0]', ikSegmentAimCurveLength_distance+'.point2')
         cmds.connectAttr(ikSegmentAimCurveLength_distance+'.distance', ikSegmentAimCurve+'.scaleX')
@@ -1565,24 +1643,31 @@ class MRT_Module(object):
         cmds.setAttr(moduleTransform[1]+'.scaleY', keyable=False)
         cmds.setAttr(moduleTransform[1]+'.scaleZ', keyable=False)
         cmds.setAttr(moduleTransform[1]+'.visibility', keyable=False)
-        cmds.addAttr(moduleTransform[1], attributeType='float', longName='globalScale', hasMinValue=True, minValue=0, defaultValue=1, keyable=True)
+        cmds.addAttr(moduleTransform[1], attributeType='float', longName='globalScale', 
+                                        hasMinValue=True, minValue=0, defaultValue=1, keyable=True)
         self.moduleTransform = cmds.rename(moduleTransform[1], self.moduleNamespace+':module_transform')
         tempConstraint = cmds.pointConstraint(self.nodeJoints[0], self.moduleTransform, maintainOffset=False)
         cmds.delete(tempConstraint)
 
         cmds.parent(self.moduleTransform, self.moduleGrp, absolute=True)
-        cmds.parentConstraint(self.moduleTransform, self.moduleIKnodesGrp, maintainOffset=True, name=self.moduleTransform+'_parentConstraint')
-        cmds.scaleConstraint(self.moduleTransform, self.moduleIKnodesGrp, maintainOffset=False, name=self.moduleTransform+'_scaleConstraint')
-        cmds.scaleConstraint(self.moduleTransform, self.moduleJointsGrp, maintainOffset=False, name=self.moduleTransform+'_scaleConstraint')
-        cmds.scaleConstraint(self.moduleTransform, rootEndHandleIKsegmentMidLocator, maintainOffset=False, name=self.moduleTransform+'_scaleConstraint')
+        cmds.parentConstraint(self.moduleTransform, self.moduleIKnodesGrp, maintainOffset=True, 
+                                                            name=self.moduleTransform+'_parentConstraint')
+        cmds.scaleConstraint(self.moduleTransform, self.moduleIKnodesGrp, maintainOffset=False, 
+                                                        name=self.moduleTransform+'_scaleConstraint')
+        cmds.scaleConstraint(self.moduleTransform, self.moduleJointsGrp, maintainOffset=False, 
+                                                    name=self.moduleTransform+'_scaleConstraint')
+        cmds.scaleConstraint(self.moduleTransform, rootEndHandleIKsegmentMidLocator, maintainOffset=False, 
+                                                name=self.moduleTransform+'_scaleConstraint')
 
-        # Connect the scale attributes to an aliased 'globalScale' attribute (This could've been done on the raw def itself, but it was issuing a cycle; not sure why. But the DG eval was not cyclic).
+        # Connect the scale attributes to an aliased 'globalScale' attribute.
+        # (This could've been done on the raw def itself, but it was issuing a cycle; not sure why. 
+        # But the DG eval was not cyclic).
         cmds.connectAttr(self.moduleTransform+'.globalScale', self.moduleTransform+'.scaleX')
         cmds.connectAttr(self.moduleTransform+'.globalScale', self.moduleTransform+'.scaleY')
         cmds.connectAttr(self.moduleTransform+'.globalScale', self.moduleTransform+'.scaleZ')
 
-        # Connect the globalScale attribute of the module transform to the xhandleShape(s).
-
+        # Connect the globalScale attribute of the module transform to the 
+        # control handles for the module nodes.
         for handle in [rootHandle[0], elbowHandle[0], endHandle[0]]:
             xhandle = objects.load_xhandleShape(handle+'X', self.modHandleColour, True)
             cmds.setAttr(xhandle[0]+'.localScaleX', 0.089)
@@ -1592,27 +1677,41 @@ class MRT_Module(object):
             cmds.delete(xhandle[1])
             cmds.setAttr(xhandle[0]+'.ds', 5)
             cmds.setAttr(handle+'Shape.visibility', 0)
-
+        
+        # Add the orientation representation control for hinge axes.
+        # This control cannot be manipulated directly. It shows the current
+        # orientation of the hinge (middle) node.
         hingeAxisRepr = objects.createRawIKhingeAxisRepresenation(self.nodeAxes[1:])
         cmds.setAttr(hingeAxisRepr+'.scale', 2.3, 2.3, 2.3, type='double3')
         cmds.makeIdentity(hingeAxisRepr, scale=True, apply=True)
         hingeAxisRepr = cmds.rename(hingeAxisRepr, self.nodeJoints[1]+'_'+hingeAxisRepr)
         cmds.parent(hingeAxisRepr, self.moduleReprGrp, absolute=True)
-        cmds.parentConstraint(self.nodeJoints[1], hingeAxisRepr, maintainOffset=False, name=hingeAxisRepr+'_parentConstraint')
-        cmds.scaleConstraint(self.moduleTransform, hingeAxisRepr, maintainOffset=False, name=self.moduleTransform+'_scaleConstraint')
-
+        cmds.parentConstraint(self.nodeJoints[1], hingeAxisRepr, maintainOffset=False, 
+                                                    name=hingeAxisRepr+'_parentConstraint')
+        cmds.scaleConstraint(self.moduleTransform, hingeAxisRepr, maintainOffset=False, 
+                                                    name=self.moduleTransform+'_scaleConstraint')
+        
+        # Create the preferred rotation representation control for the hinge node.
+        # It shows the direction of rotation of the IK solver on the joint chain
+        # which will be generated from the hinge module.
         ikPreferredRotationRepresentaton = objects.createRawIKPreferredRotationRepresentation(self.nodeAxes[2])
         cmds.setAttr(ikPreferredRotationRepresentaton+'.scale', 0.6, 0.6, 0.6, type='double3')
         cmds.makeIdentity(ikPreferredRotationRepresentaton, scale=True, apply=True)
-        ikPreferredRotationRepresentaton = cmds.rename(ikPreferredRotationRepresentaton, self.moduleNamespace+':'+ikPreferredRotationRepresentaton)
+        ikPreferredRotationRepresentaton = cmds.rename(ikPreferredRotationRepresentaton, 
+                                                        self.moduleNamespace+':'+ikPreferredRotationRepresentaton)
         cmds.parent(ikPreferredRotationRepresentaton, self.moduleReprGrp, absolute=True)
-        cmds.pointConstraint(self.moduleNamespace+':rootEndHandleIKsegmentMidLocator', ikPreferredRotationRepresentaton, maintainOffset=False, name=ikPreferredRotationRepresentaton+'_pointConstraint')
-        cmds.scaleConstraint(self.moduleTransform, ikPreferredRotationRepresentaton, maintainOffset=False, name=self.moduleTransform+'_ikPreferredRotRepr_scaleConstraint')
-        orientConstraint = cmds.orientConstraint(self.moduleNamespace+':rootEndHandleIKsegmentMidLocator', ikPreferredRotationRepresentaton, maintainOffset=False, name=ikPreferredRotationRepresentaton+'_orientConstraint')[0]
+        cmds.pointConstraint(self.moduleNamespace+':rootEndHandleIKsegmentMidLocator', 
+                                    ikPreferredRotationRepresentaton, maintainOffset=False, 
+                                            name=ikPreferredRotationRepresentaton+'_pointConstraint')
+        cmds.scaleConstraint(self.moduleTransform, ikPreferredRotationRepresentaton, maintainOffset=False, 
+                                name=self.moduleTransform+'_ikPreferredRotRepr_scaleConstraint')
+        orientConstraint = cmds.orientConstraint(self.moduleNamespace+':rootEndHandleIKsegmentMidLocator', 
+                                                    ikPreferredRotationRepresentaton, maintainOffset=False, 
+                                                        name=ikPreferredRotationRepresentaton+'_orientConstraint')[0]
         cmds.setAttr(orientConstraint+'.offsetY', -45)
-
-        index = 0
-        for joint in self.nodeJoints[:-1]:
+        
+        # Add hierarchy representations between the module nodes.
+        for index, joint in enumerate(self.nodeJoints[:-1]):
 
             hierarchyRepr = objects.createRawHierarchyRepresentation(self.nodeAxes[0])
 
@@ -1628,12 +1727,14 @@ class MRT_Module(object):
             cmds.parent(hierarchyRepr, self.moduleHierarchyReprGrp, absolute=True)
 
             cmds.rename(hierarchyRepr, joint+'_'+hierarchyRepr)
-            index += 1
+
 
         cmds.select(clear=True)
-
+        
+        # Create module parenting representation objects.
         containedNodes += self.createHierarchySegmentForModuleParentingRepr()
-
+        
+        # Create the proxy geometry for the module if enabled.
         if self.proxyGeoStatus:
             if self.proxyGeoElbow:
                 self.createProxyGeo_elbows(self.proxyElbowType)
@@ -1642,22 +1743,31 @@ class MRT_Module(object):
 
         # Add the module group to the contained nodes list.
         containedNodes += [self.moduleGrp]
+        
         # Add the contained nodes to the module container.
         mfunc.addNodesToContainer(self.moduleContainer, containedNodes, includeHierarchyBelow=True, includeShapes=True)
-
+        
+        # Publish the module transform attributes for the module container.
         moduleTransformName = mfunc.stripMRTNamespace(self.moduleTransform)[1]
-        cmds.container(self.moduleContainer, edit=True, publishAndBind=[self.moduleTransform+'.translate', moduleTransformName+'_translate'])
-        cmds.container(self.moduleContainer, edit=True, publishAndBind=[self.moduleTransform+'.rotate', moduleTransformName+'_rotate'])
-        cmds.container(self.moduleContainer, edit=True, publishAndBind=[self.moduleTransform+'.globalScale', moduleTransformName+'_globalScale'])
-
+        cmds.container(self.moduleContainer, edit=True, publishAndBind=[self.moduleTransform+'.translate', 
+                                                                        moduleTransformName+'_translate'])
+        cmds.container(self.moduleContainer, edit=True, publishAndBind=[self.moduleTransform+'.rotate', 
+                                                                        moduleTransformName+'_rotate'])
+        cmds.container(self.moduleContainer, edit=True, publishAndBind=[self.moduleTransform+'.globalScale', 
+                                                                        moduleTransformName+'_globalScale'])
+        
+        # Publish the module node control handle attributes for the module container.
         for handle in (rootHandle[0], elbowHandle[0], endHandle[0]):
             handleName = mfunc.stripMRTNamespace(handle)[1]
-            cmds.container(self.moduleContainer, edit=True, publishAndBind=[handle+'.translate', handleName+'_translate'])
-
+            cmds.container(self.moduleContainer, edit=True, publishAndBind=[handle+'.translate', 
+                                                                            handleName+'_translate'])
+        
+        # Publish the module node joint "rotate" attributes.
         for joint in self.nodeJoints:
             jointName = mfunc.stripMRTNamespace(joint)[1]
-            cmds.container(self.moduleContainer, edit=True, publishAndBind=[joint+'.rotate', jointName+'_rotate'])
-
+            cmds.container(self.moduleContainer, edit=True, publishAndBind=[joint+'.rotate', 
+                                                                            jointName+'_rotate'])
+        # Add hinge module attributes to the module transform.
         self.addCustomAttributesOnModuleTransform()
         if self.onPlane == 'XZ':
             offset = cmds.getAttr(self.moduleNamespace+':node_1_transform_control.translateY')
@@ -1670,9 +1780,11 @@ class MRT_Module(object):
             offset = cmds.getAttr(self.moduleNamespace+':node_1_transform_control.translateX')
             cmds.setAttr(self.moduleNamespace+':node_1_transform_control.translateX', offset*-1)
 
-        
+
     def checkPlaneAxisDirectionForIKhingeForOrientationRepr(self):
-        offsetAxisVectorTransforms = {'XY':[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]], 'YZ':[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], 'XZ':[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]]}[self.onPlane]
+        offsetAxisVectorTransforms = {'XY':[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]], 
+                                      'YZ':[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]], 
+                                      'XZ':[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]]}[self.onPlane]
         planeAxisOffset = {'X':[1.0, 0.0, 0.0], 'Y':[0.0, 1.0, 0.0], 'Z':[0.0, 0.0, 1.0]}
         IKhingePlaneAxisVectorTransforms = []
         tempLocatorForWorldTransformInfo_IKhingeOrientationVector = cmds.spaceLocator()[0]
