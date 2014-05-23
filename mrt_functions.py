@@ -158,7 +158,7 @@ def prep_MRTMayaStartupActions():
             envFile = open(envPath, 'a')
             envFile.write(writeString)
             envFile.close()
-
+            
     return userSetupStatus, mayaEnvStatus
 
 
@@ -184,6 +184,8 @@ def returnEnvPluginPathStatus():
             break;
     else:
         plugPaths = None
+        
+    envSettings.close()
 
     return plugPaths
 

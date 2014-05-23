@@ -1375,14 +1375,15 @@ class MRT_Module(object):
             if joint == self.nodeJoints[-1]:
                 break
             
-            # Create the raw segment parts and rename them.
+            # Create the raw segment parts (between two consecutive nodes).
             handleSegmentParts = objects.createRawSegmentCurve(self.modHandleColour)
             extra_nodes = []
             
+            # Rename the parts.
             for node in handleSegmentParts[4]:
                 if cmds.objExists(node):
                     extra_nodes.append(cmds.rename(node, '%s:%s_clusterParts_%s' \
-                                                    % (self.moduleNamespace, mfunc.stripMRTNamespace(joint)[1], node))
+                                                    % (self.moduleNamespace, mfunc.stripMRTNamespace(joint)[1], node)))
             containedNodes.extend(extra_nodes)
             
             # Connect the segment between two consecutive nodes with their control handle surfaces.
@@ -1398,17 +1399,23 @@ class MRT_Module(object):
             cmds.connectAttr(self.nodeJoints[j+1]+'_controlShape.worldSpace[0]', endClosestPointOnSurface+'.inputSurface')
             cmds.connectAttr(joint+'_worldPosLocator.worldPosition', endClosestPointOnSurface+'.inPosition')
             cmds.connectAttr(endClosestPointOnSurface+'.position', handleSegmentParts[6]+'.translate')
-
+            
+            # Parent the segment curve parts under "moduleHandleSegmentCurveGrp".
             cmds.parent([handleSegmentParts[1], handleSegmentParts[2][1], handleSegmentParts[3][1], handleSegmentParts[5],
                                                         handleSegmentParts[6]], self.moduleHandleSegmentGrp, absolute=True)
-
+            
+            # Rename the segment curve.
             cmds.rename(handleSegmentParts[1], '%s:%s_%s' \
-                                                % (self.moduleNamespace, mfunc.stripMRTNamespace(joint)[1], handleSegmentParts[1])
-
-            newStartLocator = cmds.rename(handleSegmentParts[5], '%s_%s' % (joint, handleSegmentParts[5]))
-            newEndLocator = cmds.rename(handleSegmentParts[6], '%s_%s' % (self.nodeJoints[j+1], handleSegmentParts[6]))
-
-            startClusterHandle = cmds.rename(handleSegmentParts[2][1], '%s:%s_%s' \ 
+                                                % (self.moduleNamespace, mfunc.stripMRTNamespace(joint)[1], handleSegmentParts[1]))
+            
+            # Rename the segment curve start/end position locators.
+            # The start and end description here is the current and the next node, between
+            # which the segment curve is connected.             
+            cmds.rename(handleSegmentParts[5], '%s_%s' % (joint, handleSegmentParts[5]))
+            cmds.rename(handleSegmentParts[6], '%s_%s' % (self.nodeJoints[j+1], handleSegmentParts[6]))
+            
+            # Rename the cluster handles for start and end positions (clusters for their control handle shapes).
+            startClusterHandle = cmds.rename(handleSegmentParts[2][1], '%s:%s_%s' \
                                                                             % (self.moduleNamespace, 
                                                                                mfunc.stripMRTNamespace(joint)[1], 
                                                                                handleSegmentParts[2][1]))
