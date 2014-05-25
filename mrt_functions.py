@@ -1145,6 +1145,13 @@ def setRotationOrderForFootUtilTransform(transform, axesInfo):
     # Set rotation order
     cmds.setAttr(transform+'.rotateOrder', rotateOrder)
 
+def align(target, toAlignTransform):
+    '''
+    Position and sets the orientation of an input "toAlignTransform"
+    with respect to a "target" object in the scene.
+    '''
+    tempConstraint = cmds.parentConstraint(target, toAlignTransform, maintainOffset=False)
+    cmds.delete(tempConstraint)
 
 def updateNodeList(nodes):
     """
