@@ -1989,7 +1989,6 @@ class MRT_Module(object):
                 cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleTransformNode+'.'+longName,
                                                                                'module_transform_'+longName+'_switch'])
 
-
         # If the module type is "SplineNode".
         if self.moduleName == 'SplineNode':
             
@@ -2018,60 +2017,94 @@ class MRT_Module(object):
             # Attribute to adjust the orientation representation control sizes for nodes.
             cmds.addAttr(moduleTransformNode, attributeType='float', longName='Node_Local_Orientation_Repr_Size',
                                                             hasMinValue=True, minValue=0.01, defaultValue=1, keyable=True)
+
             # Publish the spline module attributes.
-            cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleTransformNode+'.Global_size',
-                                                                                        'module_globalRepr_Size'])
-            cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleTransformNode+'.Axis_Rotate',
-                                                                                        'module_Axis_Rotate'])
-            cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleTransformNode+'.Node_Orientation_Info',
-                                                                                        'root_transform_Node_Orientation'])
-            cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleTransformNode+'.Node_Orientation_Type',
-                                                                                    'root_transform_Node_Orientation_Type'])
-            cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleTransformNode+'.Node_Local_Orientation_Repr_Size',
-                                                                                        'root_transform_Node_Orientation_Repr_Size'])
-
+            cmds.container(self.moduleContainer, edit=True,
+                            publishAndBind=[moduleTransformNode+'.Global_size', 'module_globalRepr_Size'])
+            cmds.container(self.moduleContainer, edit=True,
+                            publishAndBind=[moduleTransformNode+'.Axis_Rotate', 'module_Axis_Rotate'])
+            cmds.container(self.moduleContainer, edit=True,
+                            publishAndBind=[moduleTransformNode+'.Node_Orientation_Info', 'root_transform_Node_Orientation'])
+            cmds.container(self.moduleContainer, edit=True,
+                            publishAndBind=[moduleTransformNode+'.Node_Orientation_Type', 'root_transform_Node_Orientation_Type'])
+            cmds.container(self.moduleContainer, edit=True,
+                            publishAndBind=[moduleTransformNode+'.Node_Local_Orientation_Repr_Size', 'root_transform_Node_Orientation_Repr_Size'])
+        
+        # If the module type is "HingeNode".
         if self.moduleName == 'HingeNode':
-
+            
+            # Get the path to the module transform.
             moduleTransformNode = '|' + self.moduleGrp + '|' + self.moduleTransform
-
-            cmds.addAttr(moduleTransformNode, attributeType='enum', longName='Hinge_Orientation_Repr_Toggle', enumName='Off:On:', defaultValue=1, keyable=True)
-            cmds.connectAttr(moduleTransformNode+'.Hinge_Orientation_Repr_Toggle', self.nodeJoints[1]+'_IKhingeAxisRepresenation.visibility')
-            cmds.connectAttr(moduleTransformNode+'.Hinge_Orientation_Repr_Toggle', self.moduleNamespace+':IKPreferredRotationRepr.visibility')
-            cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleTransformNode+'.Hinge_Orientation_Repr_Toggle', mfunc.stripMRTNamespace(self.nodeJoints[1])[1]+'_Hinge_Orientation_Repr_Toggle'])
+            
+            # Attribute for toggling the visibility for hinge orientation representation.
+            cmds.addAttr(moduleTransformNode, attributeType='enum', longName='Hinge_Orientation_Repr_Toggle',
+                                                            enumName='Off:On:', defaultValue=1, keyable=True)
+                                                            
+            cmds.connectAttr(moduleTransformNode+'.Hinge_Orientation_Repr_Toggle',
+                             self.nodeJoints[1]+'_IKhingeAxisRepresenation.visibility')
+                             
+            cmds.connectAttr(moduleTransformNode+'.Hinge_Orientation_Repr_Toggle',
+                             self.moduleNamespace+':IKPreferredRotationRepr.visibility')
+            
+            # Publish to module container.
+            cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleTransformNode+'.Hinge_Orientation_Repr_Toggle',
+                                                                            mfunc.stripMRTNamespace(self.nodeJoints[1])[1]+'_Hinge_Orientation_Repr_Toggle'])
+            # Set its default value.
             if not self.showOrientation:
                 cmds.setAttr(moduleTransformNode+'.Hinge_Orientation_Repr_Toggle', 0)
-
-            cmds.addAttr(moduleTransformNode, attributeType='enum', longName='Module_Hierarchy_Repr_Toggle', enumName='Off:On:', defaultValue=1, keyable=True)
+            
+            # Attribute for toggling the visibility for node hierarchy representation.
+            cmds.addAttr(moduleTransformNode, attributeType='enum', longName='Module_Hierarchy_Repr_Toggle',
+                                                                    enumName='Off:On:', defaultValue=1, keyable=True)
             for joint in self.nodeJoints[:-1]:
                 cmds.connectAttr(moduleTransformNode+'.Module_Hierarchy_Repr_Toggle', joint+'_hierarchy_repr.visibility')
                 cmds.connectAttr(moduleTransformNode+'.Module_Hierarchy_Repr_Toggle', joint+'_segmentCurve.visibility')
-            cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleTransformNode+'.Module_Hierarchy_Repr_Toggle', 'Module_Hierarchy_Repr_Toggle'])
+
+            # Publish to module container.
+            cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleTransformNode+'.Module_Hierarchy_Repr_Toggle',
+                                                                            'Module_Hierarchy_Repr_Toggle'])
+            # Set its default value.
             if not self.showHierarchy:
                 cmds.setAttr(moduleTransformNode+'.Module_Hierarchy_Repr_Toggle', 0)
 
+            # Add category attribute for node handle sizes.
             cmds.addAttr(moduleTransformNode, attributeType='enum', longName='Node_Handle_Size', enumName=' ')
             cmds.setAttr(moduleTransformNode+'.Node_Handle_Size', keyable=False, channelBox=True)
 
+            # Create node handle size attributes.
             for joint in self.nodeJoints:
                 longName = mfunc.stripMRTNamespace(joint)[1]+'_handle_size'
-                cmds.addAttr(moduleTransformNode, attributeType='float', longName=longName, hasMinValue=True, minValue=0, defaultValue=1, keyable=True)
+                cmds.addAttr(moduleTransformNode, attributeType='float', longName=longName, hasMinValue=True,
+                                                                            minValue=0, defaultValue=1, keyable=True)
+                                                                            
                 cmds.connectAttr(moduleTransformNode+'.'+longName, joint+'_controlShape_scaleClusterHandle.scaleX')
                 cmds.connectAttr(moduleTransformNode+'.'+longName, joint+'_controlShape_scaleClusterHandle.scaleY')
                 cmds.connectAttr(moduleTransformNode+'.'+longName, joint+'_controlShape_scaleClusterHandle.scaleZ')
                 cmds.connectAttr(moduleTransformNode+'.'+longName, joint+'_controlXShape.addScaleX')
                 cmds.connectAttr(moduleTransformNode+'.'+longName, joint+'_controlXShape.addScaleY')
                 cmds.connectAttr(moduleTransformNode+'.'+longName, joint+'_controlXShape.addScaleZ')
-                #cmds.setAttr(moduleTransformNode+'.'+longName, 0.2)
-                cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleTransformNode+'.'+longName, 'module_transform_'+longName])
+                
+                # Publish to module container.
+                cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleTransformNode+'.'+longName,
+                                                                                        'module_transform_'+longName])
 
+            # Add category attribute for adjusting the rotation order under nodes.
             cmds.addAttr(moduleTransformNode, attributeType='enum', longName='Node_Rotation_Order', enumName=' ')
             cmds.setAttr(moduleTransformNode+'.Node_Rotation_Order', keyable=False, channelBox=True)
 
+            # Add rotation order attribute for all nodes.
             for joint in self.nodeJoints:
+            
                 longName = mfunc.stripMRTNamespace(joint)[1]+'_rotate_order'
-                cmds.addAttr(moduleTransformNode, attributeType='enum', longName=longName, enumName='xyz:yzx:zxy:xzy:yxz:zyx:', defaultValue=0, keyable=True)
+                
+                cmds.addAttr(moduleTransformNode, attributeType='enum', longName=longName,
+                                                enumName='xyz:yzx:zxy:xzy:yxz:zyx:', defaultValue=0, keyable=True)
+                                                
                 cmds.connectAttr(moduleTransformNode+'.'+longName, joint+'.rotateOrder')
-                cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleTransformNode+'.'+longName, 'module_transform_'+longName+'_switch'])
+                
+                # Publish the attribute to the module container.
+                cmds.container(self.moduleContainer, edit=True, publishAndBind=[moduleTransformNode+'.'+longName,
+                                                                            'module_transform_'+longName+'_switch'])
 
 
         # If the module has proxy geometry, add an attribute for modying its viewport draw style.
@@ -2188,6 +2221,7 @@ class MRT_Module(object):
 
         cmds.select(clear=True)
 
+
     def createProxyGeo_bones(self):
         filePath = cmds.internalVar(userScriptDir=True) + 'MRT/bone_proxyGeo.ma'
         index = 0
@@ -2261,6 +2295,7 @@ class MRT_Module(object):
                 if cmds.objExists(node):
                     cmds.delete(node)
         cmds.select(clear=True)
+
 
     def connectCustomOrientationReprToModuleProxies(self):
         if self.moduleName == 'JointNode':
