@@ -714,6 +714,8 @@ class MRT_Module(object):
         # Add and publish custom attributes on the module transform.
         self.addCustomAttributesOnModuleTransform()
         
+        # Connect module orientation representation objects to drive 
+        # orientation for module proxy geometry.
         if self.numNodes > 1:
             self.connectCustomOrientationReprToModuleProxies()
 
@@ -2137,10 +2139,8 @@ class MRT_Module(object):
         
         filePath = cmds.internalVar(userScriptDir=True) + filePathSuffix
         
-        # If the current module is a mirrored module (on the -ve side of the creation plane)
-        # and part of a mirrored module pair. Get the original namespace (the module on the +ve side).
-        if self.mirrorModule:
-            originalNamespace = cmds.getAttr(self.moduleGrp+'.mirrorModuleNamespace')
+        # Set to root namespace.
+        cmds.namespace(setNamespace=':')
         
         # Create and attach the elbow proxy geo to every node.
         for index, joint in enumerate(self.nodeJoints):
@@ -2154,14 +2154,18 @@ class MRT_Module(object):
                 if cmds.objExists(node):
                     cmds.delete(node)
                     
-            # Get the names of the proxy geom transforms.
+            # Get the names of the proxy geo transforms.
             proxyElbowGeoPreTransform = '_proxy_elbow_geo_preTransform'
             proxyElbowGeoScaleTransform = '_proxy_elbow_geo_scaleTransform'
             proxyElbowTransform = '_proxy_elbow_geo'
             
-            # If the current module is a mirrored module and mirror instancing is enabled for module proxy geometry.
+            # If the current module is a mirrored module (on the -ve side of the creation plane)
+            # and part of a mirrored module pair, and if mirror instancing is enabled for module proxy geometry.
             if self.mirrorModule and self.proxyGeoMirrorInstance == 'On':
-            
+                
+                # Get the original namespace (the module on the +ve side).
+                originalNamespace = cmds.getAttr(self.moduleGrp+'.mirrorModuleNamespace')
+                
                 # Delete the mirrored proxy geometry.
                 cmds.delete(proxyElbowTransform)
                 
@@ -2256,15 +2260,35 @@ class MRT_Module(object):
 
 
     def createProxyGeo_bones(self):
+        '''
+        Creates "bone" type proxy geometry for all the nodes in a module.
+        '''
+        # Get the path to the bone proxy geo primitive.
         filePath = cmds.internalVar(userScriptDir=True) + 'MRT/bone_proxyGeo.ma'
-        index = 0
+        
+        # Set current namespace to root.
+        cmds.namespace(setNamespace=':')
+        
+        # Create and attach the elbow proxy geo to module nodes (except the last one).
+        # Bone proxy can be used on modules with two or more nodes.
         for index, joint in enumerate(self.nodeJoints[:-1]):
-            cmds.namespace(setNamespace=':')
+            
+            # Import the proxy bone geo primitive.
             cmds.file(filePath, i=True, prompt=False, ignoreVersion=True)
+            
+            # Remove the extra nodes from the import.
+            extra_nodes = [u'bone_proxyGeo_uiConfigurationScriptNode', u'bone_proxyGeo_sceneConfigurationScriptNode']
+            for node in extra_nodes:
+                if cmds.objExists(node):
+                    cmds.delete(node)
+            
+            # Get the names of the proxy geo transforms.
             proxyBoneGeoPreTransform = 'proxy_bone_geo_preTransform'
             proxyBoneGeoScaleTransform = 'proxy_bone_geo_scaleTransform'
             proxyBoneTransform = 'proxy_bone_geo'
-
+            
+            # Set the rotate and scale pivot for the proxy geo transforms, based on the aim axis for the module node.
+            # For eg., if the aim axis for the node is X, set the rotate/scale value along X to 0.
             if self.nodeAxes[0] == 'X':
                 cmds.move(0,[proxyBoneGeoPreTransform+'.scalePivot', proxyBoneGeoPreTransform+'.rotatePivot'], moveX=True)
                 cmds.move(0,[proxyBoneGeoScaleTransform+'.scalePivot', proxyBoneGeoScaleTransform+'.rotatePivot'], moveX=True)
@@ -2277,70 +2301,111 @@ class MRT_Module(object):
                 cmds.move(0,[proxyBoneGeoPreTransform+'.scalePivot', proxyBoneGeoPreTransform+'.rotatePivot'], moveZ=True)
                 cmds.move(0,[proxyBoneGeoScaleTransform+'.scalePivot', proxyBoneGeoScaleTransform+'.rotatePivot'], moveZ=True)
                 cmds.move(0,[proxyBoneTransform+'.scalePivot', proxyBoneTransform+'.rotatePivot'], moveZ=True)
-
+            
+            # If the current module is a mirrored module (on the -ve side of the creation plane)
+            # and part of a mirrored module pair, and if mirror instancing is enabled for module proxy geometry.
             if self.mirrorModule and self.proxyGeoMirrorInstance == 'On':
+                
+                # Get the original namespace (the module on the +ve side).
                 originalNamespace = cmds.getAttr(self.moduleGrp+'.mirrorModuleNamespace')
-                originalProxyBoneTransform = originalNamespace+':'+mfunc.stripMRTNamespace(joint)[1]+'_'+proxyBoneTransform
+                
+                # Delete the mirrored proxy geometry.
                 cmds.delete(proxyBoneTransform)
+                
+                # Duplicate the "original" bone proxy geometry as an instance. The original elbow proxy geometry
+                # is on the node for its mirror module on the +ve side of the creation plane.
+                originalProxyBoneTransform = originalNamespace+':'+mfunc.stripMRTNamespace(joint)[1]+'_'+proxyBoneTransform
                 transformInstance = cmds.duplicate(originalProxyBoneTransform, instanceLeaf=True, name='proxy_bone_geo')[0]
                 cmds.parent(transformInstance, proxyBoneGeoScaleTransform, relative=True)
+                
+                # Now, drive the orientation of the bone proxy geom based on the module type.
                 if self.moduleType == 'HingeNode' and self.mirrorRotationFunc == 'Orientation':
                     scaleFactorAxes = {'X':[-1, 1, 1], 'Y':[1, -1, 1], 'Z':[1, 1, -1]}[self.nodeAxes[2]]
                 else:
                     scaleFactorAxes = {'X':[-1, 1, 1], 'Y':[1, -1, 1], 'Z':[1, 1, -1]}[self.nodeAxes[1]]
+                
                 cmds.setAttr(proxyBoneGeoScaleTransform+'.scale', *scaleFactorAxes)
-
+            
+            # Set the default colour for the vertices for the bone proxy geo.
             cmds.select(proxyBoneTransform+'.vtx[*]', replace=True)
             cmds.polyColorPerVertex(alpha=0.3, rgb=[0.663, 0.561, 0.319], notUndoable=True, colorDisplayOption=True)
+            
+            # Shrink the bone proxy geo along the node up and plane axes (skip the aim axis).
             if not self.mirrorModule:
                 for axis in self.nodeAxes[1:]:
                     cmds.setAttr(proxyBoneGeoPreTransform+'.scale'+axis, 0.17)
                 cmds.makeIdentity(proxyBoneGeoPreTransform, scale=True, apply=True)
+            
+            # Shrink the bone proxy geo for the mirrored node on the -ve side of the creation plane.
             if self.mirrorModule and self.proxyGeoMirrorInstance == 'Off':
                 for axis in self.nodeAxes[1:]:
                     cmds.setAttr(proxyBoneGeoPreTransform+'.scale'+axis, 0.17)
                 cmds.makeIdentity(proxyBoneGeoPreTransform, scale=True, apply=True)
-
+            
+            # Place the proxy geo under the module proxy geom group.
             cmds.parent(proxyBoneGeoPreTransform, self.proxyGeoGrp, absolute=True)
-
+            
+            # Orient the bone proxy geo with the node joint.
             tempConstraint = cmds.orientConstraint(joint, proxyBoneGeoPreTransform, maintainOffset=False)
             cmds.delete(tempConstraint)
-
+            
+            # Connect the module transform scaling to the proxy bone geom transform.
             for axis in self.nodeAxes[1:]:
                 cmds.connectAttr(self.moduleTransform+'.globalScale', proxyBoneGeoPreTransform+'.scale'+axis)
-
+            
+            # Drive the aim scaling for the proxy geo by the node segment length (length between two module nodes).
             curveInfo = joint + '_segmentCurve_curveInfo'
             cmds.connectAttr(curveInfo+'.arcLength', proxyBoneGeoPreTransform+'.scale'+self.nodeAxes[0])
             
+            # Attach the proxy geo with the start locator for the curve segment for the current node.
+            # This start locator is on the "rig" nurbs shape for the node handle.
             cmds.pointConstraint(joint+'_segmentCurve_startLocator', proxyBoneGeoPreTransform, maintainOffset=False,
                                         name=self.moduleTypespace+':'+proxyBoneGeoPreTransform+'_basePointConstraint')
+                                        
             aimVector = {'X':[1.0, 0.0, 0.0], 'Y':[0.0, 1.0, 0.0], 'Z':[0.0, 0.0, 1.0]}[self.nodeAxes[0]]
             upVector = {'X':[1.0, 0.0, 0.0], 'Y':[0.0, 1.0, 0.0], 'Z':[0.0, 0.0, 1.0]}[self.nodeAxes[1]]
 
             cmds.aimConstraint(self.nodeJoints[index+1], proxyBoneGeoPreTransform, maintainOffset=False, aimVector=aimVector,
                                 upVector=upVector, worldUpVector=upVector, worldUpType='objectRotation', worldUpObject=joint,
                                                   name=self.nodeJoints[index+1]+'_'+proxyBoneGeoPreTransform+'_aimConstraint')
+            
+            # Rename the bone proxy geo transforms for node node joint.
             cmds.rename(proxyBoneGeoPreTransform, joint+'_'+proxyBoneGeoPreTransform)
             cmds.rename(proxyBoneGeoScaleTransform, joint+'_'+proxyBoneGeoScaleTransform)
             cmds.rename(proxyBoneTransform, joint+'_'+proxyBoneTransform)
-            extra_nodes = [u'bone_proxyGeo_uiConfigurationScriptNode', u'bone_proxyGeo_sceneConfigurationScriptNode']
-            for node in extra_nodes:
-                if cmds.objExists(node):
-                    cmds.delete(node)
+
         cmds.select(clear=True)
 
 
     def connectCustomOrientationReprToModuleProxies(self):
+        '''
+        Connects the orientation representation control for module nodes with the module proxy
+        geometry on the nodes. This is performed so that the proxy geometry maintains its orientation
+        with the orientation representation control as it is rotated manually.
+        '''
+        # If JointNode.
         if self.moduleType == 'JointNode':
-            rotAxis = cmds.getAttr(self.moduleGrp+'.nodeOrient')
-            rotAxis = rotAxis[0]
+        
+            # Get the aim axis for the nodes.
+            rotAxis = cmds.getAttr(self.moduleGrp+'.nodeOrient')[0]
+            
+            # For every node joint, get the orientation representation control.
             for joint in self.nodeJoints[:-1]:
                 ori_repr_control = joint+'_orient_repr_transform'
+                
+                # Connect its rotation to the bone proxy geo for node, if it exists.
                 boneProxy_s_transform = joint+'_proxy_bone_geo_scaleTransform'
                 if cmds.objExists(boneProxy_s_transform):
                     cmds.connectAttr(ori_repr_control+'.rotate'+rotAxis, boneProxy_s_transform+'.rotate'+rotAxis)
+    
+        # If SplineNode.
         if self.moduleType == 'SplineNode':
+        
+            # Get the start module transform (SplineNode has two module transforms).
             startHandle = self.nodeJoints[0].rpartition(':')[0] + ':splineStartHandleTransform'
+            
+            # For every node joint, connect the "Axis Rotate" attribute to the elbow proxy geo for nodes,
+            # if it exists. The "Axis Rotate" rotates the nodes axially on the SplineNode curve.
             for joint in self.nodeJoints:
                 elbowProxy_s_transform = joint+'_proxy_elbow_geo_scaleTransform'
                 if cmds.objExists(elbowProxy_s_transform):
