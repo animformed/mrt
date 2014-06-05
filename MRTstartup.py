@@ -41,7 +41,6 @@ def runMRTstartup(__debug = 0):
             reload(mrt_functions)
             import mrt_module; reload(mrt_module)
             import mrt_objects; reload(mrt_objects)
-            import mrt_sceneCallbacks; reload(mrt_sceneCallbacks)
             import mrt_UI; reload(mrt_UI)
         
         # See if the xHandleShape plugin can be loaded. Print warning if otherwise.

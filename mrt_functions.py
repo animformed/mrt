@@ -122,11 +122,11 @@ def prep_MRTMayaStartupActions():
             pathList = filter(lambda item:len(item), pathList)
             
             # New "MAYA_PLUG_IN_PATH" value to be written.
-            writeString = 'MAYA_PLUG_IN_PATH = '+pathSeparator.join(pathList) + pathSeparator
+            writeString = 'MAYA_PLUG_IN_PATH = ' + pathSeparator.join(pathList) + pathSeparator + '\n'
             mayaEnvStatus = True
 
     if not mayaEnv_return:        # '' or None
-        writeString = 'MAYA_PLUG_IN_PATH = %s'%(envString) + pathSeparator
+        writeString = 'MAYA_PLUG_IN_PATH = %s%s\n' % (envString, pathSeparator)
         mayaEnvStatus = True
 
     if mayaEnvStatus:
@@ -144,7 +144,7 @@ def prep_MRTMayaStartupActions():
                 if re.search('MAYA_PLUG_IN_PATH[ ]*=[ ]*', line):
                     tempEnvFile.write(writeString)
                 else:
-                    tempEnvFile.write(line.strip())
+                    tempEnvFile.write(line)
 
             tempEnvFile.close()
             envFile.close()
@@ -555,10 +555,10 @@ def loadXhandleShapePlugin():
             shutil.copy2(plugin_source_path, plugin_dest_path)
 
     except IOError:
-        cmds.warning('Error: MRT cannot write to plugin path. Aborting.')
+        cmds.warning('Error: MRT cannot write to plugin path "%s". Aborting. Check access?' % plugin_dest_path)
         return False
 
-    finally:
+    else:
         cmds.loadPlugin(plugin_dest_path, quiet=True)
 
     return True
@@ -590,21 +590,18 @@ def runDeferredFunction_wrapper(function):
     maya.utils.executeDeferred(function)
 
 
-def findLastSubClassForSuperClass(clsName, moduleName=''):
+def findLastSubClassForSuperClass(cls):
     """
     Find the leaf child subclass for a given class. Used by the control
     rig class hierarchy.
     """
-    if moduleName:
-        klasses = eval('%s.%s'%(moduleName, clsName)).__subclasses__()
-    else:
-        klasses = eval(clsName).__subclasses__()
+    klasses = cls.__subclasses__()
     
     if not klasses:
-        subClass = clsName
+        subClass = cls
 
     if klasses:
-        subClass = findLastSubClassForSuperClass(klasses[0].__name__, moduleName=moduleName)
+        subClass = findLastSubClassForSuperClass(klasses[0])
 
     return subClass
 

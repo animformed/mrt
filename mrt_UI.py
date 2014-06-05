@@ -122,7 +122,6 @@ def moduleSelectionFromTreeView():
 # depending on the maya's version.
 
 if _maya_version >= 2013:
-    from mrt_sceneCallbacks import *
     def moduleSelectionFromTreeViewCallback():
         moduleSelectionFromTreeView()
     def treeViewButton_1_ActionCallback(item, state):
@@ -418,252 +417,11 @@ class MRT_UI(object):
         # Turn on undo
         cmds.undoInfo(stateWithoutFlush=True)
 
-# -------------------------------------------------------------------------------------------------------------
-#
-#   TOP MENU ITEM METHODS
-#
-# -------------------------------------------------------------------------------------------------------------
-
-    def display_mrt_issues(self, *args):
-        '''
-        First things first. Keep a record of current issues with MRT, displayable to the user.
-        Not sure why I didn't use a txt source :)
-        '''
-        printString1 = ' Known Issues with Modular Rigging Tools for Maya' \
-                       '\n ------------------------------------------------'
-
-        printString2 = '\n\n 1. If \'Mirror Instancing\' option is used for proxy geometry while creating mirrored modules,' \
-            '\n it will yield mirrored geometry with opposing face normals after creating a character. Maya will issue' \
-            '\n warning(s) while creating a character from modules, which is expected - Warning: Freeze transform with' \
-            '\n negative scale will set the \'opposite\' attribute for these nodes. I haven\'t found a way around this yet,'\
-            '\n but I suppose this is not a problem since this is only a display issue. You can avoid it by enabling' \
-            '\n two-sided lighting by using lighting options under the viewport panel.'
-
-        printString3 = '\n\n 2. When changing the \'proxy geometry draw\' attribute on a module transform for mirrored' \
-            '\n modules, while using Maya 2013, I\'ve noticed the draw style sometimes doesn\'t update correctly for both' \
-            '\n the mirrored modules in the viewport (Changing an attribute on one of the modules should automatically' \
-            '\n affect its mirrored module). To fix this, simply try to set the attribute separately on the mirrored module.'
-
-        printString4 = '\n\n 2. It is recommended that you put keyframes to assigned control(s) for a character hierarchy' \
-            '\n while they\'re in reference only. MRT doesn\'t take into account if a control has keyframes and while' \
-            '\n removing and reassigning a control rig to a character joint hiearachy, such keyframes would be lost.' \
-            '\n Controls rigs are assigned to character hierarchies in its original scene file which is referenced and' \
-            '\n then animated.'
-
-        printString5 = '\n\n 4. MRT uses script jobs which are executed when you start Maya. These script jobs are run' \
-            '\n from userSetup file, and so if they fail to run, please check if the userSetup file has any error. These' \
-            '\n script jobs are necessary for e.g, when you\'re trying to modify some of the attributes on a module transform.'
-
-        printString6 = '\n\n 5. Some of the control rig functionality uses the hair system (one with \"Dynamic prefix\").' \
-            '\n For Maya 2013 and above, the classic maya hair has been replaced by nHair. Because of this, if you wish to' \
-            '\n use any nDynamics, please check if there\'s an existing nucleus node in the scene, and then create a new' \
-            '\n one for safer DG evaluation.'
-
-        printString7 = '\n\n 6. While renaming a module, if an attribute editor is active/open (even if it\'s tabbed), you' \
-            '\n might get an error in the command output, such as,\"showEditor.mel line ####: Value is out of range: 3\".' \
-            '\n This is not a malfunction within Modular Rigging Tools, but the way the AE is updated within the Maya UI.' \
-            '\n The module renaming will still work correctly.'
-
-        printString8 = '\n\n 7. While adjusting the weight of control rig attributes on the character root transform, the' \
-            '\n weight blending doesn\'t, work correctly as expected; it snaps to its full weight at between 0.1 ~ 0.3.' \
-            '\n As far as I know, this is an issue with how the parent constraint is currently implemented, which is used' \
-            '\n to connect the driver joint layer to its main joint hierarchy.'
-
-        printString9 = '\n\n 8. At times, the Reverse IK Control might not behave correctly when applied to a leg joint' \
-            '\n hierarchy in a character, where the joints may not transform as desired as you translate the IK control' \
-            '\n handle. To fix it, simply detach and re-apply the control rig to the leg joint hierarchy.'
-
-        printString10 = '\n\n 8. All Errors are reported as warnings here, since, an error would bring up the stack trace' \
-            '\n if enabled, and it may confuse some users.'
-
-        try:
-            cmds.deleteUI('mrt_displayIssues_UI_window')
-        except:
-            pass
-        self.uiVars['displayMrtIssuesWindow'] = cmds.window('mrt_displayIssues_UI_window', title='Known Issues', \
-                                                                                        maximizeButton=False, sizeable=False)
-        try:
-            cmds.windowPref(self.uiVars['displayMrtIssuesWindow'], remove=True)
-        except:
-            pass
-        self.uiVars['displayMrtIssues_columnLayout'] = cmds.columnLayout()
-        self.uiVars['displayMrtIssues_scrollField'] = cmds.scrollField(text=printString1+
-                                                                            printString2+
-                                                                            printString3+
-                                                                            printString4+
-                                                                            printString5+
-                                                                            printString6+
-                                                                            printString7+
-                                                                            printString8+
-                                                                            printString9+
-                                                                            printString10, editable=False, width=850,   \
-                                                                            enableBackground=True, height=400, wordWrap=False)
-        cmds.showWindow(self.uiVars['displayMrtIssuesWindow'])
-
-
-    def display_mrt_about(self, *args):
-        '''
-        Display MRT dev stats
-        '''
-        printString1 = '\n\t\t\tModular Rigging Tools v1.0\n\t\t\tfor Maya 2011 - 2013'
-        printString2 = '\n\n\tWritten by Himanish Bhattacharya' \
-            '\n\thimanish@animformed.net' \
-            '\n\n\t________________________________________________' \
-            '\n\n\tFor annoyances or bugs, contact me at, bugs@animformed.net\n'
-        try:
-            cmds.deleteUI('mrt_about_UI_window')
-        except:
-            # It's time they put an end to this.
-            pass
-        self.uiVars['displayMrtAboutWindow'] = cmds.window('mrt_about_UI_window', title='About', maximizeButton=False, \
-                                                                                                            sizeable=False)
-        try:
-            cmds.windowPref(self.uiVars['displayMrtAboutWindow'], remove=True)
-        except:
-            # I agrreee.
-            pass
-
-        self.uiVars['displayMrtAbout_columnLayout'] = cmds.columnLayout()
-        cmds.text(label=printString1, font='boldLabelFont')
-        cmds.text(label=printString2)
-        cmds.showWindow(self.uiVars['displayMrtAboutWindow'])
-
-
-    def closeWindow(self, windowName, *args):
-        '''
-        I know, but this way it's just a one word callback.
-        '''
-        cmds.deleteUI(windowName)
-
-
-    def purgeAutoCollections(self, *args):
-        '''
-        Removes all auto module collection files auto generated by MRT. An auto collection file
-        is used by MRT to revert a character back to scene modules.
-        '''
-        # Get all files
-        autoCollectionFiles = filter(lambda fileName:re.match('^character__[0-9]*\.mrtmc$', fileName),
-                                                                os.listdir(self.autoCollections_path))
-        # Remove them.
-        if len(autoCollectionFiles):
-            for item in autoCollectionFiles:
-                itemPath = self.autoCollections_path + '/' + item
-                os.remove(itemPath)
-            sys.stderr.write('%s file(s) were removed.\n'%(len(autoCollectionFiles)))
-        else:
-            sys.stderr.write('No auto-collection file(s) found.\n')
-
-
-    def openWebPage(self, urlString, *args):
-        '''
-        Just like it says.
-        '''
-        webbrowser.open(urlString)
-
-
-    def deleteSelectedProxyGeo(self, *args):
-        '''
-        Deletes selected module proxy geometry, if it's valid. This doesn't delete
-        all proxy geometry, only the ones that are selected. A module may have multiple 
-        proxy geo transfroms.
-        '''
-        selection = cmds.ls(selection=True)
-        moduleProxies = []
-        check = False
-        if selection:
-            for item in selection:
-                if re.match('^MRT_\D+__\w+:\w+_transform_proxy_(bone|elbow)_geo$', item):
-                    check = True
-                    cmds.delete(item+'_preTransform')
-                    moduleProxies.append(item)
-            if moduleProxies:
-                for item in moduleProxies:
-                    parentProxyGrp = item.partition(':')[0]+':proxyGeometryGrp'
-                    children = cmds.listRelatives(parentProxyGrp, allDescendents=True)
-                    if not children:
-                        cmds.delete(parentProxyGrp)
-        if not check:
-            cmds.warning('MRT Error: Please select a module proxy geometry.')
-
-
-    def deleteAllProxyGeoForModule(self, *args):
-        '''
-        Deletes all proxy geometry for selected module(s).
-        '''
-        modules = []
-        selection = cmds.ls(selection=True)
-        if selection:
-            for item in selection:
-                moduleInfo = mfunc.stripMRTNamespace(item)
-                if moduleInfo:
-                    modules.append(moduleInfo)
-            if modules:
-                check = False
-                for item in modules:
-                    if cmds.objExists(item[0]+':proxyGeometryGrp'):
-                        cmds.delete(item[0]+':proxyGeometryGrp')
-                        check = True
-                if not check:
-                    cmds.warning('MRT Error: The module "%s" does not have proxy geometry. Skipping.'%item[0])
-            else:
-                cmds.warning('MRT Error: Please select a module.')
-        else:
-            cmds.warning('MRT Error: Please select a module.')
-
-
-    def deleteHistoryAllProxyGeo(self, *args):
-        '''
-        Deletes construction history on all module proxy geometry in the scene. The
-        history may be a result of a user modification of module proxy geometry.
-        '''
-        proxyGrpList = []
-        all_transforms = cmds.ls(type='transform')
-        for transform in all_transforms:
-            if re.match('\w+(:proxyGeometryGrp)', transform):
-                proxyGrpList.append(transform)
-        if proxyGrpList:
-            cmds.delete(proxyGrpList, constructionHistory=True)
-            cmds.warning('MRT Error: History deleted on all module proxy geometries.')
-        else:
-            cmds.warning('MRT Error: No module proxy geometry found.')
-
-
-    def swapHingeNodeRootEndHandlePos(self, *args):
-        '''
-        Used to swap the positions of the start and end handles for a hinge module. This
-        can be used to quickly reverse the hierarchy of the node chain for the module.
-        '''
-        selection = cmds.ls(selection=True)
-
-        if not selection:
-            sys.stderr.write('Please select a hinge node module.\n')
-            return
-
-        if selection:
-            selection.reverse()
-            selection = selection[0]
-            namespaceInfo = mfunc.stripMRTNamespace(selection)
-            if namespaceInfo:
-                if not 'HingeNode' in namespaceInfo[0]:
-                    sys.stderr.write('Please select a hinge node module.\n')
-                    return
-
-                rootPos = \
-                cmds.xform(namespaceInfo[0]+':root_node_transform_control', query=True, worldSpace=True, translation=True)
-
-                endPos = \
-                cmds.xform(namespaceInfo[0]+':end_node_transform_control', query=True, worldSpace=True, translation=True)
-
-                cmds.xform(namespaceInfo[0]+':root_node_transform_control', worldSpace=True, translation=endPos)
-                cmds.xform(namespaceInfo[0]+':end_node_transform_control', worldSpace=True, translation=rootPos)
-                for item in [namespaceInfo[0]+':root_node_transform_control', \
-                             namespaceInfo[0]+':end_node_transform_control', \
-                             namespaceInfo[0]+':node_1_transform_control']:
-                    cmds.evalDeferred(partial(cmds.select, item), lowestPriority=True)
-            else:
-                sys.stderr.write('Please select a hinge node module.\n')
-                return
-
+    # -------------------------------------------------------------------------------------------------------------
+    #
+    #   TOP MENU ITEM METHODS
+    #
+    # -------------------------------------------------------------------------------------------------------------
 
     def autoLoadSettingsUIforCollections(self, *args):
         '''
@@ -740,6 +498,78 @@ class MRT_UI(object):
 
         # Show the window
         cmds.showWindow(self.uiVars['autoLoadSettingsUIwindow'])
+
+
+    def selectDirectoryForLoadingCollections(self, *args):
+        '''
+        Called when the menu item under the "File" menu, "Select directory for loading saved collection(s)"
+        is selected. This loads module collection(s) from a directory on the disk.
+        '''
+        # Get the previous directory path which was used to load module collections
+        ui_preferences_file = open(self.ui_preferences_path, 'rb')
+        ui_preferences = cPickle.load(ui_preferences_file)
+        ui_preferences_file.close()
+        startDir = ui_preferences['directoryForAutoLoadingCollections']
+
+        # If the previous directory path doesn't exist, use the default "user_collections" path under MRT
+        if not os.path.exists(startDir):
+            startDir = ui_preferences['defaultDirectoryForAutoLoadingCollections']
+
+        # Load the module collection files under the directory
+        fileFilter = 'MRT Module Collection Files (*.mrtmc)'
+        directoryPath = cmds.fileDialog2(caption='Select directory for loading module collections', okCaption='Select',
+                                                fileFilter=fileFilter, startingDirectory=startDir, fileMode=2, dialogStyle=2)
+
+        # If a valid directory path is selected, load collections from it
+        if directoryPath:
+
+            # Save the directory path as a preference
+            ui_preferences['directoryForAutoLoadingCollections'] = directoryPath[0]
+
+            # Get the preference to clear current module collection list
+            value = ui_preferences['loadCollectionDirectoryClearModeStatus']
+            mrtmc_files = []
+            for file in os.listdir(directoryPath[0]):
+                if fnmatch.fnmatch(file, '*mrtmc'):
+                    mrtmc_files.append('%s/%s'%(directoryPath[0], file))
+            self.loadModuleCollectionsForUI(mrtmc_files, value)
+
+        # Save the directory preference
+        ui_preferences_file = open(self.ui_preferences_path, 'wb')
+        cPickle.dump(ui_preferences, ui_preferences_file, cPickle.HIGHEST_PROTOCOL)
+        ui_preferences_file.close()
+
+
+    def loadSavedModuleCollections(self, *args):
+        '''
+        Called when the menu item under the "File" menu, "Select and load saved module collection(s)"
+        is selected. This loads selected module collection file(s) from the disk.
+        '''
+        # Get the last directory accessed for selecting module collection files(s)
+        ui_preferences_file = open(self.ui_preferences_path, 'rb')
+        ui_preferences = cPickle.load(ui_preferences_file)
+        ui_preferences_file.close()
+        startDir = ui_preferences['lastDirectoryForLoadingCollections']
+
+        # If the previous directory path doesn't exist, use the default "user_collections" path under MRT
+        if not os.path.exists(startDir):
+            startDir = ui_preferences['defaultLastDirectoryForLoadingCollections']
+        fileFilter = 'MRT Module Collection Files (*.mrtmc)'
+        mrtmc_files = cmds.fileDialog2(caption='Select module collection files(s) for loading', okCaption='Load',
+                                                fileFilter=fileFilter, startingDirectory=startDir, fileMode=4, dialogStyle=2)
+        if not mrtmc_files:
+            return
+
+        # Load the selected module collection files, with the preference to clear the current module collection list
+        value = ui_preferences['loadCollectionClearModeStatus']
+        self.loadModuleCollectionsForUI(mrtmc_files, value)
+
+        # Save the current directory used to access module collection files(s)
+        directory = mrtmc_files[0].rpartition('/')[0]
+        ui_preferences['lastDirectoryForLoadingCollections'] = directory
+        ui_preferences_file = open(self.ui_preferences_path, 'wb')
+        cPickle.dump(ui_preferences, ui_preferences_file, cPickle.HIGHEST_PROTOCOL)
+        ui_preferences_file.close()
 
 
     def changeLoadCollectionListClearMode(self, *args):
@@ -894,50 +724,448 @@ class MRT_UI(object):
         cmds.showWindow(self.uiVars['loadCollectionDirectoryClearModeWindow'])
 
 
-    def selectDirectoryForLoadingCollections(self, *args):
+    def loadSavedCharTemplates(self, *args):
         '''
-        Called when the menu item under the "File" menu, "Select directory for loading saved collection(s)"
-        is selected. This loads module collection(s) from a directory on the disk.
+        Performs selective loading of character template files on disk into the MRT UI.
         '''
-        # Get the previous directory path which was used to load module collections
+        # Get the previous directory accessed, saved as a preference
         ui_preferences_file = open(self.ui_preferences_path, 'rb')
         ui_preferences = cPickle.load(ui_preferences_file)
         ui_preferences_file.close()
-        startDir = ui_preferences['directoryForAutoLoadingCollections']
+        startDir = ui_preferences['directoryForCharacterTemplates']
 
-        # If the previous directory path doesn't exist, use the default "user_collections" path under MRT
+        # If the saved directory doesn't exist on the disk, use the default directory under MRT/character_templates
         if not os.path.exists(startDir):
-            startDir = ui_preferences['defaultDirectoryForAutoLoadingCollections']
+            startDir = ui_preferences['defaultDirectoryForCharacterTemplates']
 
-        # Load the module collection files under the directory
-        fileFilter = 'MRT Module Collection Files (*.mrtmc)'
-        directoryPath = cmds.fileDialog2(caption='Select directory for loading module collections', okCaption='Select',
-                                                fileFilter=fileFilter, startingDirectory=startDir, fileMode=2, dialogStyle=2)
+        # Get the selected character template files from the user
+        fileFilter = 'MRT Character Template Files (*.mrtct)'
+        mrtct_files = cmds.fileDialog2(caption='Load character template(s)', fileFilter=fileFilter, okCaption='Load',
+                                                                      startingDirectory=startDir, fileMode=4, dialogStyle=2)
+        if mrtct_files == None:
+            return
 
-        # If a valid directory path is selected, load collections from it
-        if directoryPath:
+        # Get the preference if the currently loaded character template files in the UI needs to be cleared.
+        clearStatus = ui_preferences['loadCharTemplateClearModeStatus']
 
-            # Save the directory path as a preference
-            ui_preferences['directoryForAutoLoadingCollections'] = directoryPath[0]
+        # Load the new character template files into the UI
+        self.loadCharTemplatesForUI(mrtct_files, clearStatus)
 
-            # Get the preference to clear current module collection list
-            value = ui_preferences['loadCollectionDirectoryClearModeStatus']
-            mrtmc_files = []
-            for file in os.listdir(directoryPath[0]):
-                if fnmatch.fnmatch(file, '*mrtmc'):
-                    mrtmc_files.append('%s/%s'%(directoryPath[0], file))
-            self.loadModuleCollectionsForUI(mrtmc_files, value)
-
-        # Save the directory preference
+        # Get the directory used for selecting character template files, save it as a preference
+        ui_preferences['directoryForCharacterTemplates'] = mrtct_files[0].rpartition('/')[0]
         ui_preferences_file = open(self.ui_preferences_path, 'wb')
         cPickle.dump(ui_preferences, ui_preferences_file, cPickle.HIGHEST_PROTOCOL)
         ui_preferences_file.close()
 
-# -------------------------------------------------------------------------------------------------------------
-#
-#   UI INITIALIZATION METHODS
-#
-# -------------------------------------------------------------------------------------------------------------
+
+    def changeLoadSettingsForCharTemplates(self, *args):
+        '''
+        Modifies the load settings for character templates into MRT UI.
+        '''
+        def setCharTemplateLoadSettingsValues(*args):
+            # Load the preferences
+            ui_preferences_file = open(self.ui_preferences_path, 'rb')
+            ui_preferences = cPickle.load(ui_preferences_file)
+            ui_preferences_file.close()
+
+            # Get the current preferences
+            clearListStatus = cmds.checkBox(self.uiVars['clearCharTemplateListOnLoad_checkBox'], query=True, value=True)
+            loadPreviousListAtStartup = cmds.checkBox(self.uiVars['charTemplateLoadAtStartup_checkBox'], query=True,
+                                                                                                            value=True)
+            loadNewTemplatesToList = cmds.checkBox(self.uiVars['newCharTemplateLoadToList_checkBox'], query=True,
+                                                                                                            value=True)
+            # Set the current preference for clearing the current template list
+            ui_preferences['loadCharTemplateClearModeStatus'] = clearListStatus
+            # Set the current preference for loading the current template list at next MRT startup
+            ui_preferences['autoLoadPreviousCharTemplateListAtStartupStatus'] = loadPreviousListAtStartup
+            # Set the current preference for loading new templates to list
+            ui_preferences['loadNewCharTemplatesToCurrentList'] = loadNewTemplatesToList
+
+            # Save these preferences
+            ui_preferences_file = open(self.ui_preferences_path, 'wb')
+            cPickle.dump(ui_preferences, ui_preferences_file, cPickle.HIGHEST_PROTOCOL)
+            ui_preferences_file.close()
+
+        def loadTemplatesFromSettingsWindow(*args):
+            # Load the templates
+            try:
+                cmds.deleteUI('mrt_charTemplateLoadSettingsUI_window')
+            except:
+                pass
+            self.loadSavedCharTemplates()
+
+        # Close the preferences window
+        try:
+            cmds.deleteUI('mrt_charTemplateLoadSettingsUI_window')
+        except:
+            pass
+
+        # Create the preference window
+        self.uiVars['charTemplateLoadSettingsUIwindow'] = cmds.window('mrt_charTemplateLoadSettingsUI_window',
+                         title='Settings for loading character templates(s)', width=90, maximizeButton=False, sizeable=False)
+        try:
+            cmds.windowPref('mrt_charTemplateLoadSettingsUI_window', remove=True)
+        except:
+            pass
+
+        # Main column
+        self.uiVars['charTemplateLoadSettingsWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
+
+        cmds.text(label='')
+
+        # Get the saved preferences
+        ui_preferences_file = open(self.ui_preferences_path, 'rb')
+        ui_preferences = cPickle.load(ui_preferences_file)
+        ui_preferences_file.close()
+
+        # Preference to clear current template list for loading new character templates
+        clearListStatus = ui_preferences['loadCharTemplateClearModeStatus']
+
+        # Load current character template list at next MRT startup
+        loadPreviousListAtStartup = ui_preferences['autoLoadPreviousCharTemplateListAtStartupStatus']
+
+        # Add new character templates to the current list
+        loadNewTemplatesToList = ui_preferences['loadNewCharTemplatesToCurrentList']
+
+        # Create a layout and buttons to set the preferences
+        cmds.rowLayout(numberOfColumns=1, columnAttach=([1, 'left', 57]))
+        self.uiVars['charTemplateLoadAtStartup_checkBox'] = \
+            cmds.checkBox(label='Preserve and load current list at next startup', value=loadPreviousListAtStartup,
+                                                                    changeCommand=setCharTemplateLoadSettingsValues)
+        cmds.setParent(self.uiVars['charTemplateLoadSettingsWindowColumn'])
+
+        cmds.rowLayout(numberOfColumns=1, columnAttach=([1, 'both', 60]), rowAttach=([1, 'top', 5]))
+        self.uiVars['newCharTemplateLoadToList_checkBox'] = \
+            cmds.checkBox(label='Load new saved templates(s) to current list', value=loadNewTemplatesToList,
+                                                                    changeCommand=setCharTemplateLoadSettingsValues)
+        cmds.setParent(self.uiVars['charTemplateLoadSettingsWindowColumn'])
+
+        cmds.rowLayout(numberOfColumns=1, columnAttach=([1, 'left', 65]), rowAttach=([1, 'top', 5]))
+        self.uiVars['clearCharTemplateListOnLoad_checkBox'] = \
+            cmds.checkBox(label='Clear current template list before loading', value=clearListStatus,
+                                                                    changeCommand=setCharTemplateLoadSettingsValues)
+        cmds.setParent(self.uiVars['charTemplateLoadSettingsWindowColumn'])
+
+
+        cmds.text(label='')
+
+        # Load Templates
+        cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 58], [2, 'left', 30]))
+        cmds.button(label='Load templates(s)', width=130, command=loadTemplatesFromSettingsWindow)
+        cmds.button(label='Close', width=90, command=partial(self.closeWindow,
+                                                  self.uiVars['charTemplateLoadSettingsUIwindow']))
+        # Set to the main columns
+        cmds.setParent(self.uiVars['charTemplateLoadSettingsWindowColumn'])
+        cmds.text(label='')
+        cmds.showWindow(self.uiVars['charTemplateLoadSettingsUIwindow'])
+
+
+    def closeWindow(self, windowName, *args):
+        '''
+        I know, but this way it's just a one word callback.
+        '''
+        cmds.deleteUI(windowName)
+
+
+    def collapseAllUIframes(self, *args):
+        """
+        Called as a menu item under windows to collapse all frames under UI tabs.
+        """
+        for element in self.uiVars:
+
+            try:
+                if cmds.objectTypeUI(self.uiVars[element], isType='frameLayout'):
+                    if cmds.frameLayout(self.uiVars[element], query=True, enable=True):
+                        cmds.frameLayout(self.uiVars[element], edit=True, collapse=True)
+
+            except RuntimeError:
+                pass
+
+
+    def expandAllUIframes(self, *args):
+        """
+        Called as a menu item under windows to expand frames under the current UI tab.
+        """
+        currentTabIndex = cmds.tabLayout(self.uiVars['tabs'], query=True, selectTabIndex=True)
+
+        if currentTabIndex == 1:
+            for frame in self.createTabFrames:
+                if cmds.frameLayout(frame, query=True, enable=True):
+                    cmds.frameLayout(frame, edit=True, collapse=False)
+
+        if currentTabIndex == 2:
+            for frame in self.editTabFrames:
+                if cmds.frameLayout(frame, query=True, enable=True):
+                    cmds.frameLayout(frame, edit=True, collapse=False)
+
+        if currentTabIndex == 3:
+            for frame in self.animateTabFrames:
+                if cmds.frameLayout(frame, query=True, enable=True):
+                    cmds.frameLayout(frame, edit=True, collapse=False)
+
+
+    def putShelfButtonForUI(self, *args):
+        '''
+        Puts a shelf button for MRT on the current maya shelf
+        '''
+        # Get the current tab under maya shelf
+        currentTab = cmds.tabLayout('ShelfLayout', query=True, selectTab=True)
+
+        # Get its shelf buttons
+        shelfTabButtons = cmds.shelfLayout(currentTab, query=True, childArray=True)
+
+        # Check if the MRT button exists, return if true.
+        if shelfTabButtons:
+            for button in shelfTabButtons:
+                annotation = cmds.shelfButton(button, query=True, annotation=True)
+                if annotation == 'Modular Rigging Tools':
+                    return
+
+        # Else, put the shelf button on the current shelf tab
+        imagePath = cmds.internalVar(userScriptDir=True)+'MRT/mrt_shelfLogo.png'
+        cmds.shelfButton(annotation='Modular Rigging Tools', commandRepeatable=True,
+                         image1=imagePath, parent=currentTab, sourceType='mel', command='MRT')
+
+
+    def swapHingeNodeRootEndHandlePos(self, *args):
+        '''
+        Used to swap the positions of the start and end handles for a hinge module. This
+        can be used to quickly reverse the hierarchy of the node chain for the module.
+        '''
+        selection = cmds.ls(selection=True)
+
+        if not selection:
+            sys.stderr.write('Please select a hinge node module.\n')
+            return
+
+        if selection:
+            selection.reverse()
+            selection = selection[0]
+            namespaceInfo = mfunc.stripMRTNamespace(selection)
+            if namespaceInfo:
+                if not 'HingeNode' in namespaceInfo[0]:
+                    sys.stderr.write('Please select a hinge node module.\n')
+                    return
+
+                rootPos = \
+                cmds.xform(namespaceInfo[0]+':root_node_transform_control', query=True, worldSpace=True, translation=True)
+
+                endPos = \
+                cmds.xform(namespaceInfo[0]+':end_node_transform_control', query=True, worldSpace=True, translation=True)
+
+                cmds.xform(namespaceInfo[0]+':root_node_transform_control', worldSpace=True, translation=endPos)
+                cmds.xform(namespaceInfo[0]+':end_node_transform_control', worldSpace=True, translation=rootPos)
+                for item in [namespaceInfo[0]+':root_node_transform_control', \
+                             namespaceInfo[0]+':end_node_transform_control', \
+                             namespaceInfo[0]+':node_1_transform_control']:
+                    cmds.evalDeferred(partial(cmds.select, item), lowestPriority=True)
+            else:
+                sys.stderr.write('Please select a hinge node module.\n')
+                return
+
+
+    def deleteSelectedProxyGeo(self, *args):
+        '''
+        Deletes selected module proxy geometry, if it's valid. This doesn't delete
+        all proxy geometry, only the ones that are selected. A module may have multiple
+        proxy geo transfroms.
+        '''
+        selection = cmds.ls(selection=True)
+        moduleProxies = []
+        check = False
+        if selection:
+            for item in selection:
+                if re.match('^MRT_\D+__\w+:\w+_transform_proxy_(bone|elbow)_geo$', item):
+                    check = True
+                    cmds.delete(item+'_preTransform')
+                    moduleProxies.append(item)
+            if moduleProxies:
+                for item in moduleProxies:
+                    parentProxyGrp = item.partition(':')[0]+':proxyGeometryGrp'
+                    children = cmds.listRelatives(parentProxyGrp, allDescendents=True)
+                    if not children:
+                        cmds.delete(parentProxyGrp)
+        if not check:
+            cmds.warning('MRT Error: Please select a module proxy geometry.')
+
+
+    def deleteAllProxyGeoForModule(self, *args):
+        '''
+        Deletes all proxy geometry for selected module(s).
+        '''
+        modules = []
+        selection = cmds.ls(selection=True)
+        if selection:
+            for item in selection:
+                moduleInfo = mfunc.stripMRTNamespace(item)
+                if moduleInfo:
+                    modules.append(moduleInfo)
+            if modules:
+                check = False
+                for item in modules:
+                    if cmds.objExists(item[0]+':proxyGeometryGrp'):
+                        cmds.delete(item[0]+':proxyGeometryGrp')
+                        check = True
+                if not check:
+                    cmds.warning('MRT Error: The module "%s" does not have proxy geometry. Skipping.'%item[0])
+            else:
+                cmds.warning('MRT Error: Please select a module.')
+        else:
+            cmds.warning('MRT Error: Please select a module.')
+
+
+    def deleteHistoryAllProxyGeo(self, *args):
+        '''
+        Deletes construction history on all module proxy geometry in the scene. The
+        history may be a result of a user modification of module proxy geometry.
+        '''
+        proxyGrpList = []
+        all_transforms = cmds.ls(type='transform')
+        for transform in all_transforms:
+            if re.match('\w+(:proxyGeometryGrp)', transform):
+                proxyGrpList.append(transform)
+        if proxyGrpList:
+            cmds.delete(proxyGrpList, constructionHistory=True)
+            cmds.warning('MRT Error: History deleted on all module proxy geometries.')
+        else:
+            cmds.warning('MRT Error: No module proxy geometry found.')
+
+
+    def purgeAutoCollections(self, *args):
+        '''
+        Removes all auto module collection files auto generated by MRT. An auto collection file
+        is used by MRT to revert a character back to scene modules.
+        '''
+        # Get all files
+        autoCollectionFiles = filter(lambda fileName:re.match('^character__[0-9]*\.mrtmc$', fileName),
+                                                                os.listdir(self.autoCollections_path))
+        # Remove them.
+        if len(autoCollectionFiles):
+            for item in autoCollectionFiles:
+                itemPath = self.autoCollections_path + '/' + item
+                os.remove(itemPath)
+            sys.stderr.write('%s file(s) were removed.\n'%(len(autoCollectionFiles)))
+        else:
+            sys.stderr.write('No auto-collection file(s) found.\n')
+
+
+    def openWebPage(self, urlString, *args):
+        '''
+        Just like it says.
+        '''
+        webbrowser.open(urlString)
+
+
+    def display_mrt_issues(self, *args):
+        '''
+        First things first. Keep a record of current issues with MRT, displayable to the user.
+        Not sure why I didn't use a txt source :)
+        '''
+        printString1 = ' Known Issues with Modular Rigging Tools for Maya' \
+                       '\n ------------------------------------------------'
+
+        printString2 = '\n\n 1. If \'Mirror Instancing\' option is used for proxy geometry while creating mirrored modules,' \
+            '\n it will yield mirrored geometry with opposing face normals after creating a character. Maya will issue' \
+            '\n warning(s) while creating a character from modules, which is expected - Warning: Freeze transform with' \
+            '\n negative scale will set the \'opposite\' attribute for these nodes. I haven\'t found a way around this yet,'\
+            '\n but I suppose this is not a problem since this is only a display issue. You can avoid it by enabling' \
+            '\n two-sided lighting by using lighting options under the viewport panel.'
+
+        printString3 = '\n\n 2. When changing the \'proxy geometry draw\' attribute on a module transform for mirrored' \
+            '\n modules, while using Maya 2013, I\'ve noticed the draw style sometimes doesn\'t update correctly for both' \
+            '\n the mirrored modules in the viewport (Changing an attribute on one of the modules should automatically' \
+            '\n affect its mirrored module). To fix this, simply try to set the attribute separately on the mirrored module.'
+
+        printString4 = '\n\n 2. It is recommended that you put keyframes to assigned control(s) for a character hierarchy' \
+            '\n while they\'re in reference only. MRT doesn\'t take into account if a control has keyframes and while' \
+            '\n removing and reassigning a control rig to a character joint hiearachy, such keyframes would be lost.' \
+            '\n Controls rigs are assigned to character hierarchies in its original scene file which is referenced and' \
+            '\n then animated.'
+
+        printString5 = '\n\n 4. MRT uses script jobs which are executed when you start Maya. These script jobs are run' \
+            '\n from userSetup file, and so if they fail to run, please check if the userSetup file has any error. These' \
+            '\n script jobs are necessary for e.g, when you\'re trying to modify some of the attributes on a module transform.'
+
+        printString6 = '\n\n 5. Some of the control rig functionality uses the hair system (one with \"Dynamic prefix\").' \
+            '\n For Maya 2013 and above, the classic maya hair has been replaced by nHair. Because of this, if you wish to' \
+            '\n use any nDynamics, please check if there\'s an existing nucleus node in the scene, and then create a new' \
+            '\n one for safer DG evaluation.'
+
+        printString7 = '\n\n 6. While renaming a module, if an attribute editor is active/open (even if it\'s tabbed), you' \
+            '\n might get an error in the command output, such as,\"showEditor.mel line ####: Value is out of range: 3\".' \
+            '\n This is not a malfunction within Modular Rigging Tools, but the way the AE is updated within the Maya UI.' \
+            '\n The module renaming will still work correctly.'
+
+        printString8 = '\n\n 7. While adjusting the weight of control rig attributes on the character root transform, the' \
+            '\n weight blending doesn\'t, work correctly as expected; it snaps to its full weight at between 0.1 ~ 0.3.' \
+            '\n As far as I know, this is an issue with how the parent constraint is currently implemented, which is used' \
+            '\n to connect the driver joint layer to its main joint hierarchy.'
+
+        printString9 = '\n\n 8. At times, the Reverse IK Control might not behave correctly when applied to a leg joint' \
+            '\n hierarchy in a character, where the joints may not transform as desired as you translate the IK control' \
+            '\n handle. To fix it, simply detach and re-apply the control rig to the leg joint hierarchy.'
+
+        printString10 = '\n\n 8. All Errors are reported as warnings here, since, an error would bring up the stack trace' \
+            '\n if enabled, and it may confuse some users.'
+
+        try:
+            cmds.deleteUI('mrt_displayIssues_UI_window')
+        except:
+            pass
+        self.uiVars['displayMrtIssuesWindow'] = cmds.window('mrt_displayIssues_UI_window', title='Known Issues', \
+                                                                                        maximizeButton=False, sizeable=False)
+        try:
+            cmds.windowPref(self.uiVars['displayMrtIssuesWindow'], remove=True)
+        except:
+            pass
+        self.uiVars['displayMrtIssues_columnLayout'] = cmds.columnLayout()
+        self.uiVars['displayMrtIssues_scrollField'] = cmds.scrollField(text=printString1+
+                                                                            printString2+
+                                                                            printString3+
+                                                                            printString4+
+                                                                            printString5+
+                                                                            printString6+
+                                                                            printString7+
+                                                                            printString8+
+                                                                            printString9+
+                                                                            printString10, editable=False, width=850,   \
+                                                                            enableBackground=True, height=400, wordWrap=False)
+        cmds.showWindow(self.uiVars['displayMrtIssuesWindow'])
+
+
+    def display_mrt_about(self, *args):
+        '''
+        Display MRT dev stats
+        '''
+        printString1 = '\n\t\t\tModular Rigging Tools v1.0\n\t\t\tfor Maya 2011 - 2013'
+        printString2 = '\n\n\tWritten by Himanish Bhattacharya' \
+            '\n\thimanish@animformed.net' \
+            '\n\n\t________________________________________________' \
+            '\n\n\tFor annoyances or bugs, contact me at, bugs@animformed.net\n'
+        try:
+            cmds.deleteUI('mrt_about_UI_window')
+        except:
+            # It's time they put an end to this.
+            pass
+        self.uiVars['displayMrtAboutWindow'] = cmds.window('mrt_about_UI_window', title='About', maximizeButton=False, \
+                                                                                                            sizeable=False)
+        try:
+            cmds.windowPref(self.uiVars['displayMrtAboutWindow'], remove=True)
+        except:
+            # I agrreee.
+            pass
+
+        self.uiVars['displayMrtAbout_columnLayout'] = cmds.columnLayout()
+        cmds.text(label=printString1, font='boldLabelFont')
+        cmds.text(label=printString2)
+        cmds.showWindow(self.uiVars['displayMrtAboutWindow'])
+
+
+    # -------------------------------------------------------------------------------------------------------------
+    #
+    #   UI INITIALIZATION METHODS
+    #
+    # -------------------------------------------------------------------------------------------------------------
 
     def makeCreateTabControls(self):
         """
@@ -1176,96 +1404,6 @@ class MRT_UI(object):
                                      self.uiVars['nodeCompnt_fLayout'], self.uiVars['proxyGeo_fLayout'],
                                      self.uiVars['mirroring_fLayout'], self.uiVars['moduleNaming_fLayout']])
 
-
-    '''
-    # ---- FOR FUTURE USE - TO BE IMPLEMENTED ---- #
-
-    def makeAnimateTabControls(self):
-
-        self.uiVars['animate_Column'] = cmds.columnLayout(adjustableColumn=True, rowSpacing=3)
-
-        self.uiVars['refCharacterList_fLayout'] = cmds.frameLayout(label='Referenced characters', font='boldLabelFont',
-                                                                       collapsable=True, borderVisible=True,
-                                                                       borderStyle='etchedIn', marginHeight=5,
-                                                                       marginWidth=4, collapse=True)
-
-        self.uiVars['refCharacterList_txScList'] = cmds.textScrollList(enable=False, height=32,
-                                                                             allowMultiSelection=False,
-                                                 append=['              < no character references(s) loaded in the scene >'],
-                                                                             font='boldLabelFont')
-
-        self.uiVars['refCharacterList_button_load'] = cmds.button(label='Load a new character into the scene',
-                                                                  enable=False,
-                                                                  command=self.loadCharAsReference)
-
-        self.uiVars['refCharacterList_button_unload'] = cmds.button(label='Unload the selected character from scene',
-                                                                    enable=False,
-                                                                    command=self.unloadRefCharFromScene)
-
-        self.uiVars['refCharacterList_button_reload'] = cmds.button(label='Reload the selected character',
-                                                                    enable=False, command=self.reloadRefCharInScene)
-
-        cmds.setParent(self.uiVars['animate_Column'])
-
-        # self.uiVars['characterAttributes_fLayout'] = cmds.frameLayout(label='Character attributes',
-        #                                                                   font='boldLabelFont', collapsable=True,
-        #                                                                   borderVisible=True, borderStyle='etchedIn',
-        #                                                                   marginHeight=5, marginWidth=4, collapse=True)
-
-        # cmds.text(label='Select a referenced character to display attributes', font='boldLabelFont')
-
-        # cmds.setParent(self.uiVars['animate_Column'])
-
-        self.uiVars['characterLayout_fLayout'] = cmds.frameLayout(label='Character control rigs', font='boldLabelFont',
-                                                                      collapsable=True, borderVisible=True,
-                                                                      borderStyle='etchedIn', marginHeight=5,
-                                                                      marginWidth=4, collapse=True)
-
-        cmds.text(label='Select a character in the scene from list to display its\nhierarchies and the controls on them',
-                  font='boldLabelFont')
-
-        self.uiVars['refChar_selectListMenu'] = cmds.optionMenu(label='Character', enable=False)
-
-        cmds.menuItem(label='No character found in the scene')
-
-        cmds.text(label='Select a character hierarchy')
-
-        self.uiVars['characterHierarchyList_txScList'] = cmds.textScrollList(enable=False, height=32,
-                                                                                   allowMultiSelection=False,
-                                               append=['                           < no character selected from the list >'],
-                                                                                   font='boldLabelFont')
-
-        cmds.text(label='Select a control rig from the selected hierarchy to adjust its weight')
-
-        self.uiVars['hierarchyControlRigList_txScList'] = cmds.textScrollList(enable=False, height=32,
-                                                                                    allowMultiSelection=False,
-                                               append=['                           < no character selected from the list >'],
-                                                                                    font='boldLabelFont')
-        cmds.setParent(self.uiVars['animate_Column'])
-
-        # self.uiVars['animateConstraints_fLayout'] = cmds.frameLayout(label='Constraints', font='boldLabelFont',
-        #                                                                  collapsable=True, borderVisible=True,
-        #                                                                  borderStyle='etchedIn', marginHeight=5,
-        #                                                                  marginWidth=4, collapse=True)
-
-        # cmds.setParent(self.uiVars['animate_Column'])
-
-        # self.uiVars['bakeAnim_fLayout'] = cmds.frameLayout(label='Bake animation to FK', font='boldLabelFont',
-        #                                                        collapsable=True, borderVisible=True, borderStyle='etchedIn',
-        #                                                              marginHeight=5, marginWidth=4, collapse=True)
-
-        # cmds.text(label='Select a referenced character to bake animation', font='boldLabelFont')
-
-        # self.animateTabFrames.extend([self.uiVars['refCharacterTemplates_fLayout'],
-        #                               self.uiVars['characterAttributes_fLayout'],
-        #                               self.uiVars['characterLayout_fLayout'],
-        #                               self.uiVars['animateConstraints_fLayout'],
-        #                               self.uiVars['bakeAnim_fLayout']])
-
-        self.animateTabFrames.extend([self.uiVars['refCharacterList_fLayout'],
-                                      self.uiVars['characterLayout_fLayout']])
-
-    '''
 
     def makeEditTabControls(self):
         """
@@ -1643,6 +1781,103 @@ class MRT_UI(object):
                                    self.uiVars['c_rig_prntSwitch_fLayout']])
 
 
+    '''
+    # ---- FOR FUTURE USE - TO BE IMPLEMENTED ---- #
+
+    def makeAnimateTabControls(self):
+
+        self.uiVars['animate_Column'] = cmds.columnLayout(adjustableColumn=True, rowSpacing=3)
+
+        self.uiVars['refCharacterList_fLayout'] = cmds.frameLayout(label='Referenced characters', font='boldLabelFont',
+                                                                       collapsable=True, borderVisible=True,
+                                                                       borderStyle='etchedIn', marginHeight=5,
+                                                                       marginWidth=4, collapse=True)
+
+        self.uiVars['refCharacterList_txScList'] = cmds.textScrollList(enable=False, height=32,
+                                                                             allowMultiSelection=False,
+                                                 append=['              < no character references(s) loaded in the scene >'],
+                                                                             font='boldLabelFont')
+
+        self.uiVars['refCharacterList_button_load'] = cmds.button(label='Load a new character into the scene',
+                                                                  enable=False,
+                                                                  command=self.loadCharAsReference)
+
+        self.uiVars['refCharacterList_button_unload'] = cmds.button(label='Unload the selected character from scene',
+                                                                    enable=False,
+                                                                    command=self.unloadRefCharFromScene)
+
+        self.uiVars['refCharacterList_button_reload'] = cmds.button(label='Reload the selected character',
+                                                                    enable=False, command=self.reloadRefCharInScene)
+
+        cmds.setParent(self.uiVars['animate_Column'])
+
+        # self.uiVars['characterAttributes_fLayout'] = cmds.frameLayout(label='Character attributes',
+        #                                                                   font='boldLabelFont', collapsable=True,
+        #                                                                   borderVisible=True, borderStyle='etchedIn',
+        #                                                                   marginHeight=5, marginWidth=4, collapse=True)
+
+        # cmds.text(label='Select a referenced character to display attributes', font='boldLabelFont')
+
+        # cmds.setParent(self.uiVars['animate_Column'])
+
+        self.uiVars['characterLayout_fLayout'] = cmds.frameLayout(label='Character control rigs', font='boldLabelFont',
+                                                                      collapsable=True, borderVisible=True,
+                                                                      borderStyle='etchedIn', marginHeight=5,
+                                                                      marginWidth=4, collapse=True)
+
+        cmds.text(label='Select a character in the scene from list to display its\nhierarchies and the controls on them',
+                  font='boldLabelFont')
+
+        self.uiVars['refChar_selectListMenu'] = cmds.optionMenu(label='Character', enable=False)
+
+        cmds.menuItem(label='No character found in the scene')
+
+        cmds.text(label='Select a character hierarchy')
+
+        self.uiVars['characterHierarchyList_txScList'] = cmds.textScrollList(enable=False, height=32,
+                                                                                   allowMultiSelection=False,
+                                               append=['                           < no character selected from the list >'],
+                                                                                   font='boldLabelFont')
+
+        cmds.text(label='Select a control rig from the selected hierarchy to adjust its weight')
+
+        self.uiVars['hierarchyControlRigList_txScList'] = cmds.textScrollList(enable=False, height=32,
+                                                                                    allowMultiSelection=False,
+                                               append=['                           < no character selected from the list >'],
+                                                                                    font='boldLabelFont')
+        cmds.setParent(self.uiVars['animate_Column'])
+
+        # self.uiVars['animateConstraints_fLayout'] = cmds.frameLayout(label='Constraints', font='boldLabelFont',
+        #                                                                  collapsable=True, borderVisible=True,
+        #                                                                  borderStyle='etchedIn', marginHeight=5,
+        #                                                                  marginWidth=4, collapse=True)
+
+        # cmds.setParent(self.uiVars['animate_Column'])
+
+        # self.uiVars['bakeAnim_fLayout'] = cmds.frameLayout(label='Bake animation to FK', font='boldLabelFont',
+        #                                                        collapsable=True, borderVisible=True, borderStyle='etchedIn',
+        #                                                              marginHeight=5, marginWidth=4, collapse=True)
+
+        # cmds.text(label='Select a referenced character to bake animation', font='boldLabelFont')
+
+        # self.animateTabFrames.extend([self.uiVars['refCharacterTemplates_fLayout'],
+        #                               self.uiVars['characterAttributes_fLayout'],
+        #                               self.uiVars['characterLayout_fLayout'],
+        #                               self.uiVars['animateConstraints_fLayout'],
+        #                               self.uiVars['bakeAnim_fLayout']])
+
+        self.animateTabFrames.extend([self.uiVars['refCharacterList_fLayout'],
+                                      self.uiVars['characterLayout_fLayout']])
+
+    '''
+
+
+    # -------------------------------------------------------------------------------------------------------------
+    #
+    #   UI UTILITY METHODS
+    #
+    # -------------------------------------------------------------------------------------------------------------
+
     def createUIutilityScriptJobs(self):
         '''
         Run helper scriptJobs for MRT UI events.
@@ -1663,13 +1898,265 @@ class MRT_UI(object):
         self.c_jobNum = cmds.scriptJob(uiDeleted=[mainWin, partial(mfunc.cleanup_MRT_actions, self.c_jobNum)])
 
 
-# -------------------------------------------------------------------------------------------------------------
-#
-#   UI MODIFIER METHODS
-#
-# -------------------------------------------------------------------------------------------------------------
+    def toggleEditMenuButtonsOnModuleSelection(self):
+        '''
+        Set UI states for controls with buttons for performing module edits (under Edit tab), based on
+        valid scene module selection. Used by a scriptJob under "createUIutilityScriptJobs".
+        '''
+        # Get selection, and get the selection module namespace, if valid.
+        selection = mel.eval("ls -sl -type dagNode")
+        if selection:
+            lastSelection = selection[-1]
+            namespaceInfo = mfunc.stripMRTNamespace(lastSelection)
 
-# ----------------------------------------------- CREATE TAB --------------------------------------------------
+            # If valid scene module.
+            if namespaceInfo != None:
+
+                cmds.button(self.uiVars['moduleSaveColl_button'], edit=True, enable=True)
+                cmds.rowLayout(self.uiVars['moduleSaveCollOptions_row1'], edit=True, enable=True)
+                cmds.rowLayout(self.uiVars['moduleSaveCollOptions_row2'], edit=True, enable=True)
+                cmds.button(self.uiVars['moduleRename_button'], edit=True, enable=True)
+                cmds.button(self.uiVars['moduleDelete_button'], edit=True, enable=True)
+                cmds.button(self.uiVars['moduleDuplicate_button'], edit=True, enable=True)
+                text = namespaceInfo[0].rpartition('__')[2]
+                cmds.textField(self.uiVars['moduleRename_textField'], edit=True, text=text)
+
+                return
+
+        cmds.button(self.uiVars['moduleSaveColl_button'], edit=True, enable=False)
+        cmds.rowLayout(self.uiVars['moduleSaveCollOptions_row1'], edit=True, enable=False)
+        cmds.rowLayout(self.uiVars['moduleSaveCollOptions_row2'], edit=True, enable=False)
+        cmds.button(self.uiVars['moduleRename_button'], edit=True, enable=False)
+        cmds.button(self.uiVars['moduleDelete_button'], edit=True, enable=False)
+        cmds.button(self.uiVars['moduleDuplicate_button'], edit=True, enable=False)
+        cmds.textField(self.uiVars['moduleRename_textField'], edit=True, text=None)
+
+
+    def checkMRTcharacter(self):
+        '''
+        Checks for a character in the current scene. If found, it returns the name
+        of main character group and the auto module collection file generated while creating the character.
+        '''
+        # Get the cuurent namespace, set to root.
+        namespace = cmds.namespaceInfo(currentNamespace=True)
+        cmds.namespace(setNamespace=':')
+
+        # Look for character main groups. Normally, there should only be one.
+        transforms = cmds.ls(type='transform')
+        characterGrp = []
+        for transform in transforms:
+            if re.match('MRT_character[a-zA-Z0-9]*__mainGrp', transform):
+                characterGrp.append(transform)
+
+        # If found more than one character main group.
+        if len(characterGrp) > 1:
+            cmds.warning('MRT Error: More than one character exists in the scene. Aborting.')
+            return
+
+        # If a character group is found in the scene.
+        if len(characterGrp) == 1:
+            characterGrp = characterGrp[0]
+
+        # If no character main group is found in the scene.
+        if len(characterGrp) == 0:
+            characterGrp = None
+
+        autoCollectionFile = ''
+
+        if characterGrp:
+
+            # Get the stored auto-module collection file id
+            fileId = cmds.getAttr(characterGrp+'.collectionFileID')
+
+            # Look for the target auto module collection file under "MRT/module_collections/auto-generated_character_collections"
+            collectionFile = 'character__%s' % (fileId)
+            autoCollectionFiles = [item for item in os.listdir(self.autoCollections_path) if re.match('^.*mrtmc$', item)]
+            if len(autoCollectionFiles):
+                for item in autoCollectionFiles:
+                    if item.partition('.')[0] == collectionFile:
+                        autoCollectionFile = collectionFile
+                        break
+
+        # Reset namespace.
+        cmds.namespace(setNamespace=namespace)
+
+        return characterGrp, autoCollectionFile
+
+
+    # -------------------------------------------------------------------------------------------------------------
+    #
+    #   "CREATE" TAB ITEM METHODS
+    #
+    # -------------------------------------------------------------------------------------------------------------
+
+    def checkAndReturnNodeAxes(self):
+        """
+        Checks the "node axes" field values in the create UI tab.
+        """
+        # Get the field values.
+        node_aim_axis = cmds.optionMenu(self.uiVars['aimAxis_menu'], query=True, value=True)
+        node_up_axis = cmds.optionMenu(self.uiVars['upAxis_menu'], query=True, value=True)
+        node_front_axis = cmds.optionMenu(self.uiVars['planeAxis_menu'], query=True, value=True)
+        node_axes = node_aim_axis + node_up_axis + node_front_axis
+
+        for axis in ['X', 'Y', 'Z']:
+            if node_axes.count(axis) > 1:
+                cmds.warning('MRT Error: Node axes error. More than one axis have been assigned the same value.')
+                return None
+
+        return node_axes
+
+
+    def checkNodeNumWithLength(self):
+        """
+        Checks the module length with its number of nodes for creation.
+        """
+        # Get the field values.
+        module_length = cmds.floatSliderGrp(self.uiVars['lenNodes_sliderGrp'], query=True, value=True)
+        num_nodes = cmds.intSliderGrp(self.uiVars['numNodes_sliderGrp'], query=True, value=True)
+
+        # Check if the module length is 0 and number of nodes > 1 and vice versa.
+
+        if num_nodes != 1 and module_length == 0:
+
+            cmds.warning('MRT Error: Module Length Error. \
+                          A module with %s nodes cannot be created with the specified length.'%(num_nodes))
+            return False
+
+        if num_nodes == 1 and module_length > 0.0:
+            cmds.warning('MRT Error: Module Length Error. \
+                          A module with single node cannot be created with the specified length.')
+            return False
+
+        return True
+
+
+    def updateModuleLengthValue(self, *args):
+        """
+        Updates the module length value in the UI based on the number of module nodes and the type of
+        module node type set in the create UI tab. UI callback method.
+        """
+        num_nodes = cmds.intSliderGrp(self.uiVars['numNodes_sliderGrp'], query=True, value=True)
+        length_module = cmds.floatSliderGrp(self.uiVars['lenNodes_sliderGrp'], query=True, value=True)
+        node_type = cmds.radioCollection(self.uiVars['moduleType_radioColl'], query=True, select=True)
+
+        if num_nodes > 1 and length_module == 0:
+            cmds.floatSliderGrp(self.uiVars['lenNodes_sliderGrp'], edit=True, value=0.1)
+            cmds.checkBox(self.uiVars['node_orientation_check'], edit=True, value=False)
+            cmds.checkBox(self.uiVars['node_hierarchy_check'], edit=True, enable=True, value=True)
+            cmds.checkBox(self.uiVars['proxyGeoBones_check'], edit=True, enable=True, value=True)
+
+        if num_nodes == 1 and length_module > 0:
+            cmds.floatSliderGrp(self.uiVars['lenNodes_sliderGrp'], edit=True, value=0)
+            cmds.checkBox(self.uiVars['node_orientation_check'], edit=True, value=True)
+            cmds.checkBox(self.uiVars['node_hierarchy_check'], edit=True, enable=False, value=False)
+            cmds.checkBox(self.uiVars['proxyGeoBones_check'], edit=True, enable=False, value=False)
+
+        if node_type == 'JointNode':
+            if num_nodes > 1:
+                cmds.checkBox(self.uiVars['proxyGeoBones_check'], edit=True, enable=True)
+
+        if node_type == 'SplineNode':
+            cmds.checkBox(self.uiVars['node_orientation_check'], edit=True, value=True)
+            cmds.checkBox(self.uiVars['node_hierarchy_check'], edit=True, enable=True, value=True)
+            cmds.checkBox(self.uiVars['proxyGeoBones_check'], edit=True, enable=False, value=False)
+
+        if node_type == 'HingeNode':
+            cmds.checkBox(self.uiVars['proxyGeoBones_check'], edit=True, enable=True)
+            cmds.checkBox(self.uiVars['node_orientation_check'], edit=True, enable=True, value=True)
+            cmds.checkBox(self.uiVars['node_hierarchy_check'], edit=True, enable=True)
+
+
+    def updateNumNodesValue(self, *args):
+        """
+        Updates the number of module nodes in the UI based on the number of module nodes and the type of
+        module node type set in the create UI tab. UI callback method.
+        """
+        length_module = cmds.floatSliderGrp(self.uiVars['lenNodes_sliderGrp'], query=True, value=True)
+        num_nodes = cmds.intSliderGrp(self.uiVars['numNodes_sliderGrp'], query=True, value=True)
+        node_type = cmds.radioCollection(self.uiVars['moduleType_radioColl'], query=True, select=True)
+
+        if length_module == 0:
+            cmds.intSliderGrp(self.uiVars['numNodes_sliderGrp'], edit=True, value=1)
+            cmds.checkBox(self.uiVars['node_orientation_check'], edit=True, value=True)
+            cmds.checkBox(self.uiVars['node_hierarchy_check'], edit=True, enable=False, value=False)
+            cmds.checkBox(self.uiVars['proxyGeoBones_check'], edit=True, enable=False, value=False)
+
+        if length_module > 0 and num_nodes == 1:
+            cmds.intSliderGrp(self.uiVars['numNodes_sliderGrp'], edit=True, value=2)
+            cmds.checkBox(self.uiVars['node_orientation_check'], edit=True, value=False)
+            cmds.checkBox(self.uiVars['node_hierarchy_check'], edit=True, enable=True)
+            cmds.checkBox(self.uiVars['proxyGeoBones_check'], edit=True, enable=True, value=True)
+
+        if length_module > 0 and num_nodes > 1:
+            cmds.checkBox(self.uiVars['node_hierarchy_check'], edit=True, enable=True, value=True)
+
+        if node_type == 'JointNode':
+            if length_module == 0:
+                cmds.checkBox(self.uiVars['proxyGeoBones_check'], edit=True, enable=False, value=False)
+
+        if node_type == 'SplineNode':
+            cmds.checkBox(self.uiVars['node_orientation_check'], edit=True, value=True)
+            cmds.checkBox(self.uiVars['node_hierarchy_check'], edit=True, enable=True, value=True)
+            cmds.checkBox(self.uiVars['proxyGeoBones_check'], edit=True, enable=False, value=False)
+
+        if node_type == 'HingeNode':
+            cmds.checkBox(self.uiVars['proxyGeoBones_check'], edit=True, enable=True)
+            cmds.checkBox(self.uiVars['node_orientation_check'], edit=True, enable=True, value=True)
+            cmds.checkBox(self.uiVars['node_hierarchy_check'], edit=True, enable=True)
+
+
+    def modifyModuleCreationOptions(self, *args):
+        """
+        Sets the UI attributes for module creation, based on the selected module type for creation.
+        This is a UI callback method when the module type radio button is selected.
+        """
+        # Get the module node type
+        node_type = cmds.radioCollection(self.uiVars['moduleType_radioColl'], query=True, select=True)
+
+        if node_type == 'JointNode':
+
+            cmds.intSliderGrp(self.uiVars['numNodes_sliderGrp'], edit=True, minValue=1, maxValue=20,
+                              fieldMinValue=1, fieldMaxValue=100, value=1, enable=True)
+
+            cmds.floatSliderGrp(self.uiVars['lenNodes_sliderGrp'], edit=True, minValue=0, maxValue=50,
+                                fieldMinValue=0, fieldMaxValue=100, value=0)
+
+            self.updateNumNodesValue([])
+
+        if node_type == 'SplineNode':
+
+            cmds.intSliderGrp(self.uiVars['numNodes_sliderGrp'], edit=True, minValue=4, maxValue=20,
+                              fieldMinValue=4, fieldMaxValue=100, value=4, enable=True)
+
+            cmds.floatSliderGrp(self.uiVars['lenNodes_sliderGrp'], edit=True, minValue=1, maxValue=50,
+                                fieldMinValue=1, fieldMaxValue=100, value=4)
+
+            self.updateNumNodesValue([])
+
+        if node_type == 'HingeNode':
+
+            cmds.intSliderGrp(self.uiVars['numNodes_sliderGrp'], edit=True, minValue=1, maxValue=20,
+                              fieldMinValue=3, fieldMaxValue=100, value=3, enable=False)
+
+            cmds.floatSliderGrp(self.uiVars['lenNodes_sliderGrp'], edit=True, minValue=1, maxValue=50,
+                                fieldMinValue=1, fieldMaxValue=100, value=3)
+
+            self.updateNumNodesValue([])
+
+
+    def enableProxyGeoOptions(self, *args):
+        """
+        Enables the Proxy Geo UI options. UI callback method.
+        """
+        cmds.frameLayout(self.uiVars['proxyGeo_fLayout'], edit=True, enable=True)
+
+
+    def disableProxyGeoOptions(self, *args):
+        """
+        Disables the Proxy Geo UI options. UI callback method.
+        """
+        cmds.frameLayout(self.uiVars['proxyGeo_fLayout'], edit=True, enable=False, collapse=True)
 
 
     def toggleElbowProxyTypeRadio(self, *args):
@@ -1682,25 +2169,25 @@ class MRT_UI(object):
         else:
             cmds.rowLayout(self.uiVars['proxyElbowType_row'], edit=True, enable=False)
 
-# -------------------------------------------------------------------------------------------------------------
-#
-#   "CREATE" TAB ITEM METHODS
-#
-# -------------------------------------------------------------------------------------------------------------
+
+    def enableMirrorFunctions(self, *args):
+        """
+        Enable the module mirroring options in the create UI tab. UI callback method.
+        """
+        cmds.radioButton(self.uiVars['mirrorRot_radioButton_behaviour'], edit=True, enable=True)
+        cmds.radioButton(self.uiVars['mirrorRot_radioButton_ori'], edit=True, enable=True)
+        cmds.rowLayout(self.uiVars['proxyGeoFrame_secondRow'], edit=True, enable=True)
 
 
-# -------------------------------------------------------------------------------------------------------------
-#
-#   "EDIT" TAB ITEM METHODS
-#
-# -------------------------------------------------------------------------------------------------------------
-
-
-# -------------------------------------------------------------------------------------------------------------
-#
-#   "RIG" TAB ITEM METHODS
-#
-# -------------------------------------------------------------------------------------------------------------
+    def disableMirrorFunctions(self, *args):
+        """
+        Disables the module mirroring options in the create UI tab. UI callback method.
+        """
+        cmds.radioButton(self.uiVars['mirrorRot_radioButton_behaviour'], edit=True, enable=False)
+        cmds.radioButton(self.uiVars['mirrorRot_radioButton_ori'], edit=True, enable=False)
+        cmds.rowLayout(self.uiVars['proxyGeoFrame_secondRow'], edit=True, enable=False)
+        cmds.radioButton(self.uiVars['proxyGeo_mirrorInstn_radioButton_on'], edit=True, select=False)
+        cmds.radioButton(self.uiVars['proxyGeo_mirrorInstn_radioButton_off'], edit=True, select=True)
 
 
     def updateDefaultUserSpecifiedNameField(self):
@@ -1753,41 +2240,202 @@ class MRT_UI(object):
             cmds.textField(self.uiVars['userSpecName_textField'], edit=True, text=userSpecifiedName)
 
 
-# ------------------------------------------------ EDIT TAB ---------------------------------------------------
+    def createModuleFromUI(self, *args):
+        """
+        This method collects all the information from the 'Create' UI tab, and uses the "createModuleFromAttributes"
+        from 'mrt_functions' to create a module.
+        """
+        # Check if a character exists in the scene. A module can't be created with a character in the scene.
+        characterStatus = self.checkMRTcharacter()
 
-# ............................................. SCENE MODULES .................................................
-
-    def loadSavedModuleCollections(self, *args):
-        '''
-        Called when the menu item under the "File" menu, "Select and load saved module collection(s)"
-        is selected. This loads selected module collection file(s) from the disk.
-        '''
-        # Get the last directory accessed for selecting module collection files(s)
-        ui_preferences_file = open(self.ui_preferences_path, 'rb')
-        ui_preferences = cPickle.load(ui_preferences_file)
-        ui_preferences_file.close()
-        startDir = ui_preferences['lastDirectoryForLoadingCollections']
-
-        # If the previous directory path doesn't exist, use the default "user_collections" path under MRT
-        if not os.path.exists(startDir):
-            startDir = ui_preferences['defaultLastDirectoryForLoadingCollections']
-        fileFilter = 'MRT Module Collection Files (*.mrtmc)'
-        mrtmc_files = cmds.fileDialog2(caption='Select module collection files(s) for loading', okCaption='Load',
-                                                fileFilter=fileFilter, startingDirectory=startDir, fileMode=4, dialogStyle=2)
-        if not mrtmc_files:
+        # If a character exists in the scene, skip creating a module.
+        if characterStatus[0]:
+            cmds.warning('MRT Error: Cannot create a module with a character in the scene.\n')
             return
 
-        # Load the selected module collection files, with the preference to clear the current module collection list
-        value = ui_preferences['loadCollectionClearModeStatus']
-        self.loadModuleCollectionsForUI(mrtmc_files, value)
+        cmds.select(clear=True)
 
-        # Save the current directory used to access module collection files(s)
-        directory = mrtmc_files[0].rpartition('/')[0]
-        ui_preferences['lastDirectoryForLoadingCollections'] = directory
-        ui_preferences_file = open(self.ui_preferences_path, 'wb')
-        cPickle.dump(ui_preferences, ui_preferences_file, cPickle.HIGHEST_PROTOCOL)
-        ui_preferences_file.close()
+        # Update the user specified name field with a suffix if the module user spcified name exists in the scene.
+        self.updateDefaultUserSpecifiedNameField()
 
+        # Check if the length of the module specified in the create UI works with the number of nodes in the module.
+        if not self.checkNodeNumWithLength():
+            return
+
+        # Collect module info from the create UI tab.
+        self.moduleInfo = {}
+        self.moduleInfo['node_type'] = nodeType = cmds.radioCollection(self.uiVars['moduleType_radioColl'],
+                                                                       query=True,
+                                                                       select=True)
+        self.moduleInfo['module_length'] = cmds.floatSliderGrp(self.uiVars['lenNodes_sliderGrp'],
+                                                               query=True,
+                                                               value=True)
+        self.moduleInfo['num_nodes'] = cmds.intSliderGrp(self.uiVars['numNodes_sliderGrp'],
+                                                         query=True,
+                                                         value=True)
+        self.moduleInfo['creation_plane'] = cmds.radioCollection(self.uiVars['creationPlane_radioColl'],
+                                                                  query=True,
+                                                                  select=True)
+        self.moduleInfo['module_offset'] = cmds.floatSliderGrp(self.uiVars['modOriginOffset_slider'],
+                                                               query=True,
+                                                               value=True)
+        # Check the node axes for the module to be created.
+        self.moduleInfo['node_axes'] = self.checkAndReturnNodeAxes()
+        if self.moduleInfo['node_axes'] == None:
+            return
+
+
+        # Module components
+
+        # Hierarchy representation.
+        hierarchy = cmds.checkBox(self.uiVars['node_hierarchy_check'], query=True, value=True)
+
+        # Orientaton representation control.
+        orientation = cmds.checkBox(self.uiVars['node_orientation_check'], query=True, value=True)
+
+        # Module proxy creation.
+        proxy_geo_switch = cmds.checkBox(self.uiVars['proxyGeo_check'], query=True, value=True)
+        self.moduleInfo['node_compnts'] = hierarchy, orientation, proxy_geo_switch
+
+        # Proxy geo components.
+        proxy_bones = cmds.checkBox(self.uiVars['proxyGeoBones_check'], query=True, value=True)
+        proxy_elbows = cmds.checkBox(self.uiVars['proxyGeoElbow_check'], query=True, value=True)
+        proxy_elbow_type = cmds.radioCollection(self.uiVars['elbowproxyType_radioColl'], query=True, select=True)
+
+        # Mirror instancing for mirror module.
+        proxy_mirror = cmds.radioCollection(self.uiVars['proxyGeo_mirrorInstn_radioColl'],
+                                            query=True, select=True)
+        # Save proxy geo options.
+        self.moduleInfo['proxy_geo_options'] = proxy_bones, proxy_elbows, proxy_elbow_type, proxy_mirror
+
+        # Mirroring for the module.
+        mirror_switch = cmds.radioCollection(self.uiVars['mirrorSwitch_radioColl'], query=True, select=True)
+        # Translate / Rotate mirror function.
+        mirror_trans_func = cmds.radioCollection(self.uiVars['transFunc_radioColl'], query=True, select=True)
+        mirror_rot_func = cmds.radioCollection(self.uiVars['mirrorRot_radioColl'], query=True, select=True)
+        self.moduleInfo['mirror_options'] = mirror_switch, mirror_trans_func, mirror_rot_func
+
+        # Get the handle colour for module.
+        self.moduleInfo['handle_colour'] = cmds.colorIndexSliderGrp(self.uiVars['handleColour_slider'],
+                                                                    query=True, value=True)
+        # Get the user specified name.
+        userSpecifiedName = cmds.textField(self.uiVars['userSpecName_textField'], query=True, text=True)
+        userSpecifiedName = userSpecifiedName.lower()
+        self.moduleInfo['userSpecName'] = userSpecifiedName
+
+        # Construct the module namespace.
+        self.moduleInfo['module_Namespace'] = 'MRT_%s__%s' % (nodeType, userSpecifiedName)
+        # Construct the mirror module namespace. Used as a placeholder here.
+        self.moduleInfo['mirror_module_Namespace'] = 'MRT_%s__%s_mirror' % (nodeType, userSpecifiedName)
+
+        # Set the current module to be on the + side of the creation plane. If a mirror module is
+        # to be created, this value is set to True. This is set by "createModuleFromAttributes".
+        self.moduleInfo['mirrorModule'] = False
+
+        # Create the module from attributes. Get the current time, this is used for undoing module creation.
+        self.modules[time.time()] = mfunc.createModuleFromAttributes(self.moduleInfo, createFromUI=True)
+
+        # Set the 'undo create' module button to True.
+        cmds.button(self.uiVars['moduleUndoCreate_button'], edit=True, enable=True)
+
+        # Update UI for the edit module tab.
+        self.updateListForSceneModulesInUI()
+        self.clearParentModuleField()
+        self.clearChildModuleField()
+
+
+    def undoCreateModuleTool(self, *args):
+        """
+        Undo a module creation, if the module is stored in self.modules.
+        """
+        # Module namespaces to be removed. There's two namespaces if the module is a mirror module.
+        namespacesToBeRemoved = []
+
+        # Delete mirror move nodes with its connections.
+        mfunc.deleteMirrorMoveConnections()
+
+        # Get the current namespace, set the namespace to root.
+        currentNamespace = cmds.namespaceInfo(currentNamespace=True)
+        cmds.namespace(setNamespace=':')
+
+        # Get all module namespaces in the scene.
+        moduleNamespaces = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
+
+        # Skip module undo if no module namespace exists in the scene.
+        if moduleNamespaces == None:
+            cmds.button(self.uiVars['moduleUndoCreate_button'], edit=True, enable=False)
+            self.modules = {}
+            return
+
+        # If modules are created in the current UI session (without refreshing the MRT UI),
+        # undo the last module creation.
+        if len(self.modules):
+
+            # Get the last created module namespace (or mirror module namespaces).
+            lastCreatedModuleNamespaces = self.modules.pop(sorted(self.modules, reverse=True)[0])
+
+            # Remove the module or the mirror module pair.
+            for namespace in lastCreatedModuleNamespaces:
+
+                if cmds.namespace(exists=namespace):
+
+                    # Remove children module relationship(s), if any.
+                    self.removeChildrenModules(namespace)
+
+                    # Delete the module container and its nodes.
+                    moduleContainer = namespace+':module_container'
+                    cmds.lockNode(moduleContainer, lock=False, lockUnpublished=False)
+                    dgNodes = cmds.container(moduleContainer, query=True, nodeList=True)
+
+                    for node in dgNodes:
+                        if node.endswith('_curveInfo'):
+                            cmds.delete(node)
+
+                    # Delete the proxy geometry for the module if it exists.
+                    try:
+                        proxyGeoGrp = namespace+':proxyGeometryGrp'
+                        cmds.select(proxyGeoGrp, replace=True)
+                        cmds.delete()
+                    except:
+                        pass
+
+                    cmds.select(moduleContainer, replace=True)
+                    cmds.delete()
+
+                    # Get the module namespaces to be removed.
+                    namespacesToBeRemoved.append(namespace)
+
+            # Remove the module namespaces.
+            if len(namespacesToBeRemoved) > 0:
+                for namespace in namespacesToBeRemoved:
+                    cmds.namespace(removeNamespace=namespace)
+
+            mfunc.cleanSceneState()
+
+        # If self.modules is empty, disable undo module button.
+        else:
+            cmds.button(self.uiVars['moduleUndoCreate_button'], edit=True, enable=False)
+
+        # If all modules are removed from the scene, set the undo module to False.
+        if len(self.modules) == 0:
+            cmds.button(self.uiVars['moduleUndoCreate_button'], edit=True, enable=False)
+
+        if cmds.namespace(exists=currentNamespace):
+            cmds.namespace(setNamespace=currentNamespace)
+
+        # Update UI for the edit module tab.
+        self.clearParentModuleField()
+        self.clearChildModuleField()
+        self.updateListForSceneModulesInUI()
+
+
+    # -------------------------------------------------------------------------------------------------------------
+    #
+    #   "EDIT" TAB ITEM METHODS
+    #
+    # -------------------------------------------------------------------------------------------------------------
+
+    # ............................................. MODULE COLLECTIONS ............................................
 
     def loadModuleCollectionsForUI(self, moduleCollectionFileList, clearCurrentList=False):
         '''
@@ -2062,7 +2710,7 @@ class MRT_UI(object):
         '''
         Performs installation of a selected module collection from the module collection scroll list
         into the maya scene. It also accepts an auto-collection file, which is auto generated by MRT
-        while creating a character from scene modules (It's used by MRT to revert a character back 
+        while creating a character from scene modules (It's used by MRT to revert a character back
         to its scene modules).
         '''
         # If an auto-install module collection file is passed, use it.
@@ -2315,617 +2963,7 @@ class MRT_UI(object):
         cmds.showWindow(self.uiVars['editCollectionDescpWindow'])
 
 
-    def loadSavedCharTemplates(self, *args):
-        '''
-        Performs selective loading of character template files on disk into the MRT UI.
-        '''
-        # Get the previous directory accessed, saved as a preference
-        ui_preferences_file = open(self.ui_preferences_path, 'rb')
-        ui_preferences = cPickle.load(ui_preferences_file)
-        ui_preferences_file.close()
-        startDir = ui_preferences['directoryForCharacterTemplates']
-
-        # If the saved directory doesn't exist on the disk, use the default directory under MRT/character_templates
-        if not os.path.exists(startDir):
-            startDir = ui_preferences['defaultDirectoryForCharacterTemplates']
-
-        # Get the selected character template files from the user
-        fileFilter = 'MRT Character Template Files (*.mrtct)'
-        mrtct_files = cmds.fileDialog2(caption='Load character template(s)', fileFilter=fileFilter, okCaption='Load',
-                                                                      startingDirectory=startDir, fileMode=4, dialogStyle=2)
-        if mrtct_files == None:
-            return
-
-        # Get the preference if the currently loaded character template files in the UI needs to be cleared.
-        clearStatus = ui_preferences['loadCharTemplateClearModeStatus']
-
-        # Load the new character template files into the UI
-        self.loadCharTemplatesForUI(mrtct_files, clearStatus)
-
-        # Get the directory used for selecting character template files, save it as a preference
-        ui_preferences['directoryForCharacterTemplates'] = mrtct_files[0].rpartition('/')[0]
-        ui_preferences_file = open(self.ui_preferences_path, 'wb')
-        cPickle.dump(ui_preferences, ui_preferences_file, cPickle.HIGHEST_PROTOCOL)
-        ui_preferences_file.close()
-
-
-    def changeLoadSettingsForCharTemplates(self, *args):
-        '''
-        Modifies the load settings for character templates into MRT UI.
-        '''
-        def setCharTemplateLoadSettingsValues(*args):
-            # Load the preferences
-            ui_preferences_file = open(self.ui_preferences_path, 'rb')
-            ui_preferences = cPickle.load(ui_preferences_file)
-            ui_preferences_file.close()
-
-            # Get the current preferences
-            clearListStatus = cmds.checkBox(self.uiVars['clearCharTemplateListOnLoad_checkBox'], query=True, value=True)
-            loadPreviousListAtStartup = cmds.checkBox(self.uiVars['charTemplateLoadAtStartup_checkBox'], query=True,
-                                                                                                            value=True)
-            loadNewTemplatesToList = cmds.checkBox(self.uiVars['newCharTemplateLoadToList_checkBox'], query=True,
-                                                                                                            value=True)
-            # Set the current preference for clearing the current template list
-            ui_preferences['loadCharTemplateClearModeStatus'] = clearListStatus
-            # Set the current preference for loading the current template list at next MRT startup
-            ui_preferences['autoLoadPreviousCharTemplateListAtStartupStatus'] = loadPreviousListAtStartup
-            # Set the current preference for loading new templates to list
-            ui_preferences['loadNewCharTemplatesToCurrentList'] = loadNewTemplatesToList
-
-            # Save these preferences
-            ui_preferences_file = open(self.ui_preferences_path, 'wb')
-            cPickle.dump(ui_preferences, ui_preferences_file, cPickle.HIGHEST_PROTOCOL)
-            ui_preferences_file.close()
-
-        def loadTemplatesFromSettingsWindow(*args):
-            # Load the templates
-            try:
-                cmds.deleteUI('mrt_charTemplateLoadSettingsUI_window')
-            except:
-                pass
-            self.loadSavedCharTemplates()
-
-        # Close the preferences window
-        try:
-            cmds.deleteUI('mrt_charTemplateLoadSettingsUI_window')
-        except:
-            pass
-
-        # Create the preference window
-        self.uiVars['charTemplateLoadSettingsUIwindow'] = cmds.window('mrt_charTemplateLoadSettingsUI_window',
-                         title='Settings for loading character templates(s)', width=90, maximizeButton=False, sizeable=False)
-        try:
-            cmds.windowPref('mrt_charTemplateLoadSettingsUI_window', remove=True)
-        except:
-            pass
-
-        # Main column
-        self.uiVars['charTemplateLoadSettingsWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
-
-        cmds.text(label='')
-
-        # Get the saved preferences
-        ui_preferences_file = open(self.ui_preferences_path, 'rb')
-        ui_preferences = cPickle.load(ui_preferences_file)
-        ui_preferences_file.close()
-
-        # Preference to clear current template list for loading new character templates
-        clearListStatus = ui_preferences['loadCharTemplateClearModeStatus']
-
-        # Load current character template list at next MRT startup
-        loadPreviousListAtStartup = ui_preferences['autoLoadPreviousCharTemplateListAtStartupStatus']
-
-        # Add new character templates to the current list
-        loadNewTemplatesToList = ui_preferences['loadNewCharTemplatesToCurrentList']
-
-        # Create a layout and buttons to set the preferences
-        cmds.rowLayout(numberOfColumns=1, columnAttach=([1, 'left', 57]))
-        self.uiVars['charTemplateLoadAtStartup_checkBox'] = \
-            cmds.checkBox(label='Preserve and load current list at next startup', value=loadPreviousListAtStartup,
-                                                                    changeCommand=setCharTemplateLoadSettingsValues)
-        cmds.setParent(self.uiVars['charTemplateLoadSettingsWindowColumn'])
-
-        cmds.rowLayout(numberOfColumns=1, columnAttach=([1, 'both', 60]), rowAttach=([1, 'top', 5]))
-        self.uiVars['newCharTemplateLoadToList_checkBox'] = \
-            cmds.checkBox(label='Load new saved templates(s) to current list', value=loadNewTemplatesToList,
-                                                                    changeCommand=setCharTemplateLoadSettingsValues)
-        cmds.setParent(self.uiVars['charTemplateLoadSettingsWindowColumn'])
-
-        cmds.rowLayout(numberOfColumns=1, columnAttach=([1, 'left', 65]), rowAttach=([1, 'top', 5]))
-        self.uiVars['clearCharTemplateListOnLoad_checkBox'] = \
-            cmds.checkBox(label='Clear current template list before loading', value=clearListStatus,
-                                                                    changeCommand=setCharTemplateLoadSettingsValues)
-        cmds.setParent(self.uiVars['charTemplateLoadSettingsWindowColumn'])
-
-
-        cmds.text(label='')
-
-        # Load Templates
-        cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 58], [2, 'left', 30]))
-        cmds.button(label='Load templates(s)', width=130, command=loadTemplatesFromSettingsWindow)
-        cmds.button(label='Close', width=90, command=partial(self.closeWindow,
-                                                  self.uiVars['charTemplateLoadSettingsUIwindow']))
-        # Set to the main columns
-        cmds.setParent(self.uiVars['charTemplateLoadSettingsWindowColumn'])
-        cmds.text(label='')
-        cmds.showWindow(self.uiVars['charTemplateLoadSettingsUIwindow'])
-
-
-    def loadCharTemplatesForUI(self, charTemplatesFileList, clearCurrentList=False):
-        '''
-        Loads passed-in character templaes into the MRT UI. It also takes an argument if the current 
-        character template list is to be cleared.
-        '''
-        # Remove the items from the current template scroll list
-        cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, height=32, removeAll=True)
-
-        # Clear the current character template record list
-        if clearCurrentList:
-            self.charTemplateList = {}
-
-        # If character template list is passed-in, re-build the character template scroll list.
-        if len(charTemplatesFileList):
-            for template in charTemplatesFileList:
-
-                # Get the character template name suitable for the list from the template file name.
-                templateName = re.split(r'\/|\\', template)[-1].rpartition('.')[0]
-
-                # Skip if a template file exists in the list values.
-                if template in self.charTemplateList.values():
-                    continue
-
-                # If the template name exist in the list, add a numerical suffix to it
-                # Example:
-                # templateName
-                # templateName (2)
-                if templateName in self.charTemplateList:
-                    suffix = mfunc.findHighestCommonTextScrollListNameSuffix(templateName, self.charTemplateList.keys())
-                    suffix = suffix + 1
-                    templateName = '%s (%s)'%(templateName, suffix)
-
-                # Save the template name as a key with its template file as value
-                self.charTemplateList[templateName] = template
-
-            # Get the height for the character template scroll list
-            scrollHeight = len(self.charTemplateList) * 20
-            if scrollHeight > 200:
-                scrollHeight = 200
-            if scrollHeight == 20:
-                scrollHeight = 40
-
-            # Add the character template names to the module collection scroll list
-            for templateName in sorted(self.charTemplateList):
-                cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, enable=True,
-                                    height=scrollHeight, append=templateName, font='plainLabelFont',
-                                    selectCommand=self.printCharTemplateInfoForUI)
-
-            # Select the first item
-            cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, selectIndexedItem=1)
-            self.printCharTemplateInfoForUI()
-
-        # If character template list is valid, save it, and enable UI buttons for importing, editing,
-        # and deletion of character template(s) from the UI scroll list.
-        if len(self.charTemplateList):
-            charTemplateList_file = open(self.charTemplateList_path, 'rb')
-            charTemplateList = cPickle.load(charTemplateList_file)
-            charTemplateList_file.close()
-            for key in copy.copy(charTemplateList):
-                charTemplateList.pop(key)
-            for (key, value) in enumerate(self.charTemplateList.values()):
-                charTemplateList[str(key)] = value
-            charTemplateList_file = open(self.charTemplateList_path, 'wb')
-            cPickle.dump(charTemplateList, charTemplateList_file, cPickle.HIGHEST_PROTOCOL)
-            charTemplateList_file.close()
-            # Enable buttons
-            cmds.button(self.uiVars['charTemplate_button_import'], edit=True, enable=True)
-            cmds.button(self.uiVars['charTemplate_button_edit'], edit=True, enable=True)
-            cmds.button(self.uiVars['charTemplate_button_delete'], edit=True, enable=True)
-
-        # If no character template is to be loaded
-        if not len(self.charTemplateList):
-
-            # Clear the saved character template data
-            charTemplateList_file = open(self.charTemplateList_path, 'wb')
-            cPickle.dump({}, charTemplateList_file, cPickle.HIGHEST_PROTOCOL)
-            charTemplateList_file.close()
-
-            # Clear the character template scroll list
-            cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, enable=False,
-                                    height=32, append=['              < no character template(s) loaded >'],
-                                                                                        font='boldLabelFont')
-            # Clear character template info field
-            cmds.scrollField(self.uiVars['charTemplateDescrp_scrollField'], edit=True,
-                                            text='< no collection info >', font='obliqueLabelFont',
-                                                                            editable=False, height=32)
-
-            # Disable buttons for importing, editing and deletion of character template(s)
-            cmds.button(self.uiVars['charTemplate_button_import'], edit=True, enable=False)
-            cmds.button(self.uiVars['charTemplate_button_edit'], edit=True, enable=False)
-            cmds.button(self.uiVars['charTemplate_button_delete'], edit=True, enable=False)
-
-
-
-
-
-    def printCharTemplateInfoForUI(self, *args):
-        '''
-        Prints the character template info for a selected item in the character template scroll list
-        in the character template description field in the UI.
-        '''
-        # Get the current selected character template name
-        selectedItem = cmds.textScrollList(self.uiVars['charTemplates_txScList'], query=True, selectItem=True)[0]
-
-        # Get its template file
-        templateFile = self.charTemplateList[selectedItem]
-
-        # Get the character template description from its template file
-        if os.path.exists(templateFile):
-            # Get the character template data
-            templateFileObj = open(templateFile, 'rb')
-            templateFileData = cPickle.load(templateFileObj)
-            templateFileObj.close()
-            templateDescrp = templateFileData['templateDescription']    # Character template description
-
-            # If description is valid, print it in the character template description field
-            infoScrollheight = 32
-            if re.match('\w+', templateDescrp):
-                if len(templateDescrp) > 60:
-                    infoScrollheight = (len(templateDescrp)/40.0) * 16
-                if templateDescrp.endswith('\n'):
-                    infoScrollheight += 16
-                if infoScrollheight > 64:
-                    infoScrollheight = 64
-                if infoScrollheight < 33:
-                    infoScrollheight = 32
-
-                # Print it
-                cmds.scrollField(self.uiVars['charTemplateDescrp_scrollField'], edit=True, text=templateDescrp,
-                                                                        font='smallPlainLabelFont', height=infoScrollheight)
-            else:
-                # Invalid character template description
-                cmds.scrollField(self.uiVars['charTemplateDescrp_scrollField'], edit=True, text='< no template info >',
-                                                                        font='obliqueLabelFont', editable=False, height=32)
-            return True
-        else:
-            # If the character template file for the selected character template name is not found, remove it from
-            # the character template scroll list
-            cmds.warning('MRT Error: Character template error. The selected character template file, "%s" cannot be found' \
-                                                                                                'on disk.' % (templateFile))
-
-            # Remove it from character template scroll list
-            cmds.textScrollList(self.uiVars['charTemplateDescrp_scrollField'], edit=True, removeItem=selectedItem)
-
-            # Remove it from character template records
-            self.charTemplateList.pop(selectedItem)
-
-            # Remove it from saved character template list data
-            charTemplateList_file = open(self.charTemplateList_path, 'rb')
-            charTemplateList = cPickle.load(charTemplateList_file)
-            charTemplateList_file.close()
-            for key in copy.copy(charTemplateList):
-                if charTemplateList[key] == templateFile:
-                    charTemplateList.pop(key)
-                    break
-            charTemplateList_file = open(self.charTemplateList_path, 'wb')
-            cPickle.dump(charTemplateList, charTemplateList_file, cPickle.HIGHEST_PROTOCOL)
-            charTemplateList_file.close()
-
-            # Reset the character template description field
-            cmds.scrollField(self.uiVars['charTemplateDescrp_scrollField'], edit=True, text='< no template info >',
-                                                                        font='obliqueLabelFont', editable=False, height=32)
-
-            # Check and update the character template list, if it contains any item(s) after removal
-            allItems = cmds.textScrollList(self.uiVars['charTemplates_txScList'], query=True, allItems=True)
-            if not allItems:
-                cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, enable=False, height=32,
-                                                append=['              < no character template(s) loaded >'],
-                                                                                        font='boldLabelFont')
-
-            # Disable buttons for importing, editing and deletion of character template(s)
-            cmds.button(self.uiVars['charTemplate_button_import'], edit=True, enable=False)
-            cmds.button(self.uiVars['charTemplate_button_edit'], edit=True, enable=False)
-            cmds.button(self.uiVars['charTemplate_button_delete'], edit=True, enable=False)
-
-            return False
-
-
-    def importSelectedCharTemplate(self, *args):
-        '''
-        Imports a selected character template from the character template scroll list
-        into the maya scene.
-        '''
-        # Save the current namespace, set to root.
-        namespace = cmds.namespaceInfo(currentNamespace=True)
-        cmds.namespace(setNamespace=':')
-
-        # Check if a character exists in the current scene, skip importing if true.
-        transforms = cmds.ls(type='transform')
-        for transform in transforms:
-            characterName = re.findall('^MRT_character(\D+)__mainGrp$', transform)
-            if characterName:
-                cmds.warning('MRT Error: The character "%s" exists in the scene. '  \
-                                                                    'Unable to import a template.' % (characterName[0]))
-                return
-
-        # Skip importing if module(s) exist in the scene.
-        moduleContainers = [item for item in cmds.ls(type='container') if mfunc.stripMRTNamespace(item)]
-        if moduleContainers:
-            cmds.warning('MRT Error: Module(s) were found in the scene; cannot import a character template. '   \
-                                                                                'Try importing it in a new scene.')
-            return
-
-        # Get the selected character template
-        selectedItem = cmds.textScrollList(self.uiVars['charTemplates_txScList'], query=True, selectItem=True)[0]
-
-        # Get the associated character template, read its data.
-        templateFile = self.charTemplateList[selectedItem]
-        templateFileObj = open(templateFile, 'rb')
-        templateFileData = cPickle.load(templateFileObj)
-        templateFileObj.close()
-
-        # Write a temporary maya scene file which will be used to import the character template.
-        tempFilePath = templateFile.rpartition('.mrtct')[0]+'_temp.ma'
-        tempFileObj = open(tempFilePath, 'w')
-
-        # Write content to the maya scene file with the data from the character template file.
-        for i in range(1, len(templateFileData)):
-            tempFileObj.write(templateFileData['templateData_line_'+str(i)])
-        tempFileObj.close()
-
-        # Remove reference to the character template file object (for garbage collection)
-        del templateFileData
-
-        # Import the character template from the temporary maya scene file
-        cmds.file(tempFilePath, i=True, type='mayaAscii', prompt=False, ignoreVersion=True)
-
-        # Delete the maya scene file after import
-        os.remove(tempFilePath)
-
-
-    def editSelectedCharTemplateDescriptionFromUI(self, *args):
-        '''
-        Edits the character template description for a selected character template from the
-        UI character template scroll list.
-        '''
-        def editDescriptionForSelectedCharTemplate(templateDescription, *args):
-            # Performs / updates the changes to the character template description
-            # from the UI field to the character template file.
-
-            # Close the edit character template descrption window
-            cancelEditCharTemplateNoDescrpErrorWindow()
-
-            # Get the current selected character template name from UI scroll list
-            selectedItem = cmds.textScrollList(self.uiVars['charTemplates_txScList'], query=True, selectItem=True)[0]
-
-            # Get the corresponding character template file
-            templateFile = self.charTemplateList[selectedItem]
-
-            # Get character template data from the file
-            templateFileObj = open(templateFile, 'rb')
-            templateFileData = cPickle.load(templateFileObj)
-            templateFileObj.close()
-
-            # Update the character template description for the data wnd write it
-            templateFileData['templateDescription'] = templateDescription
-            templateFileObj = open(templateFile, 'wb')
-            cPickle.dump(templateFileData, templateFileObj, cPickle.HIGHEST_PROTOCOL)
-            templateFileObj.close()
-
-            # Update the UI
-            self.printCharTemplateInfoForUI()
-
-        def cancelEditCharTemplateNoDescrpErrorWindow(*args):
-            # Closes the edit character template description window
-            cmds.deleteUI(self.uiVars['editCharTemplateDescrpWindow'])
-            try:
-                cmds.deleteUI(self.uiVars['editCharTemplateNoDescrpErrorWindow'])
-            except:
-                pass
-
-        def checkEditDescriptionForSelectedCharTemplate(*args):
-            # Checks the new character template description for saving / updating
-            # Get the description
-            templateDescription = cmds.scrollField(self.uiVars['editCharTemplateDescrpWindowScrollField'],
-                                                                                                query=True, text=True)
-            if templateDescription == '':
-                # If no description is entered, create a warning window before proceeding
-                self.uiVars['editCharTemplateNoDescrpErrorWindow'] = \
-                    cmds.window('mrt_editCharTemplate_noDescrpError_UI_window', title='Character template warning',
-                                                                                    maximizeButton=False, sizeable=False)
-                # Remove the window from UI preferences
-                try:
-                    cmds.windowPref('mrt_editCharTemplate_noDescrpError_UI_window', remove=True)
-                except:
-                    pass
-
-                # Main layout
-                cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90,
-                                                                            width=220, marginWidth=20, marginHeight=15)
-
-                # Give the user a choice to save the character template description with
-                # an empty value
-                cmds.text(label='Are you sure you want to continue with an empty description?')
-                cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 55], [2, 'left', 20]),
-                                                                            rowAttach=([1, 'top', 8], [2, 'top', 8]))
-                cmds.button(label='Continue', width=90,
-                                        command=partial(editDescriptionForSelectedCharTemplate, templateDescription))
-                cmds.button(label='Cancel', width=90, command=cancelEditCharTemplateNoDescrpErrorWindow)
-
-                # Show the window for warning
-                cmds.showWindow(self.uiVars['editCharTemplateNoDescrpErrorWindow'])
-            else:
-                # Proceed saving with the new character template description
-                editDescriptionForSelectedCharTemplate(templateDescription)
-
-        # Check if the selected character template is valid.
-        validItem = self.printCharTemplateInfoForUI()
-        if not validItem:
-            return
-
-        # Close the edit character template description window if open
-        try:
-            cmds.deleteUI('mrt_charTemplateDescription_edit_UI_window')
-        except:
-            pass
-
-        # Create the character template description window
-        self.uiVars['editCharTemplateDescrpWindow'] = cmds.window('mrt_charTemplateDescription_edit_UI_window',
-                                title='Character template description', height=150, maximizeButton=False, sizeable=False)
-
-        # Remove the window from UI preference
-        try:
-            cmds.windowPref('mrt_charTemplateDescription_edit_UI_window', remove=True)
-        except:
-            pass
-
-        # Main column
-        self.uiVars['editCharTemplateDescrpWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
-
-        # Create the layout for the character template description field
-        cmds.text(label='')
-        cmds.text('Enter new description for character template', align='center', font='boldLabelFont')
-        cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=75, width=320,
-                                                                                              marginWidth=5, marginHeight=10)
-
-        # Get the current character template description from its file
-        selectedItem = cmds.textScrollList(self.uiVars['charTemplates_txScList'], query=True, selectItem=True)[0]
-        templateFile = self.charTemplateList[selectedItem]
-        templateFileObj = open(templateFile, 'rb')
-        templateFileData = cPickle.load(templateFileObj)
-        currentDescriptionText = templateFileData['templateDescription']
-        templateFileObj.close()
-
-        # Create the field for character template description and set its value with the current description
-        self.uiVars['editCharTemplateDescrpWindowScrollField'] = cmds.scrollField(preventOverride=True, wordWrap=True,
-                                                                                              text=currentDescriptionText)
-
-        # Create the layout and its button for updating the character template description from the field
-        cmds.setParent(self.uiVars['editCharTemplateDescrpWindowColumn'])
-        cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 34], [2, 'left', 26]))
-        cmds.button(label='Save description', width=130, command=checkEditDescriptionForSelectedCharTemplate)
-        cmds.button(label='Cancel', width=90, command=partial(self.closeWindow, self.uiVars['editCharTemplateDescrpWindow']))
-
-        # Set to the main UI column
-        cmds.setParent(self.uiVars['editCharTemplateDescrpWindowColumn'])
-        cmds.text(label='')
-
-        # Show the edit character template description window
-        cmds.showWindow(self.uiVars['editCharTemplateDescrpWindow'])
-
-
-    def deleteSelectedCharTemplate(self, *args):
-        '''
-        Deletes a selected character template from the character template list in the MRT UI.
-        '''
-        def deleteCharTemplate(deleteFromDisk=False, *args):
-            # This definition will be used only within the scope of deleteSelectedCharTemplate
-
-            # If the character template is to be deleted, close the window
-            cmds.deleteUI('mrt_deleteCharTemplate_UI_window')
-
-            # Remove the character template name from the UI scroll list
-            selectedItem = cmds.textScrollList(self.uiVars['charTemplates_txScList'], query=True, selectItem=True)[0]
-            cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, removeItem=selectedItem)
-
-            # Get its collection file
-            templateFile = self.charTemplateList[selectedItem]
-
-            # Remove it from character template records
-            self.charTemplateList.pop(selectedItem)
-
-            # Remove it from saved character template list data, save the new list
-            charTemplateList_file = open(self.charTemplateList_path, 'rb')
-            charTemplateList = cPickle.load(charTemplateList_file)
-            charTemplateList_file.close()
-            for key in copy.copy(charTemplateList):
-                if charTemplateList[key] == templateFile:
-                    charTemplateList.pop(key)
-                    break
-            charTemplateList_file = open(self.charTemplateList_path, 'wb')
-            cPickle.dump(charTemplateList, charTemplateList_file, cPickle.HIGHEST_PROTOCOL)
-            charTemplateList_file.close()
-
-            # Remove the character template from disk if specified
-            if deleteFromDisk:
-                os.remove(templateFile)
-
-            # After removing the character template name from the UI, check for item(s) in the module
-            # collection scroll list
-            allItems = cmds.textScrollList(self.uiVars['charTemplates_txScList'], query=True, allItems=True) or []
-
-            # If item(s) are found, re-build the scroll list
-            if len(allItems):
-                scrollHeight = len(allItems)* 20
-                if scrollHeight > 100:
-                    scrollHeight = 100
-                if scrollHeight == 20:
-                    scrollHeight = 40
-                cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, height=scrollHeight)
-                cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, selectIndexedItem=1)
-                self.printCharTemplateInfoForUI()
-            else:
-                # If no item is found, reset and disable the character template scroll list with its buttons
-                cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, enable=False,
-                                height=32, append=['              < no character template(s) loaded >'], font='boldLabelFont')
-                cmds.scrollField(self.uiVars['charTemplateDescrp_scrollField'], edit=True, text='< no template info >',
-                                                                           font='obliqueLabelFont', editable=False, height=32)
-                cmds.button(self.uiVars['charTemplate_button_import'], edit=True, enable=False)
-                cmds.button(self.uiVars['charTemplate_button_edit'], edit=True, enable=False)
-                cmds.button(self.uiVars['charTemplate_button_delete'], edit=True, enable=False)
-
-        # Check if the selected character template is valid, meaning if it exists on disk.
-        validItem = self.printCharTemplateInfoForUI()
-        if not validItem:
-            return
-
-        # Delete the remove character template window, if it exists.
-        try:
-            cmds.deleteUI('mrt_deleteCharTemplate_UI_window')
-        except:
-            pass
-        self.uiVars['deleteCharTemplateWindow'] = cmds.window('mrt_deleteCharTemplate_UI_window',
-                                                     title='Delete character template', maximizeButton=False, sizeable=False)
-
-        # Create the delete character template window.
-        try:
-            cmds.windowPref('mrt_deleteCharTemplate_UI_window', remove=True)
-        except:
-            pass
-
-        # Create the main layout
-        cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90, width=220,
-                                                                                              marginWidth=20, marginHeight=15)
-
-        # Create two buttons under a row, to delete the selected character template from disk or to
-        # remove the character template frpm the UI scroll list only.
-        cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 0], [2, 'left', 20]))
-        cmds.button(label='From disk', width=90, command=partial(deleteCharTemplate, True))
-        cmds.button(label='Remove from list', width=120, command=deleteCharTemplate)
-        cmds.showWindow(self.uiVars['deleteCharTemplateWindow'])
-
-
-    def putShelfButtonForUI(self, *args):
-        '''
-        Puts a shelf button for MRT on the current maya shelf
-        '''
-        # Get the current tab under maya shelf
-        currentTab = cmds.tabLayout('ShelfLayout', query=True, selectTab=True)
-
-        # Get its shelf buttons
-        shelfTabButtons = cmds.shelfLayout(currentTab, query=True, childArray=True)
-
-        # Check if the MRT button exists, return if true.
-        if shelfTabButtons:
-            for button in shelfTabButtons:
-                annotation = cmds.shelfButton(button, query=True, annotation=True)
-                if annotation == 'Modular Rigging Tools':
-                    return
-
-        # Else, put the shelf button on the current shelf tab
-        imagePath = cmds.internalVar(userScriptDir=True)+'MRT/mrt_shelfLogo.png'
-        cmds.shelfButton(annotation='Modular Rigging Tools', commandRepeatable=True,
-                         image1=imagePath, parent=currentTab, sourceType='mel', command='MRT')
-
+    # ................................................ SCENE MODULES ...............................................
 
     def selectModuleInTreeViewUIfromViewport(self):
         '''
@@ -3384,7 +3422,7 @@ class MRT_UI(object):
 
     def makeCollectionFromSceneTreeViewModulesUI(self, **kwargs):
         '''
-        Called to make a module collection by selecting scene module(s) from the MRT UI 
+        Called to make a module collection by selecting scene module(s) from the MRT UI
         scene module treeView list. This method is also called internally by MRT for creating an
         "auto" module collection while creating a character from scene module(s). The argument
         "allModule" specifies that all modules in the scene will be used to save a module collection.
@@ -3506,7 +3544,7 @@ class MRT_UI(object):
                     parentModuleNodeAttr = moduleParentNode.split(',')
                     moduleParent = mfunc.stripMRTNamespace(parentModuleNodeAttr[0])[0]
                     if not moduleParent in modulesToBeCollected:
-                    
+
                         # Collect the parent module node not included in the modules to be saved as collection
                         modulesToBeUnparented[module] = parentModuleNodeAttr[0]
 
@@ -3655,11 +3693,11 @@ class MRT_UI(object):
 
         # Get the current selection.
         selection = cmds.ls(selection=True) or None
-        
+
         # Get the method arguments
         allModules = kwargs['allModules'] if 'allModules' in kwargs else False
         auto = kwargs['auto'] if 'auto' in kwargs else None
-        
+
         if allModules:
             # If all modules in the scene are to be included in the collection,
             namespaces = cmds.namespaceInfo(listOnlyNamespaces=True)
@@ -4228,7 +4266,7 @@ class MRT_UI(object):
 
         # Get the translation offset to be applied to the new duplicated module.
         offset = cmds.floatFieldGrp(self.uiVars['duplicateActionWindowFloatfieldGrp'], query=True, value=True)
-        
+
         # Apply the offset to new module's module transform.
         if moduleAttrsDict['node_type'] != 'SplineNode':
 
@@ -4343,7 +4381,7 @@ class MRT_UI(object):
 
     def deleteAllSceneModules(self):
         '''
-        Removes all module from scene.
+        Removes all module from scene. Called in "processCharacterFromScene".
         '''
         namespacesToBeRemoved = []
 
@@ -4399,6 +4437,39 @@ class MRT_UI(object):
         self.clearChildModuleField()
 
 
+    def increaseModuleListHeight(self, *args):
+        """
+        UI callback method to increment the height of scroll list for scene modules.
+        """
+        height = cmds.frameLayout(self.uiVars['moduleList_fLayout'], query=True, height=True)
+        cmds.frameLayout(self.uiVars['moduleList_fLayout'], edit=True, height=height+40)
+        cmds.scrollLayout(self.uiVars['moduleList_Scroll'], edit=True, height=height+48)
+
+
+    def decreaseModuleListHeight(self, *args):
+        """
+        UI callback method to decrement the height of scroll list for scene modules.
+        """
+        # Get the module namespaces ion the scene.
+        sceneNamespaces = cmds.namespaceInfo(listOnlyNamespaces=True)
+        MRT_namespaces = mfunc.returnMRT_Namespaces(sceneNamespaces)
+
+        # Set the size of the scroll list based on the number of modules, minus a decrement value.
+        if MRT_namespaces != None:
+            treeLayoutHeight = len(MRT_namespaces) * 29
+            if treeLayoutHeight > 200:
+                treeLayoutHeight = 200
+            c_height = cmds.frameLayout(self.uiVars['moduleList_fLayout'], query=True, height=True)
+            if (c_height - 40) >= treeLayoutHeight:
+                cmds.scrollLayout(self.uiVars['moduleList_Scroll'], edit=True, height=(c_height - 40)+8)
+                cmds.frameLayout(self.uiVars['moduleList_fLayout'], edit=True, height=c_height - 40)
+            if (c_height - 40) < treeLayoutHeight:
+                cmds.scrollLayout(self.uiVars['moduleList_Scroll'], edit=True, height=treeLayoutHeight+8)
+                cmds.frameLayout(self.uiVars['moduleList_fLayout'], edit=True, height=treeLayoutHeight)
+
+
+    # ................................................ MODULE PARENTING ............................................
+
     def removeChildrenModules(self, moduleNamespace):
         '''
         Removes connections from children module(s) from a given module, if they exist.
@@ -4424,40 +4495,6 @@ class MRT_UI(object):
 
                 # Lock child module container.
                 cmds.lockNode(childModule+':module_container', lock=True, lockUnpublished=True)
-
-
-    def toggleEditMenuButtonsOnModuleSelection(self):
-        '''
-        Set UI states for controls with buttons for performing module edits, based on
-        valid scene module selection.
-        '''
-        # Get selection, and get the selection module namespace, if valid.
-        selection = mel.eval("ls -sl -type dagNode")
-        if selection:
-            lastSelection = selection[-1]
-            namespaceInfo = mfunc.stripMRTNamespace(lastSelection)
-
-            # If valid scene module.
-            if namespaceInfo != None:
-
-                cmds.button(self.uiVars['moduleSaveColl_button'], edit=True, enable=True)
-                cmds.rowLayout(self.uiVars['moduleSaveCollOptions_row1'], edit=True, enable=True)
-                cmds.rowLayout(self.uiVars['moduleSaveCollOptions_row2'], edit=True, enable=True)
-                cmds.button(self.uiVars['moduleRename_button'], edit=True, enable=True)
-                cmds.button(self.uiVars['moduleDelete_button'], edit=True, enable=True)
-                cmds.button(self.uiVars['moduleDuplicate_button'], edit=True, enable=True)
-                text = namespaceInfo[0].rpartition('__')[2]
-                cmds.textField(self.uiVars['moduleRename_textField'], edit=True, text=text)
-
-                return
-
-        cmds.button(self.uiVars['moduleSaveColl_button'], edit=True, enable=False)
-        cmds.rowLayout(self.uiVars['moduleSaveCollOptions_row1'], edit=True, enable=False)
-        cmds.rowLayout(self.uiVars['moduleSaveCollOptions_row2'], edit=True, enable=False)
-        cmds.button(self.uiVars['moduleRename_button'], edit=True, enable=False)
-        cmds.button(self.uiVars['moduleDelete_button'], edit=True, enable=False)
-        cmds.button(self.uiVars['moduleDuplicate_button'], edit=True, enable=False)
-        cmds.textField(self.uiVars['moduleRename_textField'], edit=True, text=None)
 
 
     def insertChildModuleIntoField(self, *args):
@@ -4767,6 +4804,14 @@ class MRT_UI(object):
         cmds.xform(childRootNode, worldSpace=True, absolute=True,
                    translation=cmds.xform(parentModuleNode, query=True, worldSpace=True, translation=True))
 
+
+    # -------------------------------------------------------------------------------------------------------------
+    #
+    #   "RIG" TAB ITEM METHODS
+    #
+    # -------------------------------------------------------------------------------------------------------------
+
+    # ............................................. CHARACTER CREATION .............................................
 
     def processCharacterFromScene(self, *args):
         '''
@@ -5084,55 +5129,456 @@ class MRT_UI(object):
             self.installSelectedModuleCollectionToScene(autoInstallFile=autoFile)
 
 
-    def checkMRTcharacter(self):
+    # ............................................. CHARACTER TEMPLATES ............................................
+
+    def loadCharTemplatesForUI(self, charTemplatesFileList, clearCurrentList=False):
         '''
-        Checks for a character in the current scene. If found, it returns the name
-        of main character group and the auto module collection file generated while creating the character.
+        Loads passed-in character templaes into the MRT UI. It also takes an argument if the current
+        character template list is to be cleared.
         '''
-        # Get the cuurent namespace, set to root.
+        # Remove the items from the current template scroll list
+        cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, height=32, removeAll=True)
+
+        # Clear the current character template record list
+        if clearCurrentList:
+            self.charTemplateList = {}
+
+        # If character template list is passed-in, re-build the character template scroll list.
+        if len(charTemplatesFileList):
+            for template in charTemplatesFileList:
+
+                # Get the character template name suitable for the list from the template file name.
+                templateName = re.split(r'\/|\\', template)[-1].rpartition('.')[0]
+
+                # Skip if a template file exists in the list values.
+                if template in self.charTemplateList.values():
+                    continue
+
+                # If the template name exist in the list, add a numerical suffix to it
+                # Example:
+                # templateName
+                # templateName (2)
+                if templateName in self.charTemplateList:
+                    suffix = mfunc.findHighestCommonTextScrollListNameSuffix(templateName, self.charTemplateList.keys())
+                    suffix = suffix + 1
+                    templateName = '%s (%s)'%(templateName, suffix)
+
+                # Save the template name as a key with its template file as value
+                self.charTemplateList[templateName] = template
+
+            # Get the height for the character template scroll list
+            scrollHeight = len(self.charTemplateList) * 20
+            if scrollHeight > 200:
+                scrollHeight = 200
+            if scrollHeight == 20:
+                scrollHeight = 40
+
+            # Add the character template names to the module collection scroll list
+            for templateName in sorted(self.charTemplateList):
+                cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, enable=True,
+                                    height=scrollHeight, append=templateName, font='plainLabelFont',
+                                    selectCommand=self.printCharTemplateInfoForUI)
+
+            # Select the first item
+            cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, selectIndexedItem=1)
+            self.printCharTemplateInfoForUI()
+
+        # If character template list is valid, save it, and enable UI buttons for importing, editing,
+        # and deletion of character template(s) from the UI scroll list.
+        if len(self.charTemplateList):
+            charTemplateList_file = open(self.charTemplateList_path, 'rb')
+            charTemplateList = cPickle.load(charTemplateList_file)
+            charTemplateList_file.close()
+            for key in copy.copy(charTemplateList):
+                charTemplateList.pop(key)
+            for (key, value) in enumerate(self.charTemplateList.values()):
+                charTemplateList[str(key)] = value
+            charTemplateList_file = open(self.charTemplateList_path, 'wb')
+            cPickle.dump(charTemplateList, charTemplateList_file, cPickle.HIGHEST_PROTOCOL)
+            charTemplateList_file.close()
+            # Enable buttons
+            cmds.button(self.uiVars['charTemplate_button_import'], edit=True, enable=True)
+            cmds.button(self.uiVars['charTemplate_button_edit'], edit=True, enable=True)
+            cmds.button(self.uiVars['charTemplate_button_delete'], edit=True, enable=True)
+
+        # If no character template is to be loaded
+        if not len(self.charTemplateList):
+
+            # Clear the saved character template data
+            charTemplateList_file = open(self.charTemplateList_path, 'wb')
+            cPickle.dump({}, charTemplateList_file, cPickle.HIGHEST_PROTOCOL)
+            charTemplateList_file.close()
+
+            # Clear the character template scroll list
+            cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, enable=False,
+                                    height=32, append=['              < no character template(s) loaded >'],
+                                                                                        font='boldLabelFont')
+            # Clear character template info field
+            cmds.scrollField(self.uiVars['charTemplateDescrp_scrollField'], edit=True,
+                                            text='< no collection info >', font='obliqueLabelFont',
+                                                                            editable=False, height=32)
+
+            # Disable buttons for importing, editing and deletion of character template(s)
+            cmds.button(self.uiVars['charTemplate_button_import'], edit=True, enable=False)
+            cmds.button(self.uiVars['charTemplate_button_edit'], edit=True, enable=False)
+            cmds.button(self.uiVars['charTemplate_button_delete'], edit=True, enable=False)
+
+
+    def printCharTemplateInfoForUI(self, *args):
+        '''
+        Prints the character template info for a selected item in the character template scroll list
+        in the character template description field in the UI.
+        '''
+        # Get the current selected character template name
+        selectedItem = cmds.textScrollList(self.uiVars['charTemplates_txScList'], query=True, selectItem=True)[0]
+
+        # Get its template file
+        templateFile = self.charTemplateList[selectedItem]
+
+        # Get the character template description from its template file
+        if os.path.exists(templateFile):
+            # Get the character template data
+            templateFileObj = open(templateFile, 'rb')
+            templateFileData = cPickle.load(templateFileObj)
+            templateFileObj.close()
+            templateDescrp = templateFileData['templateDescription']    # Character template description
+
+            # If description is valid, print it in the character template description field
+            infoScrollheight = 32
+            if re.match('\w+', templateDescrp):
+                if len(templateDescrp) > 60:
+                    infoScrollheight = (len(templateDescrp)/40.0) * 16
+                if templateDescrp.endswith('\n'):
+                    infoScrollheight += 16
+                if infoScrollheight > 64:
+                    infoScrollheight = 64
+                if infoScrollheight < 33:
+                    infoScrollheight = 32
+
+                # Print it
+                cmds.scrollField(self.uiVars['charTemplateDescrp_scrollField'], edit=True, text=templateDescrp,
+                                                                        font='smallPlainLabelFont', height=infoScrollheight)
+            else:
+                # Invalid character template description
+                cmds.scrollField(self.uiVars['charTemplateDescrp_scrollField'], edit=True, text='< no template info >',
+                                                                        font='obliqueLabelFont', editable=False, height=32)
+            return True
+        else:
+            # If the character template file for the selected character template name is not found, remove it from
+            # the character template scroll list
+            cmds.warning('MRT Error: Character template error. The selected character template file, "%s" cannot be found' \
+                                                                                                'on disk.' % (templateFile))
+
+            # Remove it from character template scroll list
+            cmds.textScrollList(self.uiVars['charTemplateDescrp_scrollField'], edit=True, removeItem=selectedItem)
+
+            # Remove it from character template records
+            self.charTemplateList.pop(selectedItem)
+
+            # Remove it from saved character template list data
+            charTemplateList_file = open(self.charTemplateList_path, 'rb')
+            charTemplateList = cPickle.load(charTemplateList_file)
+            charTemplateList_file.close()
+            for key in copy.copy(charTemplateList):
+                if charTemplateList[key] == templateFile:
+                    charTemplateList.pop(key)
+                    break
+            charTemplateList_file = open(self.charTemplateList_path, 'wb')
+            cPickle.dump(charTemplateList, charTemplateList_file, cPickle.HIGHEST_PROTOCOL)
+            charTemplateList_file.close()
+
+            # Reset the character template description field
+            cmds.scrollField(self.uiVars['charTemplateDescrp_scrollField'], edit=True, text='< no template info >',
+                                                                        font='obliqueLabelFont', editable=False, height=32)
+
+            # Check and update the character template list, if it contains any item(s) after removal
+            allItems = cmds.textScrollList(self.uiVars['charTemplates_txScList'], query=True, allItems=True)
+            if not allItems:
+                cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, enable=False, height=32,
+                                                append=['              < no character template(s) loaded >'],
+                                                                                        font='boldLabelFont')
+
+            # Disable buttons for importing, editing and deletion of character template(s)
+            cmds.button(self.uiVars['charTemplate_button_import'], edit=True, enable=False)
+            cmds.button(self.uiVars['charTemplate_button_edit'], edit=True, enable=False)
+            cmds.button(self.uiVars['charTemplate_button_delete'], edit=True, enable=False)
+
+            return False
+
+
+    def importSelectedCharTemplate(self, *args):
+        '''
+        Imports a selected character template from the character template scroll list
+        into the maya scene.
+        '''
+        # Save the current namespace, set to root.
         namespace = cmds.namespaceInfo(currentNamespace=True)
         cmds.namespace(setNamespace=':')
 
-        # Look for character main groups. Normally, there should only be one.
+        # Check if a character exists in the current scene, skip importing if true.
         transforms = cmds.ls(type='transform')
-        characterGrp = []
         for transform in transforms:
-            if re.match('MRT_character[a-zA-Z0-9]*__mainGrp', transform):
-                characterGrp.append(transform)
+            characterName = re.findall('^MRT_character(\D+)__mainGrp$', transform)
+            if characterName:
+                cmds.warning('MRT Error: The character "%s" exists in the scene. '  \
+                                                                    'Unable to import a template.' % (characterName[0]))
+                return
 
-        # If found more than one character main group.
-        if len(characterGrp) > 1:
-            cmds.warning('MRT Error: More than one character exists in the scene. Aborting.')
+        # Skip importing if module(s) exist in the scene.
+        moduleContainers = [item for item in cmds.ls(type='container') if mfunc.stripMRTNamespace(item)]
+        if moduleContainers:
+            cmds.warning('MRT Error: Module(s) were found in the scene; cannot import a character template. '   \
+                                                                                'Try importing it in a new scene.')
             return
-        
-        # If a character group is found in the scene.
-        if len(characterGrp) == 1:
-            characterGrp = characterGrp[0]
 
-        # If no character main group is found in the scene.
-        if len(characterGrp) == 0:
-            characterGrp = None
+        # Get the selected character template
+        selectedItem = cmds.textScrollList(self.uiVars['charTemplates_txScList'], query=True, selectItem=True)[0]
 
-        autoCollectionFile = ''
+        # Get the associated character template, read its data.
+        templateFile = self.charTemplateList[selectedItem]
+        templateFileObj = open(templateFile, 'rb')
+        templateFileData = cPickle.load(templateFileObj)
+        templateFileObj.close()
 
-        if characterGrp:
+        # Write a temporary maya scene file which will be used to import the character template.
+        tempFilePath = templateFile.rpartition('.mrtct')[0]+'_temp.ma'
+        tempFileObj = open(tempFilePath, 'w')
 
-            # Get the stored auto-module collection file id
-            fileId = cmds.getAttr(characterGrp+'.collectionFileID')
+        # Write content to the maya scene file with the data from the character template file.
+        for i in range(1, len(templateFileData)):
+            tempFileObj.write(templateFileData['templateData_line_'+str(i)])
+        tempFileObj.close()
 
-            # Look for the target auto module collection file under "MRT/module_collections/auto-generated_character_collections"
-            collectionFile = 'character__%s' % (fileId)
-            autoCollectionFiles = [item for item in os.listdir(self.autoCollections_path) if re.match('^.*mrtmc$', item)]
-            if len(autoCollectionFiles):
-                for item in autoCollectionFiles:
-                    if item.partition('.')[0] == collectionFile:
-                        autoCollectionFile = collectionFile
-                        break
+        # Remove reference to the character template file object (for garbage collection)
+        del templateFileData
 
-        # Reset namespace.
-        cmds.namespace(setNamespace=namespace)
+        # Import the character template from the temporary maya scene file
+        cmds.file(tempFilePath, i=True, type='mayaAscii', prompt=False, ignoreVersion=True)
 
-        return characterGrp, autoCollectionFile
+        # Delete the maya scene file after import
+        os.remove(tempFilePath)
+
+
+    def editSelectedCharTemplateDescriptionFromUI(self, *args):
+        '''
+        Edits the character template description for a selected character template from the
+        UI character template scroll list.
+        '''
+        def editDescriptionForSelectedCharTemplate(templateDescription, *args):
+            # Performs / updates the changes to the character template description
+            # from the UI field to the character template file.
+
+            # Close the edit character template descrption window
+            cancelEditCharTemplateNoDescrpErrorWindow()
+
+            # Get the current selected character template name from UI scroll list
+            selectedItem = cmds.textScrollList(self.uiVars['charTemplates_txScList'], query=True, selectItem=True)[0]
+
+            # Get the corresponding character template file
+            templateFile = self.charTemplateList[selectedItem]
+
+            # Get character template data from the file
+            templateFileObj = open(templateFile, 'rb')
+            templateFileData = cPickle.load(templateFileObj)
+            templateFileObj.close()
+
+            # Update the character template description for the data wnd write it
+            templateFileData['templateDescription'] = templateDescription
+            templateFileObj = open(templateFile, 'wb')
+            cPickle.dump(templateFileData, templateFileObj, cPickle.HIGHEST_PROTOCOL)
+            templateFileObj.close()
+
+            # Update the UI
+            self.printCharTemplateInfoForUI()
+
+        def cancelEditCharTemplateNoDescrpErrorWindow(*args):
+            # Closes the edit character template description window
+            cmds.deleteUI(self.uiVars['editCharTemplateDescrpWindow'])
+            try:
+                cmds.deleteUI(self.uiVars['editCharTemplateNoDescrpErrorWindow'])
+            except:
+                pass
+
+        def checkEditDescriptionForSelectedCharTemplate(*args):
+            # Checks the new character template description for saving / updating
+            # Get the description
+            templateDescription = cmds.scrollField(self.uiVars['editCharTemplateDescrpWindowScrollField'],
+                                                                                                query=True, text=True)
+            if templateDescription == '':
+                # If no description is entered, create a warning window before proceeding
+                self.uiVars['editCharTemplateNoDescrpErrorWindow'] = \
+                    cmds.window('mrt_editCharTemplate_noDescrpError_UI_window', title='Character template warning',
+                                                                                    maximizeButton=False, sizeable=False)
+                # Remove the window from UI preferences
+                try:
+                    cmds.windowPref('mrt_editCharTemplate_noDescrpError_UI_window', remove=True)
+                except:
+                    pass
+
+                # Main layout
+                cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90,
+                                                                            width=220, marginWidth=20, marginHeight=15)
+
+                # Give the user a choice to save the character template description with
+                # an empty value
+                cmds.text(label='Are you sure you want to continue with an empty description?')
+                cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 55], [2, 'left', 20]),
+                                                                            rowAttach=([1, 'top', 8], [2, 'top', 8]))
+                cmds.button(label='Continue', width=90,
+                                        command=partial(editDescriptionForSelectedCharTemplate, templateDescription))
+                cmds.button(label='Cancel', width=90, command=cancelEditCharTemplateNoDescrpErrorWindow)
+
+                # Show the window for warning
+                cmds.showWindow(self.uiVars['editCharTemplateNoDescrpErrorWindow'])
+            else:
+                # Proceed saving with the new character template description
+                editDescriptionForSelectedCharTemplate(templateDescription)
+
+        # Check if the selected character template is valid.
+        validItem = self.printCharTemplateInfoForUI()
+        if not validItem:
+            return
+
+        # Close the edit character template description window if open
+        try:
+            cmds.deleteUI('mrt_charTemplateDescription_edit_UI_window')
+        except:
+            pass
+
+        # Create the character template description window
+        self.uiVars['editCharTemplateDescrpWindow'] = cmds.window('mrt_charTemplateDescription_edit_UI_window',
+                                title='Character template description', height=150, maximizeButton=False, sizeable=False)
+
+        # Remove the window from UI preference
+        try:
+            cmds.windowPref('mrt_charTemplateDescription_edit_UI_window', remove=True)
+        except:
+            pass
+
+        # Main column
+        self.uiVars['editCharTemplateDescrpWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
+
+        # Create the layout for the character template description field
+        cmds.text(label='')
+        cmds.text('Enter new description for character template', align='center', font='boldLabelFont')
+        cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=75, width=320,
+                                                                                              marginWidth=5, marginHeight=10)
+
+        # Get the current character template description from its file
+        selectedItem = cmds.textScrollList(self.uiVars['charTemplates_txScList'], query=True, selectItem=True)[0]
+        templateFile = self.charTemplateList[selectedItem]
+        templateFileObj = open(templateFile, 'rb')
+        templateFileData = cPickle.load(templateFileObj)
+        currentDescriptionText = templateFileData['templateDescription']
+        templateFileObj.close()
+
+        # Create the field for character template description and set its value with the current description
+        self.uiVars['editCharTemplateDescrpWindowScrollField'] = cmds.scrollField(preventOverride=True, wordWrap=True,
+                                                                                              text=currentDescriptionText)
+
+        # Create the layout and its button for updating the character template description from the field
+        cmds.setParent(self.uiVars['editCharTemplateDescrpWindowColumn'])
+        cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 34], [2, 'left', 26]))
+        cmds.button(label='Save description', width=130, command=checkEditDescriptionForSelectedCharTemplate)
+        cmds.button(label='Cancel', width=90, command=partial(self.closeWindow, self.uiVars['editCharTemplateDescrpWindow']))
+
+        # Set to the main UI column
+        cmds.setParent(self.uiVars['editCharTemplateDescrpWindowColumn'])
+        cmds.text(label='')
+
+        # Show the edit character template description window
+        cmds.showWindow(self.uiVars['editCharTemplateDescrpWindow'])
+
+
+    def deleteSelectedCharTemplate(self, *args):
+        '''
+        Deletes a selected character template from the character template list in the MRT UI.
+        '''
+        def deleteCharTemplate(deleteFromDisk=False, *args):
+            # This definition will be used only within the scope of deleteSelectedCharTemplate
+
+            # If the character template is to be deleted, close the window
+            cmds.deleteUI('mrt_deleteCharTemplate_UI_window')
+
+            # Remove the character template name from the UI scroll list
+            selectedItem = cmds.textScrollList(self.uiVars['charTemplates_txScList'], query=True, selectItem=True)[0]
+            cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, removeItem=selectedItem)
+
+            # Get its collection file
+            templateFile = self.charTemplateList[selectedItem]
+
+            # Remove it from character template records
+            self.charTemplateList.pop(selectedItem)
+
+            # Remove it from saved character template list data, save the new list
+            charTemplateList_file = open(self.charTemplateList_path, 'rb')
+            charTemplateList = cPickle.load(charTemplateList_file)
+            charTemplateList_file.close()
+            for key in copy.copy(charTemplateList):
+                if charTemplateList[key] == templateFile:
+                    charTemplateList.pop(key)
+                    break
+            charTemplateList_file = open(self.charTemplateList_path, 'wb')
+            cPickle.dump(charTemplateList, charTemplateList_file, cPickle.HIGHEST_PROTOCOL)
+            charTemplateList_file.close()
+
+            # Remove the character template from disk if specified
+            if deleteFromDisk:
+                os.remove(templateFile)
+
+            # After removing the character template name from the UI, check for item(s) in the module
+            # collection scroll list
+            allItems = cmds.textScrollList(self.uiVars['charTemplates_txScList'], query=True, allItems=True) or []
+
+            # If item(s) are found, re-build the scroll list
+            if len(allItems):
+                scrollHeight = len(allItems)* 20
+                if scrollHeight > 100:
+                    scrollHeight = 100
+                if scrollHeight == 20:
+                    scrollHeight = 40
+                cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, height=scrollHeight)
+                cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, selectIndexedItem=1)
+                self.printCharTemplateInfoForUI()
+            else:
+                # If no item is found, reset and disable the character template scroll list with its buttons
+                cmds.textScrollList(self.uiVars['charTemplates_txScList'], edit=True, enable=False,
+                                height=32, append=['              < no character template(s) loaded >'], font='boldLabelFont')
+                cmds.scrollField(self.uiVars['charTemplateDescrp_scrollField'], edit=True, text='< no template info >',
+                                                                           font='obliqueLabelFont', editable=False, height=32)
+                cmds.button(self.uiVars['charTemplate_button_import'], edit=True, enable=False)
+                cmds.button(self.uiVars['charTemplate_button_edit'], edit=True, enable=False)
+                cmds.button(self.uiVars['charTemplate_button_delete'], edit=True, enable=False)
+
+        # Check if the selected character template is valid, meaning if it exists on disk.
+        validItem = self.printCharTemplateInfoForUI()
+        if not validItem:
+            return
+
+        # Delete the remove character template window, if it exists.
+        try:
+            cmds.deleteUI('mrt_deleteCharTemplate_UI_window')
+        except:
+            pass
+        self.uiVars['deleteCharTemplateWindow'] = cmds.window('mrt_deleteCharTemplate_UI_window',
+                                                     title='Delete character template', maximizeButton=False, sizeable=False)
+
+        # Create the delete character template window.
+        try:
+            cmds.windowPref('mrt_deleteCharTemplate_UI_window', remove=True)
+        except:
+            pass
+
+        # Create the main layout
+        cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90, width=220,
+                                                                                              marginWidth=20, marginHeight=15)
+
+        # Create two buttons under a row, to delete the selected character template from disk or to
+        # remove the character template frpm the UI scroll list only.
+        cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 0], [2, 'left', 20]))
+        cmds.button(label='From disk', width=90, command=partial(deleteCharTemplate, True))
+        cmds.button(label='Remove from list', width=120, command=deleteCharTemplate)
+        cmds.showWindow(self.uiVars['deleteCharTemplateWindow'])
 
 
     def saveCharacterTemplate(self, *args):
@@ -5370,6 +5816,8 @@ class MRT_UI(object):
             cmds.select(selection)
 
 
+    # ............................................... CONTROL RIGGING ..............................................
+
     def displayControlRiggingOptionsAllWindow(self, *args):
         '''
         Brings up a window to display a list for currently available control rig type(s) that can be applied to
@@ -5388,10 +5836,10 @@ class MRT_UI(object):
                 # For each drived control rig type class, find the last subclass for it, if any.
                 # This class will override the rig definitions, and will contain the latest updates
                 # to the control rig type defined in the class directly inherited from the base "BaseJointControl" class.
-                klassName = cls.__name__
-                klassName = mfunc.findLastSubClassForSuperClass(klassName, 'mrt_controlRig')
-                
+                klass = mfunc.findLastSubClassForSuperClass(cls)
+
                 # Make the title for the control rig type (from class name) for display.
+                klassName = klass.__name__
                 klass_p_name = klassName.capitalize()
                 for char in klassName[1:]:
                     if char.isupper():
@@ -5438,17 +5886,23 @@ class MRT_UI(object):
                 pass
                 
             self.uiVars['displayCtrlRigOptionsWindow'] = cmds.window('mrt_displayCtrlRigOptions_UI_window',
-                            title='Control rigging options for character hierarchies', maximizeButton=False, sizeable=False)
+                            title='Control rigging options for character hierarchies', maximizeButton=False, width=760, height=300)
             try:
                 cmds.windowPref(self.uiVars['displayCtrlRigOptionsWindow'], remove=True)
             except:
                 pass
                 
-            self.uiVars['displayCtrlRigOptions_columnLayout'] = cmds.columnLayout()
+            self.uiVars['displayCtrlRigOptions_formLayout'] = cmds.formLayout()
             
             # Now display the string under "scrollTextString".
             self.uiVars['displayCtrlRigOptions_scrollField'] = cmds.scrollField(text=scrollTextString, editable=False,
-                                                               width=760, enableBackground=True, height=300, wordWrap=False)
+                                                                                enableBackground=True, wordWrap=False)
+
+            cmds.formLayout(self.uiVars['displayCtrlRigOptions_formLayout'], edit=True,
+                                            attachForm=[(self.uiVars['displayCtrlRigOptions_scrollField'], 'top', 0),
+                                                        (self.uiVars['displayCtrlRigOptions_scrollField'], 'left', 0),
+                                                        (self.uiVars['displayCtrlRigOptions_scrollField'], 'right', 0),
+                                                        (self.uiVars['displayCtrlRigOptions_scrollField'], 'bottom', 0)])
                          
             cmds.showWindow(self.uiVars['displayCtrlRigOptionsWindow'])
 
@@ -5483,16 +5937,20 @@ class MRT_UI(object):
             if customHierarchyTreeListString:
                 # Get all control rig classes under the base class with class attribute
                 # "customHierarchy" set to string value (default base value is set to None).
-                customClasses = [klass.__name__ for klass in getattr(mrt_controlRig, 'BaseJointControl').__subclasses__()
-                                                        if eval('mrt_controlRig.%s.customHierarchy'%klass.__name__) != None]
+                customClasses = [cls for cls in getattr(mrt_controlRig, 'BaseJointControl').__subclasses__()
+                                                    if eval('mrt_controlRig.%s.customHierarchy' % cls.__name__) != None]
                 customClasses.sort()
                 
                 # Now find the class(es) that matches the input "customHierarchyTreeListString" string value.
-                for klass in customClasses:
-                    klass = mfunc.findLastSubClassForSuperClass(klass, 'mrt_controlRig')
-                    h_string = eval('mrt_controlRig.%s.customHierarchy'%klass)
+                for cls in customClasses:
+
+                    klass = mfunc.findLastSubClassForSuperClass(cls)
+
+                    klassName = klass.__name__
+
+                    h_string = eval('mrt_controlRig.%s.customHierarchy' % klassName)
                     if h_string == customHierarchyTreeListString:
-                        control_klasses.append(klass)
+                        control_klasses.append(klassName)
                 
                 # If multiple control rig classes are found for the custom joint hierarchy,
                 if len(control_klasses):
@@ -5529,12 +5987,12 @@ class MRT_UI(object):
                     className = 'JointChainControl'
                 
                 # If class name has subclass(es) that overrides it.
-                subClasses = [klass.__name__ for klass in eval('mrt_controlRig.%s' % (className)).__subclasses__()]
+                subClasses = [cls for cls in eval('mrt_controlRig.%s' % (className)).__subclasses__()]
 
                 if subClasses:
-                    for klass in subClasses:
-                        klass = mfunc.findLastSubClassForSuperClass(klass, 'mrt_controlRig')
-                        control_klasses.append(klass)
+                    for cls in subClasses:
+                        klass = mfunc.findLastSubClassForSuperClass(cls)
+                        control_klasses.append(klass.__name__)
                     
                     # If multiple control rig classes are found for the joint hierarchy,
                     if len(control_klasses):
@@ -5976,32 +6434,12 @@ class MRT_UI(object):
             self.displayAttachedControlRigs(None)
 
 
-    def clearParentSwitchControlField(self, *args):
-        '''
-        Called to reset the UI states under "Parent Switching".
-        '''
-        # Reset the character control field to perform parent switching.
-        cmds.textField(self.uiVars['c_rig_prntSwitch_textField'], edit=True, text='< insert control >', 
-                                                                                                font='obliqueLabelFont')
-        # Disable associated button states
-        cmds.button(self.uiVars['c_rig_prntSwitch_addButton'], edit=True, enable=False)
-        cmds.button(self.uiVars['c_rig_prntSwitch_RemoveAll'], edit=True, enable=False)
-        cmds.button(self.uiVars['c_rig_prntSwitch_RemoveSelected'], edit=True, enable=False)
-        cmds.button(self.uiVars['c_rig_prntSwitch_createButton'], edit=True, enable=False)
-
-        # Remove all items from parent target scroll list
-        cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], edit=True, removeAll=True)
-        cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], edit=True, enable=False, 
-                                         height=32, append=['\t           < no control inserted >'], font='boldLabelFont')
-
-        # Empty records for current parent switch group and parent target list.
-        self.controlParentSwitchGrp = None
-        self.existingParentSwitchTargets = []
+    # ............................................... PARENT SWITCHING ..............................................
 
 
     def insertValidSelectionForParentSwitching(self, *args):
         '''
-        Checks for a valid character control to be inserted into
+        Checks for a valid character control to be inserted into the control field.
         '''
         selection = cmds.ls(selection=True)
         if selection:
@@ -6048,6 +6486,29 @@ class MRT_UI(object):
                          'You can only select a control transform (with suffix \'handle\').')
 
             self.clearParentSwitchControlField()
+
+
+    def clearParentSwitchControlField(self, *args):
+        '''
+        Called to reset the UI states under "Parent Switching".
+        '''
+        # Reset the character control field to perform parent switching.
+        cmds.textField(self.uiVars['c_rig_prntSwitch_textField'], edit=True, text='< insert control >',
+                                                                                                font='obliqueLabelFont')
+        # Disable associated button states
+        cmds.button(self.uiVars['c_rig_prntSwitch_addButton'], edit=True, enable=False)
+        cmds.button(self.uiVars['c_rig_prntSwitch_RemoveAll'], edit=True, enable=False)
+        cmds.button(self.uiVars['c_rig_prntSwitch_RemoveSelected'], edit=True, enable=False)
+        cmds.button(self.uiVars['c_rig_prntSwitch_createButton'], edit=True, enable=False)
+
+        # Remove all items from parent target scroll list
+        cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], edit=True, removeAll=True)
+        cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], edit=True, enable=False,
+                                         height=32, append=['\t           < no control inserted >'], font='boldLabelFont')
+
+        # Empty records for current parent switch group and parent target list.
+        self.controlParentSwitchGrp = None
+        self.existingParentSwitchTargets = []
 
 
     def updateListForExistingParentSwitchTargets(self):
@@ -6278,11 +6739,9 @@ class MRT_UI(object):
         receives constraints from parent controls added as parent switches.
         '''
         # Check selection
-        selection = cmds.ls(selection=True)
+        selection = cmds.ls(selection=True) or ' '
         if selection:
             selection = selection[-1]
-        else:
-            return
 
         # Check if the selected object is a character control
         if re.match('^MRT_character[A-Za-z0-9]*__\w+_handle$', selection):
@@ -6294,7 +6753,7 @@ class MRT_UI(object):
                     cmds.warning('MRT Error: The selected control handle already has parent switch group. Skipping')
                     return
         else:
-            cmds.warning('MRT Error: Invalid selection. Please select a valid control handle')
+            cmds.warning('MRT Error: Invalid selection. Please select a valid character control.')
             return
 
         characterName = selection.partition('__')[0].partition('MRT_character')[2]
@@ -6478,464 +6937,3 @@ class MRT_UI(object):
         self.clearParentSwitchControlField()
         cmds.select(ss_control, replace=True)
         self.insertValidSelectionForParentSwitching()
-
-
-
-
-
-
-
-
-    def increaseModuleListHeight(self, *args):
-        """
-        UI callback method to increment the height of scroll list for scene modules.
-        """
-        height = cmds.frameLayout(self.uiVars['moduleList_fLayout'], query=True, height=True)
-        cmds.frameLayout(self.uiVars['moduleList_fLayout'], edit=True, height=height+40)
-        cmds.scrollLayout(self.uiVars['moduleList_Scroll'], edit=True, height=height+48)
-
-
-    def decreaseModuleListHeight(self, *args):
-        """
-        UI callback method to decrement the height of scroll list for scene modules.
-        """
-        # Get the module namespaces ion the scene.
-        sceneNamespaces = cmds.namespaceInfo(listOnlyNamespaces=True)
-        MRT_namespaces = mfunc.returnMRT_Namespaces(sceneNamespaces)
-
-        # Set the size of the scroll list based on the number of modules, minus a decrement value.
-        if MRT_namespaces != None:
-            treeLayoutHeight = len(MRT_namespaces) * 29
-            if treeLayoutHeight > 200:
-                treeLayoutHeight = 200
-            c_height = cmds.frameLayout(self.uiVars['moduleList_fLayout'], query=True, height=True)
-            if (c_height - 40) >= treeLayoutHeight:
-                cmds.scrollLayout(self.uiVars['moduleList_Scroll'], edit=True, height=(c_height - 40)+8)
-                cmds.frameLayout(self.uiVars['moduleList_fLayout'], edit=True, height=c_height - 40)
-            if (c_height - 40) < treeLayoutHeight:
-                cmds.scrollLayout(self.uiVars['moduleList_Scroll'], edit=True, height=treeLayoutHeight+8)
-                cmds.frameLayout(self.uiVars['moduleList_fLayout'], edit=True, height=treeLayoutHeight)
-
-
-
-
-
-    def createModuleFromUI(self, *args):
-        """
-        This method collects all the information from the 'Create' UI tab, and uses the "createModuleFromAttributes"
-        from 'mrt_functions' to create a module.
-        """
-        # Check if a character exists in the scene. A module can't be created with a character in the scene.
-        characterStatus = self.checkMRTcharacter()
-
-        # If a character exists in the scene, skip creating a module.
-        if characterStatus[0]:
-            cmds.warning('MRT Error: Cannot create a module with a character in the scene.\n')
-            return
-
-        cmds.select(clear=True)
-
-        # Update the user specified name field with a suffix if the module user spcified name exists in the scene.
-        self.updateDefaultUserSpecifiedNameField()
-
-        # Check if the length of the module specified in the create UI works with the number of nodes in the module.
-        if not self.checkNodeNumWithLength():
-            return
-
-        # Collect module info from the create UI tab.
-        self.moduleInfo = {}
-        self.moduleInfo['node_type'] = nodeType = cmds.radioCollection(self.uiVars['moduleType_radioColl'],
-                                                                       query=True,
-                                                                       select=True)
-        self.moduleInfo['module_length'] = cmds.floatSliderGrp(self.uiVars['lenNodes_sliderGrp'],
-                                                               query=True,
-                                                               value=True)
-        self.moduleInfo['num_nodes'] = cmds.intSliderGrp(self.uiVars['numNodes_sliderGrp'],
-                                                         query=True,
-                                                         value=True)
-        self.moduleInfo['creation_plane'] = cmds.radioCollection(self.uiVars['creationPlane_radioColl'],
-                                                                  query=True,
-                                                                  select=True)
-        self.moduleInfo['module_offset'] = cmds.floatSliderGrp(self.uiVars['modOriginOffset_slider'],
-                                                               query=True,
-                                                               value=True)
-        # Check the node axes for the module to be created.
-        self.moduleInfo['node_axes'] = self.checkAndReturnNodeAxes()
-        if self.moduleInfo['node_axes'] == None:
-            return
-
-
-        # Module components
-
-        # Hierarchy representation.
-        hierarchy = cmds.checkBox(self.uiVars['node_hierarchy_check'], query=True, value=True)
-
-        # Orientaton representation control.
-        orientation = cmds.checkBox(self.uiVars['node_orientation_check'], query=True, value=True)
-
-        # Module proxy creation.
-        proxy_geo_switch = cmds.checkBox(self.uiVars['proxyGeo_check'], query=True, value=True)
-        self.moduleInfo['node_compnts'] = hierarchy, orientation, proxy_geo_switch
-
-        # Proxy geo components.
-        proxy_bones = cmds.checkBox(self.uiVars['proxyGeoBones_check'], query=True, value=True)
-        proxy_elbows = cmds.checkBox(self.uiVars['proxyGeoElbow_check'], query=True, value=True)
-        proxy_elbow_type = cmds.radioCollection(self.uiVars['elbowproxyType_radioColl'], query=True, select=True)
-
-        # Mirror instancing for mirror module.
-        proxy_mirror = cmds.radioCollection(self.uiVars['proxyGeo_mirrorInstn_radioColl'],
-                                            query=True, select=True)
-        # Save proxy geo options.
-        self.moduleInfo['proxy_geo_options'] = proxy_bones, proxy_elbows, proxy_elbow_type, proxy_mirror
-
-        # Mirroring for the module.
-        mirror_switch = cmds.radioCollection(self.uiVars['mirrorSwitch_radioColl'], query=True, select=True)
-        # Translate / Rotate mirror function.
-        mirror_trans_func = cmds.radioCollection(self.uiVars['transFunc_radioColl'], query=True, select=True)
-        mirror_rot_func = cmds.radioCollection(self.uiVars['mirrorRot_radioColl'], query=True, select=True)
-        self.moduleInfo['mirror_options'] = mirror_switch, mirror_trans_func, mirror_rot_func
-
-        # Get the handle colour for module.
-        self.moduleInfo['handle_colour'] = cmds.colorIndexSliderGrp(self.uiVars['handleColour_slider'],
-                                                                    query=True, value=True)
-        # Get the user specified name.
-        userSpecifiedName = cmds.textField(self.uiVars['userSpecName_textField'], query=True, text=True)
-        userSpecifiedName = userSpecifiedName.lower()
-        self.moduleInfo['userSpecName'] = userSpecifiedName
-
-        # Construct the module namespace.
-        self.moduleInfo['module_Namespace'] = 'MRT_%s__%s' % (nodeType, userSpecifiedName)
-        # Construct the mirror module namespace. Used as a placeholder here.
-        self.moduleInfo['mirror_module_Namespace'] = 'MRT_%s__%s_mirror' % (nodeType, userSpecifiedName)
-
-        # Set the current module to be on the + side of the creation plane. If a mirror module is
-        # to be created, this value is set to True. This is set by "createModuleFromAttributes".
-        self.moduleInfo['mirrorModule'] = False
-
-        # Create the module from attributes. Get the current time, this is used for undoing module creation.
-        self.modules[time.time()] = mfunc.createModuleFromAttributes(self.moduleInfo, createFromUI=True)
-
-        # Set the 'undo create' module button to True.
-        cmds.button(self.uiVars['moduleUndoCreate_button'], edit=True, enable=True)
-
-        # Update UI for the edit module tab.
-        self.updateListForSceneModulesInUI()
-        self.clearParentModuleField()
-        self.clearChildModuleField()
-
-
-    def undoCreateModuleTool(self, *args):
-        """
-        Undo a module creation, if the module is stored in self.modules.
-        """
-        # Module namespaces to be removed. There's two namespaces if the module is a mirror module.
-        namespacesToBeRemoved = []
-
-        # Delete mirror move nodes with its connections.
-        mfunc.deleteMirrorMoveConnections()
-
-        # Get the current namespace, set the namespace to root.
-        currentNamespace = cmds.namespaceInfo(currentNamespace=True)
-        cmds.namespace(setNamespace=':')
-
-        # Get all module namespaces in the scene.
-        moduleNamespaces = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
-
-        # Skip module undo if no module namespace exists in the scene.
-        if moduleNamespaces == None:
-            cmds.button(self.uiVars['moduleUndoCreate_button'], edit=True, enable=False)
-            self.modules = {}
-            return
-
-        # If modules are created in the current UI session (without refreshing the MRT UI),
-        # undo the last module creation.
-        if len(self.modules):
-
-            # Get the last created module namespace (or mirror module namespaces).
-            lastCreatedModuleNamespaces = self.modules.pop(sorted(self.modules, reverse=True)[0])
-
-            # Remove the module or the mirror module pair.
-            for namespace in lastCreatedModuleNamespaces:
-
-                if cmds.namespace(exists=namespace):
-
-                    # Remove children module relationship(s), if any.
-                    self.removeChildrenModules(namespace)
-
-                    # Delete the module container and its nodes.
-                    moduleContainer = namespace+':module_container'
-                    cmds.lockNode(moduleContainer, lock=False, lockUnpublished=False)
-                    dgNodes = cmds.container(moduleContainer, query=True, nodeList=True)
-
-                    for node in dgNodes:
-                        if node.endswith('_curveInfo'):
-                            cmds.delete(node)
-
-                    # Delete the proxy geometry for the module if it exists.
-                    try:
-                        proxyGeoGrp = namespace+':proxyGeometryGrp'
-                        cmds.select(proxyGeoGrp, replace=True)
-                        cmds.delete()
-                    except:
-                        pass
-
-                    cmds.select(moduleContainer, replace=True)
-                    cmds.delete()
-
-                    # Get the module namespaces to be removed.
-                    namespacesToBeRemoved.append(namespace)
-
-            # Remove the module namespaces.
-            if len(namespacesToBeRemoved) > 0:
-                for namespace in namespacesToBeRemoved:
-                    cmds.namespace(removeNamespace=namespace)
-
-            mfunc.cleanSceneState()
-
-        # If self.modules is empty, disable undo module button.
-        else:
-            cmds.button(self.uiVars['moduleUndoCreate_button'], edit=True, enable=False)
-
-        # If all modules are removed from the scene, set the undo module to False.
-        if len(self.modules) == 0:
-            cmds.button(self.uiVars['moduleUndoCreate_button'], edit=True, enable=False)
-
-        if cmds.namespace(exists=currentNamespace):
-            cmds.namespace(setNamespace=currentNamespace)
-
-        # Update UI for the edit module tab.
-        self.clearParentModuleField()
-        self.clearChildModuleField()
-        self.updateListForSceneModulesInUI()
-
-
-
-
-
-    def checkAndReturnNodeAxes(self):
-        """
-        Checks the "node axes" field values in the create UI tab.
-        """
-        # Get the field values.
-        node_aim_axis = cmds.optionMenu(self.uiVars['aimAxis_menu'], query=True, value=True)
-        node_up_axis = cmds.optionMenu(self.uiVars['upAxis_menu'], query=True, value=True)
-        node_front_axis = cmds.optionMenu(self.uiVars['planeAxis_menu'], query=True, value=True)
-        node_axes = node_aim_axis + node_up_axis + node_front_axis
-
-        for axis in ['X', 'Y', 'Z']:
-            if node_axes.count(axis) > 1:
-                cmds.warning('MRT Error: Node axes error. More than one axis have been assigned the same value.')
-                return None
-
-        return node_axes
-
-
-    def checkNodeNumWithLength(self):
-        """
-        Checks the module length with its number of nodes for creation.
-        """
-        # Get the field values.
-        module_length = cmds.floatSliderGrp(self.uiVars['lenNodes_sliderGrp'], query=True, value=True)
-        num_nodes = cmds.intSliderGrp(self.uiVars['numNodes_sliderGrp'], query=True, value=True)
-
-        # Check if the module length is 0 and number of nodes > 1 and vice versa.
-
-        if num_nodes != 1 and module_length == 0:
-
-            cmds.warning('MRT Error: Module Length Error. \
-                          A module with %s nodes cannot be created with the specified length.'%(num_nodes))
-            return False
-
-        if num_nodes == 1 and module_length > 0.0:
-            cmds.warning('MRT Error: Module Length Error. \
-                          A module with single node cannot be created with the specified length.')
-            return False
-
-        return True
-
-
-    def modifyModuleCreationOptions(self, *args):
-        """
-        Sets the UI attributes for module creation, based on the selected module type for creation.
-        This is a UI callback method when the module type radio button is selected.
-        """
-        # Get the module node type
-        node_type = cmds.radioCollection(self.uiVars['moduleType_radioColl'], query=True, select=True)
-
-        if node_type == 'JointNode':
-
-            cmds.intSliderGrp(self.uiVars['numNodes_sliderGrp'], edit=True, minValue=1, maxValue=20,
-                              fieldMinValue=1, fieldMaxValue=100, value=1, enable=True)
-
-            cmds.floatSliderGrp(self.uiVars['lenNodes_sliderGrp'], edit=True, minValue=0, maxValue=50,
-                                fieldMinValue=0, fieldMaxValue=100, value=0)
-
-            self.updateNumNodesValue([])
-
-        if node_type == 'SplineNode':
-
-            cmds.intSliderGrp(self.uiVars['numNodes_sliderGrp'], edit=True, minValue=4, maxValue=20,
-                              fieldMinValue=4, fieldMaxValue=100, value=4, enable=True)
-
-            cmds.floatSliderGrp(self.uiVars['lenNodes_sliderGrp'], edit=True, minValue=1, maxValue=50,
-                                fieldMinValue=1, fieldMaxValue=100, value=4)
-
-            self.updateNumNodesValue([])
-
-        if node_type == 'HingeNode':
-
-            cmds.intSliderGrp(self.uiVars['numNodes_sliderGrp'], edit=True, minValue=1, maxValue=20,
-                              fieldMinValue=3, fieldMaxValue=100, value=3, enable=False)
-
-            cmds.floatSliderGrp(self.uiVars['lenNodes_sliderGrp'], edit=True, minValue=1, maxValue=50,
-                                fieldMinValue=1, fieldMaxValue=100, value=3)
-
-            self.updateNumNodesValue([])
-
-
-    def enableProxyGeoOptions(self, *args):
-        """
-        Enables the Proxy Geo UI options. UI callback method.
-        """
-        cmds.frameLayout(self.uiVars['proxyGeo_fLayout'], edit=True, enable=True)
-
-
-    def disableProxyGeoOptions(self, *args):
-        """
-        Disables the Proxy Geo UI options. UI callback method.
-        """
-        cmds.frameLayout(self.uiVars['proxyGeo_fLayout'], edit=True, enable=False, collapse=True)
-
-
-    def enableMirrorFunctions(self, *args):
-        """
-        Enable the module mirroring options in the create UI tab. UI callback method.
-        """
-        cmds.radioButton(self.uiVars['mirrorRot_radioButton_behaviour'], edit=True, enable=True)
-        cmds.radioButton(self.uiVars['mirrorRot_radioButton_ori'], edit=True, enable=True)
-        cmds.rowLayout(self.uiVars['proxyGeoFrame_secondRow'], edit=True, enable=True)
-
-
-    def disableMirrorFunctions(self, *args):
-        """
-        Disables the module mirroring options in the create UI tab. UI callback method.
-        """
-        cmds.radioButton(self.uiVars['mirrorRot_radioButton_behaviour'], edit=True, enable=False)
-        cmds.radioButton(self.uiVars['mirrorRot_radioButton_ori'], edit=True, enable=False)
-        cmds.rowLayout(self.uiVars['proxyGeoFrame_secondRow'], edit=True, enable=False)
-        cmds.radioButton(self.uiVars['proxyGeo_mirrorInstn_radioButton_on'], edit=True, select=False)
-        cmds.radioButton(self.uiVars['proxyGeo_mirrorInstn_radioButton_off'], edit=True, select=True)
-
-
-    def updateModuleLengthValue(self, *args):
-        """
-        Updates the module length value in the UI based on the number of module nodes and the type of
-        module node type set in the create UI tab. UI callback method.
-        """
-        num_nodes = cmds.intSliderGrp(self.uiVars['numNodes_sliderGrp'], query=True, value=True)
-        length_module = cmds.floatSliderGrp(self.uiVars['lenNodes_sliderGrp'], query=True, value=True)
-        node_type = cmds.radioCollection(self.uiVars['moduleType_radioColl'], query=True, select=True)
-
-        if num_nodes > 1 and length_module == 0:
-            cmds.floatSliderGrp(self.uiVars['lenNodes_sliderGrp'], edit=True, value=0.1)
-            cmds.checkBox(self.uiVars['node_orientation_check'], edit=True, value=False)
-            cmds.checkBox(self.uiVars['node_hierarchy_check'], edit=True, enable=True, value=True)
-            cmds.checkBox(self.uiVars['proxyGeoBones_check'], edit=True, enable=True, value=True)
-
-        if num_nodes == 1 and length_module > 0:
-            cmds.floatSliderGrp(self.uiVars['lenNodes_sliderGrp'], edit=True, value=0)
-            cmds.checkBox(self.uiVars['node_orientation_check'], edit=True, value=True)
-            cmds.checkBox(self.uiVars['node_hierarchy_check'], edit=True, enable=False, value=False)
-            cmds.checkBox(self.uiVars['proxyGeoBones_check'], edit=True, enable=False, value=False)
-
-        if node_type == 'JointNode':
-            if num_nodes > 1:
-                cmds.checkBox(self.uiVars['proxyGeoBones_check'], edit=True, enable=True)
-
-        if node_type == 'SplineNode':
-            cmds.checkBox(self.uiVars['node_orientation_check'], edit=True, value=True)
-            cmds.checkBox(self.uiVars['node_hierarchy_check'], edit=True, enable=True, value=True)
-            cmds.checkBox(self.uiVars['proxyGeoBones_check'], edit=True, enable=False, value=False)
-
-        if node_type == 'HingeNode':
-            cmds.checkBox(self.uiVars['proxyGeoBones_check'], edit=True, enable=True)
-            cmds.checkBox(self.uiVars['node_orientation_check'], edit=True, enable=True, value=True)
-            cmds.checkBox(self.uiVars['node_hierarchy_check'], edit=True, enable=True)
-
-
-    def updateNumNodesValue(self, *args):
-        """
-        Updates the number of module nodes in the UI based on the number of module nodes and the type of
-        module node type set in the create UI tab. UI callback method.
-        """
-        length_module = cmds.floatSliderGrp(self.uiVars['lenNodes_sliderGrp'], query=True, value=True)
-        num_nodes = cmds.intSliderGrp(self.uiVars['numNodes_sliderGrp'], query=True, value=True)
-        node_type = cmds.radioCollection(self.uiVars['moduleType_radioColl'], query=True, select=True)
-
-        if length_module == 0:
-            cmds.intSliderGrp(self.uiVars['numNodes_sliderGrp'], edit=True, value=1)
-            cmds.checkBox(self.uiVars['node_orientation_check'], edit=True, value=True)
-            cmds.checkBox(self.uiVars['node_hierarchy_check'], edit=True, enable=False, value=False)
-            cmds.checkBox(self.uiVars['proxyGeoBones_check'], edit=True, enable=False, value=False)
-
-        if length_module > 0 and num_nodes == 1:
-            cmds.intSliderGrp(self.uiVars['numNodes_sliderGrp'], edit=True, value=2)
-            cmds.checkBox(self.uiVars['node_orientation_check'], edit=True, value=False)
-            cmds.checkBox(self.uiVars['node_hierarchy_check'], edit=True, enable=True)
-            cmds.checkBox(self.uiVars['proxyGeoBones_check'], edit=True, enable=True, value=True)
-
-        if length_module > 0 and num_nodes > 1:
-            cmds.checkBox(self.uiVars['node_hierarchy_check'], edit=True, enable=True, value=True)
-
-        if node_type == 'JointNode':
-            if length_module == 0:
-                cmds.checkBox(self.uiVars['proxyGeoBones_check'], edit=True, enable=False, value=False)
-
-        if node_type == 'SplineNode':
-            cmds.checkBox(self.uiVars['node_orientation_check'], edit=True, value=True)
-            cmds.checkBox(self.uiVars['node_hierarchy_check'], edit=True, enable=True, value=True)
-            cmds.checkBox(self.uiVars['proxyGeoBones_check'], edit=True, enable=False, value=False)
-
-        if node_type == 'HingeNode':
-            cmds.checkBox(self.uiVars['proxyGeoBones_check'], edit=True, enable=True)
-            cmds.checkBox(self.uiVars['node_orientation_check'], edit=True, enable=True, value=True)
-            cmds.checkBox(self.uiVars['node_hierarchy_check'], edit=True, enable=True)
-
-
-    def collapseAllUIframes(self, *args):
-        """
-        Called as a menu item under windows to collapse all frames under UI tabs.
-        """
-        for element in self.uiVars:
-
-            try:
-                if cmds.objectTypeUI(self.uiVars[element], isType='frameLayout'):
-                    if cmds.frameLayout(self.uiVars[element], query=True, enable=True):
-                        cmds.frameLayout(self.uiVars[element], edit=True, collapse=True)
-
-            except RuntimeError:
-                pass
-
-
-    def expandAllUIframes(self, *args):
-        """
-        Called as a menu item under windows to expand frames under the current UI tab.
-        """
-        currentTabIndex = cmds.tabLayout(self.uiVars['tabs'], query=True, selectTabIndex=True)
-
-        if currentTabIndex == 1:
-            for frame in self.createTabFrames:
-                if cmds.frameLayout(frame, query=True, enable=True):
-                    cmds.frameLayout(frame, edit=True, collapse=False)
-
-        if currentTabIndex == 2:
-            for frame in self.editTabFrames:
-                if cmds.frameLayout(frame, query=True, enable=True):
-                    cmds.frameLayout(frame, edit=True, collapse=False)
-
-        if currentTabIndex == 3:
-            for frame in self.animateTabFrames:
-                if cmds.frameLayout(frame, query=True, enable=True):
-                    cmds.frameLayout(frame, edit=True, collapse=False)
-
-
