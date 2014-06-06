@@ -18,7 +18,7 @@ from functools import partial    # Alternative "from pymel.core.windows import C
 import os, math, sys, re, glob, shutil, platform
 
 
-__MRT_utility_tempScriptJob_list = [] # Could've used optionVar for this, best option is melGlobals.
+__MRT_utility_tempScriptJob_list = [] # To store utility script jobs (for module mirroring).
 
 os_name = platform.uname()[0]  # Get the OS type
 
