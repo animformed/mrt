@@ -18,6 +18,8 @@ import mrt_objects as objects
 import mrt_functions as mfunc
 import mrt_controlRig
 
+from maya.OpenMaya import MGlobal; Error = MGlobal.displayError
+
 import time, math, re, os, fnmatch, cPickle, copy, sys, random, webbrowser
 from functools import partial
 
@@ -93,7 +95,7 @@ def processItemRenameForTreeViewList(itemName, newName):
     #---USE_THE_UI_FUNCTIONALITY_IN_EDIT_TAB_FOR_RENAMING---#
     #TO_BE_MODIFIED_FOR_FUTURE_RELEASE#
     #cmds.treeView('__MRT_treeView_SceneModulesUI', edit=True, clearSelection=True)
-    cmds.warning('Please use the \"Rename Selected Module\" feature below')
+    Error('MRT: Please use the \"Rename Selected Module\" feature below')
     return ""
 
 
@@ -131,7 +133,7 @@ if _maya_version >= 2013:
     def treeViewButton_3_ActionCallback(item, state):
         treeViewButton_3_Action(item, state)
     def processItemRenameForTreeViewListCallback(itemName, newName):
-        cmds.warning('MRT Error: Please use the \"Rename Selected Module\" feature below')
+        Error('MRT: Please use the \"Rename Selected Module\" feature below')
         returnStr = processItemRenameForTreeViewList(itemName, newName)
         return returnStr
 else:
@@ -986,7 +988,7 @@ class MRT_UI(object):
                     if not children:
                         cmds.delete(parentProxyGrp)
         if not check:
-            cmds.warning('MRT Error: Please select a module proxy geometry.')
+            Error('MRT: Please select a module proxy geometry.')
 
 
     def deleteAllProxyGeoForModule(self, *args):
@@ -1007,11 +1009,11 @@ class MRT_UI(object):
                         cmds.delete(item[0]+':proxyGeometryGrp')
                         check = True
                 if not check:
-                    cmds.warning('MRT Error: The module "%s" does not have proxy geometry. Skipping.'%item[0])
+                    Error('MRT: The module "%s" does not have proxy geometry. Skipping.'%item[0])
             else:
-                cmds.warning('MRT Error: Please select a module.')
+                Error('MRT: Please select a module.')
         else:
-            cmds.warning('MRT Error: Please select a module.')
+            Error('MRT: Please select a module.')
 
 
     def deleteHistoryAllProxyGeo(self, *args):
@@ -1026,9 +1028,9 @@ class MRT_UI(object):
                 proxyGrpList.append(transform)
         if proxyGrpList:
             cmds.delete(proxyGrpList, constructionHistory=True)
-            cmds.warning('MRT Error: History deleted on all module proxy geometries.')
+            Error('MRT: History deleted on all module proxy geometries.')
         else:
-            cmds.warning('MRT Error: No module proxy geometry found.')
+            Error('MRT: No module proxy geometry found.')
 
 
     def purgeAutoCollections(self, *args):
@@ -1950,7 +1952,7 @@ class MRT_UI(object):
 
         # If found more than one character main group.
         if len(characterGrp) > 1:
-            cmds.warning('MRT Error: More than one character exists in the scene. Aborting.')
+            Error('MRT: More than one character exists in the scene. Aborting.')
             return
 
         # If a character group is found in the scene.
@@ -2001,7 +2003,7 @@ class MRT_UI(object):
 
         for axis in ['X', 'Y', 'Z']:
             if node_axes.count(axis) > 1:
-                cmds.warning('MRT Error: Node axes error. More than one axis have been assigned the same value.')
+                Error('MRT: Node axes error. More than one axis have been assigned the same value.')
                 return None
 
         return node_axes
@@ -2019,12 +2021,12 @@ class MRT_UI(object):
 
         if num_nodes != 1 and module_length == 0:
 
-            cmds.warning('MRT Error: Module Length Error. \
+            Error('MRT: Module Length Error. \
                           A module with %s nodes cannot be created with the specified length.'%(num_nodes))
             return False
 
         if num_nodes == 1 and module_length > 0.0:
-            cmds.warning('MRT Error: Module Length Error. \
+            Error('MRT: Module Length Error. \
                           A module with single node cannot be created with the specified length.')
             return False
 
@@ -2250,7 +2252,7 @@ class MRT_UI(object):
 
         # If a character exists in the scene, skip creating a module.
         if characterStatus[0]:
-            cmds.warning('MRT Error: Cannot create a module with a character in the scene.\n')
+            Error('MRT: Cannot create a module with a character in the scene.\n')
             return
 
         cmds.select(clear=True)
@@ -2571,7 +2573,7 @@ class MRT_UI(object):
         else:
             # If the module collection file for the selected module collection name is not found, remove it from
             # the module collection scroll list
-            cmds.warning('MRT Error: Module collection error. \
+            Error('MRT: Module collection error. \
                                     The selected module collection file, "%s" cannot be found on disk.' % (collectionFile))
 
             # Remove it from module collection scroll list
@@ -3637,7 +3639,7 @@ class MRT_UI(object):
                 # During the proces of entering a description, if the selection changes.
                 treeViewSelection = cmds.treeView(self.uiVars['sceneModuleList_treeView'], query=True, selectItem=True)
                 if treeViewSelection == None:
-                    cmds.warning('MRT Error: Module collection error. No module(s) selected for making a collection.')
+                    Error('MRT: Module collection error. No module(s) selected for making a collection.')
                     return
 
             # Check the description. If empty, notify the user, or proceed.
@@ -3705,14 +3707,14 @@ class MRT_UI(object):
             mrt_namespaces = mfunc.returnMRT_Namespaces(namespaces)
             if mrt_namespaces == None:
                 # If no modules exist in the scene.
-                cmds.warning('MRT Error: Module collection error. No module(s) in the scene for making a collection.')
+                Error('MRT: Module collection error. No module(s) in the scene for making a collection.')
                 return
         else:
             # If selected modules are to be in a collection.
             treeViewSelection = cmds.treeView(self.uiVars['sceneModuleList_treeView'], query=True, selectItem=True)
             if treeViewSelection == None:
                 # If no modules are selected.
-                cmds.warning('MRT Error: Module collection error. No module(s) selected for making a collection.')
+                Error('MRT: Module collection error. No module(s) selected for making a collection.')
                 return
 
         # If a module collection is being save by a user.
@@ -3807,7 +3809,7 @@ class MRT_UI(object):
             for namespace in sceneNamespaces:
                 userSpecifiedName = namespace.partition('__')[2]
                 if newUserSpecifiedName == userSpecifiedName:
-                    cmds.warning('MRT Error: Namespace conflict. The module name "%s" already ' \
+                    Error('MRT: Namespace conflict. The module name "%s" already ' \
                                                                     'exists in the scene.' % newUserSpecifiedName)
                     return
 
@@ -3937,7 +3939,7 @@ class MRT_UI(object):
         # Check selection.
         selection = cmds.ls(selection=True)
         if not selection:
-            cmds.warning('MRT Error: Duplicate Module Error. Nothing is selected. ' \
+            Error('MRT: Duplicate Module Error. Nothing is selected. ' \
                                                     'Please select a module to perform duplication.')
             return
 
@@ -3946,7 +3948,7 @@ class MRT_UI(object):
 
         # Check selection for module.
         if mfunc.stripMRTNamespace(selection) == None:
-            cmds.warning('MRT Error: Duplicate Module Error. Invalid selection. Please select a module.')
+            Error('MRT: Duplicate Module Error. Invalid selection. Please select a module.')
             return
 
         # Get module namespace and its current attributes.
@@ -4533,7 +4535,7 @@ class MRT_UI(object):
         cmds.button(self.uiVars['moduleUnparent_button'], edit=True, enable=False)
         cmds.button(self.uiVars['parentSnap_button'], edit=True, enable=False)
         cmds.button(self.uiVars['childSnap_button'], edit=True, enable=False)
-        cmds.warning('MRT Error: Please select and insert a module as child.')
+        Error('MRT: Please select and insert a module as child.')
 
 
     def insertParentModuleNodeIntoField(self, *args):
@@ -4558,7 +4560,7 @@ class MRT_UI(object):
                         cmds.button(self.uiVars['moduleParent_button'], edit=True, enable=True)
                         return
                     else:
-                        cmds.warning('MRT Error: Please select and insert a module node as parent.')
+                        Error('MRT: Please select and insert a module node as parent.')
 
                 if moduleType == 'MRT_HingeNode':
                     if lastSelection.endswith('_control'):
@@ -4566,11 +4568,11 @@ class MRT_UI(object):
                         cmds.button(self.uiVars['moduleParent_button'], edit=True, enable=True)
                         return
                     else:
-                        cmds.warning('MRT Error: Please select and insert a module node as parent.')
+                        Error('MRT: Please select and insert a module node as parent.')
 
         cmds.textField(self.uiVars['selectedParent_textField'], edit=True, text='< insert parent module node >', font='obliqueLabelFont')
         cmds.button(self.uiVars['moduleParent_button'], edit=True, enable=False)
-        cmds.warning('MRT Error: Please select and insert a module node as parent.')
+        Error('MRT: Please select and insert a module node as parent.')
 
 
     def clearParentModuleField(self, *args):
@@ -4607,12 +4609,12 @@ class MRT_UI(object):
 
         # Check for scene and child module namespaces.
         if moduleNamespaces == None:
-            cmds.warning('MRT Error: Module parenting conflict. No modules in the scene.')
+            Error('MRT: Module parenting conflict. No modules in the scene.')
             self.clearChildModuleField()
             return
         else:
             if not fieldInfo in moduleNamespaces:
-                cmds.warning('MRT Error: Module parenting conflict. The child module doesn\'t exist.')
+                Error('MRT: Module parenting conflict. The child module doesn\'t exist.')
                 self.clearChildModuleField()
                 return
 
@@ -4661,7 +4663,7 @@ class MRT_UI(object):
         # Get the child module namespace.
         childFieldInfo = cmds.textField(self.uiVars['selectedChildModule_textField'], query=True, text=True)
         if childFieldInfo == '< insert child module >':
-            cmds.warning('MRT Error: Module parenting conflict. Insert a child module for parenting.')
+            Error('MRT: Module parenting conflict. Insert a child module for parenting.')
             return
 
         # Get all module namespace.
@@ -4669,7 +4671,7 @@ class MRT_UI(object):
 
         # If no module(s) in the scene.
         if moduleNamespaces == None:
-            cmds.warning('MRT Error: Module parenting conflict. No modules in the scene.')
+            Error('MRT: Module parenting conflict. No modules in the scene.')
             self.clearChildModuleField()
             return
 
@@ -4677,17 +4679,17 @@ class MRT_UI(object):
         # This is not necessary, but a user can delete the modules after inserting them
         # into the module parenting fields. You never know haha.
         if not childFieldInfo in moduleNamespaces:
-            cmds.warning('MRT Error: Module parenting conflict. The child module doesn\'t exist.')
+            Error('MRT: Module parenting conflict. The child module doesn\'t exist.')
             self.clearChildModuleField()
             return
         if not parentModuleNamespace in moduleNamespaces:
-            cmds.warning('MRT Error: Module parenting conflict. The parent module doesn\'t exist.')
+            Error('MRT: Module parenting conflict. The parent module doesn\'t exist.')
             self.clearParentModuleField()
             return
 
         # Check if the child module namespace equals parent module namespace.
         if mfunc.stripMRTNamespace(parentFieldInfo)[0] == childFieldInfo:
-            cmds.warning('MRT Error: Module parenting conflict. Cannot parent a module on itself.')
+            Error('MRT: Module parenting conflict. Cannot parent a module on itself.')
             return
 
         # Check if the parent module node is already assigned.
@@ -4698,7 +4700,7 @@ class MRT_UI(object):
             child_moduleParentInfo = mfunc.stripMRTNamespace(child_moduleParentInfo)[0]
 
             if child_moduleParentInfo == parentModuleNamespace:
-                cmds.warning('MRT Error: Module parenting conflict. The parent module node is already assigned as a parent.')
+                Error('MRT: Module parenting conflict. The parent module node is already assigned as a parent.')
                 return
 
         # Check if the parent module is already a child.
@@ -4709,14 +4711,14 @@ class MRT_UI(object):
             parentModule_moduleParentInfo = mfunc.stripMRTNamespace(parentModule_moduleParentInfo)[0]
 
             if parentModule_moduleParentInfo == childFieldInfo:
-                cmds.warning('MRT Error: Module parenting conflict. The module to be parented is already a child.')
+                Error('MRT Error: Module parenting conflict. The module to be parented is already a child.')
                 return
 
         # Check if the parent module is a mirrored module for the child module.
         if cmds.attributeQuery('mirrorModuleNamespace', node=childFieldInfo+':moduleGrp', exists=True):
 
             if parentModuleNamespace == cmds.getAttr(childFieldInfo+':moduleGrp.mirrorModuleNamespace'):
-                cmds.warning('MRT Error: Module parenting conflict. Cannot set up parenting inside mirror modules.')
+                Error('MRT: Module parenting conflict. Cannot set up parenting inside mirror modules.')
                 return
 
         # If the child module has an existing valid parent module node, unparent it before proceeding.
@@ -4821,13 +4823,13 @@ class MRT_UI(object):
         characterStatus = self.checkMRTcharacter()
         if characterStatus[0]:
             characterName = re.findall('^MRT_character(\D+)__mainGrp$', characterStatus[0])
-            cmds.warning('MRT Error: Character "%s" exists in the scene, aborting.'%(characterName[0]))
+            Error('MRT: Character "%s" exists in the scene, aborting.'%(characterName[0]))
             return
 
         # Check for valid character name entered by the user.
         characterName = cmds.textField(self.uiVars['characterName_textField'], query=True, text=True)
         if not str(characterName).isalnum():
-            cmds.warning('MRT Error: Please enter a valid name for creating a character.')
+            Error('MRT: Please enter a valid name for creating a character.')
             return
         # Or
         characterName = characterName.title()
@@ -4839,7 +4841,7 @@ class MRT_UI(object):
         # Get the current scene modules.
         scene_modules = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
         if not scene_modules:
-            cmds.warning('MRT Error: No modules found in the scene to create a character.')
+            Error('MRT: No modules found in the scene to create a character.')
             return
 
         # Sort modules by their mirror namespaces (Mirrored namespaces are appended at the end).
@@ -5080,12 +5082,12 @@ class MRT_UI(object):
         # Check if a character exists in the scene.
         status = self.checkMRTcharacter()
         if not status[0]:
-            cmds.warning('MRT Error: No character in the scene. Aborting.')
+            Error('MRT: No character in the scene. Aborting.')
             return
 
         # If no auto module collection is found for the character, warn.
         if status[0] and status[1] == '':
-            cmds.warning('MRT Error: Cannot find the auto-collection file containing the modules for ' \
+            Error('MRT: Cannot find the auto-collection file containing the modules for ' \
                          'the current character. Unable to revert. Aborting')
             return
 
@@ -5266,7 +5268,7 @@ class MRT_UI(object):
         else:
             # If the character template file for the selected character template name is not found, remove it from
             # the character template scroll list
-            cmds.warning('MRT Error: Character template error. The selected character template file, "%s" cannot be found' \
+            Error('MRT: Character template error. The selected character template file, "%s" cannot be found' \
                                                                                                 'on disk.' % (templateFile))
 
             # Remove it from character template scroll list
@@ -5320,14 +5322,14 @@ class MRT_UI(object):
         for transform in transforms:
             characterName = re.findall('^MRT_character(\D+)__mainGrp$', transform)
             if characterName:
-                cmds.warning('MRT Error: The character "%s" exists in the scene. '  \
+                Error('MRT: The character "%s" exists in the scene. '  \
                                                                     'Unable to import a template.' % (characterName[0]))
                 return
 
         # Skip importing if module(s) exist in the scene.
         moduleContainers = [item for item in cmds.ls(type='container') if mfunc.stripMRTNamespace(item)]
         if moduleContainers:
-            cmds.warning('MRT Error: Module(s) were found in the scene; cannot import a character template. '   \
+            Error('MRT: Module(s) were found in the scene; cannot import a character template. '   \
                                                                                 'Try importing it in a new scene.')
             return
 
@@ -5596,7 +5598,7 @@ class MRT_UI(object):
             status = self.checkMRTcharacter()
             
             if not status[0]:
-                cmds.warning('MRT Error: No character in the scene. Aborting.')
+                Error('MRT: No character in the scene. Aborting.')
                 
                 # Close the character template description window
                 cmds.deleteUI('mrt_charTemplateDescription_UI_window')
@@ -5662,7 +5664,7 @@ class MRT_UI(object):
             # Check the current scene for character, if not, return.
             status = self.checkMRTcharacter()
             if not status[0]:
-                cmds.warning('MRT Error: No character in the scene. Aborting.')
+                Error('MRT: No character in the scene. Aborting.')
                 return
                 
             # Get the last directory accessed to save character template (saved as a preference)
@@ -5754,7 +5756,7 @@ class MRT_UI(object):
         # Check if a character exists in the scene.
         status = self.checkMRTcharacter()
         if not status[0]:
-            cmds.warning('MRT Error: No character in the scene. Aborting.')
+            Error('MRT: No character in the scene. Aborting.')
             return
         
         # Check if any control rig is applied to the character before saving a template.
@@ -5767,7 +5769,7 @@ class MRT_UI(object):
                                                      'globalScale', 'CONTROL_RIGS']), set(allAttrs))
         # If found,
         if len(controlAttrs):
-            cmds.warning('MRT Error: One or more control rigs are currently applied to the character. ' \
+            Error('MRT: One or more control rigs are currently applied to the character. ' \
                          'Detach them before saving a character template.')
             return
         
@@ -6079,7 +6081,7 @@ class MRT_UI(object):
         
         # Make sure the selection is not referenced.
         if cmds.ls(selection, referencedNodes=True):
-            cmds.warning('MRT Error: Referenced object selected. Aborting.')
+            Error('MRT: Referenced object selected. Aborting.')
             return
             
         # Get the control rig definition to be applied from UI.
@@ -6097,7 +6099,7 @@ class MRT_UI(object):
             
                 # If the control rig definition is already applied.
                 if selectFunc == layer:
-                    cmds.warning('MRT Error: The control rig is already attached. Skipping.')
+                    Error('MRT: The control rig is already attached. Skipping.')
                     return
         
         # Get the control rig class for the joint hierarchy.
@@ -6144,7 +6146,7 @@ class MRT_UI(object):
         # Check if the selection is referenced.
         selection = cmds.ls(selection=True)[-1]
         if cmds.ls(selection, referencedNodes=True):
-            cmds.warning('MRT Error: Referenced object selected. Aborting.')
+            Error('MRT: Referenced object selected. Aborting.')
             return
 
         # Get the selected control rig to be detached.
@@ -6275,7 +6277,7 @@ class MRT_UI(object):
         if cmds.objExists(ctrl_container):
             cmds.delete(ctrl_container)
         else:
-            cmds.warning('MRT Error: No container found for the control rig to be removed. Please check the source ' \
+            Error('MRT: No container found for the control rig to be removed. Please check the source ' \
                          'definition for the control rig.')
 
         # Remove the control rig layer attribute from charcater world transform control.
@@ -6288,7 +6290,7 @@ class MRT_UI(object):
             cmds.deleteAttr('MRT_character'+characterName+'__root_transform', attribute=attrName+'_visibility')
             check = True
         if not check:
-            cmds.warning('MRT Error: No attribute found on the character root transform for the control rig to be removed. ' \
+            Error('MRT: No attribute found on the character root transform for the control rig to be removed. ' \
                          'Please check the source definition for the control rig.')
 
         # Reset selection.
@@ -6456,7 +6458,7 @@ class MRT_UI(object):
             # While selecting FK based control for assigning parent target(s), you can only select the root FK control.
             # Match for root: MRT_character[A-Za-z0-9]*__\w+_root_node_transform_handle
             if re.match('^MRT_character[A-Za-z0-9]*__\w+_(node_\d+_transform|end_node_transform){1}_handle$', selection):
-                cmds.warning('MRT Error: Invalid control/object for assigning target parent controls. You can only select '\
+                Error('MRT: Invalid control/object for assigning target parent controls. You can only select '\
                                                                                               'the root FK control handle.')
                 return
 
@@ -6477,12 +6479,12 @@ class MRT_UI(object):
                 cmds.button(self.uiVars['c_rig_prntSwitch_addButton'], edit=True, enable=True)
 
             else:
-                cmds.warning('MRT Error: Invalid control/object for parent switching. '
+                Error('MRT: Invalid control/object for parent switching. '
                              'The control transform has no parent switch group.')
 
                 self.clearParentSwitchControlField()
         else:
-            cmds.warning('MRT Error: Invalid control/object for assigning target parent controls. '
+            Error('MRT: Invalid control/object for assigning target parent controls. '
                          'You can only select a control transform (with suffix \'handle\').')
 
             self.clearParentSwitchControlField()
@@ -6618,18 +6620,18 @@ class MRT_UI(object):
 
                     if ins_control_rootJoint in result:
 
-                        cmds.warning('MRT Error: Cannot add target parent control from a child hierarchy, which ' \
+                        Error('MRT: Cannot add target parent control from a child hierarchy, which ' \
                                      'will cause cyclic DG evaluation. Select and add another control handle.')
                         return
                 else:
-                    cmds.warning('MRT Error: Cannot add a target parent control within the same hierarchy. ' \
+                    Error('MRT: Cannot add a target parent control within the same hierarchy. ' \
                                  'Select and add another control handle.')
                     return
             else:
                 result = mfunc.traverseConstrainedParentHierarchiesForSkeleton(ins_control_rootJoint)
 
                 if not result:
-                    cmds.warning('MRT Warning: The joint hierarchy for the selected control rig has no parent hierarchy. '\
+                    Error('MRT Warning: The joint hierarchy for the selected control rig has no parent hierarchy. '\
                                  'If you\'re adding the character root transform as a target parent for a root FK control '\
                                  'assigned to this hierarchy, it will have no effect.')
 
@@ -6651,7 +6653,7 @@ class MRT_UI(object):
             cmds.button(self.uiVars['c_rig_prntSwitch_createButton'], edit=True, enable=True)
 
         else:
-            cmds.warning('MRT Error: Invalid control/object as a parent target. You can only select a control ' \
+            Error('MRT: Invalid control/object as a parent target. You can only select a control ' \
                          'transform (with suffix \'handle\') or the character root transform.')
 
         self.updateRemoveAllButtonStatForParentSwitching()
@@ -6750,10 +6752,10 @@ class MRT_UI(object):
             transformParent = cmds.listRelatives(selection, parent=True)
             if transformParent:
                 if re.match(selection+'_grp', transformParent[0]):
-                    cmds.warning('MRT Error: The selected control handle already has parent switch group. Skipping')
+                    Error('MRT: The selected control handle already has parent switch group. Skipping')
                     return
         else:
-            cmds.warning('MRT Error: Invalid selection. Please select a valid character control.')
+            Error('MRT: Invalid selection. Please select a valid character control.')
             return
 
         characterName = selection.partition('__')[0].partition('MRT_character')[2]

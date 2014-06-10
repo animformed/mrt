@@ -14,6 +14,8 @@ import maya.mel as mel
 
 import mrt_module
 
+from maya.OpenMaya import MGlobal; Error = MGlobal.displayError
+
 from functools import partial    # Alternative "from pymel.core.windows import Callback"
 import os, math, sys, re, glob, shutil, platform
 
@@ -524,10 +526,10 @@ def loadXhandleShapePlugin():
     maya_ver = returnMayaVersion()
 
     if maya_ver > 2014:
-        cmds.warning('MRT is not supported on this version of Maya. Aborting.')
+        Error('MRT is not supported on this version of Maya. Aborting.')
         return False
     if maya_ver < 2011:
-        cmds.warning('MRT is not supported on this version of Maya. Aborting.')
+        Error('MRT is not supported on this version of Maya. Aborting.')
         return False
 
     pluginBasePath = cmds.internalVar(userScriptDir=True) + 'MRT/plugin/'
@@ -546,7 +548,7 @@ def loadXhandleShapePlugin():
         plugin_dest_path = pluginBasePath + 'mrt_xhandleShape.bundle'
 
     else:
-        cmds.warning('MRT is not supported on \"'+os_name+'\" platform. Aborting.')
+        Error('MRT is not supported on \"'+os_name+'\" platform. Aborting.')
         return False
 
     # Copy to plugin path and then load it.
@@ -555,11 +557,14 @@ def loadXhandleShapePlugin():
             shutil.copy2(plugin_source_path, plugin_dest_path)
 
     except IOError:
-        cmds.warning('Error: MRT cannot write to plugin path "%s". Aborting. Check access?' % plugin_dest_path)
-        return False
+        Error('MRT cannot write to plugin path "%s". Check access?' % plugin_dest_path)
 
-    else:
-        cmds.loadPlugin(plugin_dest_path, quiet=True)
+    finally:
+        try:
+            cmds.loadPlugin(plugin_dest_path, quiet=True)
+        except:
+            Error('MRT: Unable to load plugin "%s". Aborting.' % plugin_dest_path)
+            return False
 
     return True
 
@@ -970,7 +975,7 @@ def checkForJointDuplication():
         
             # If the joint "node" name occurs twice in the list, warn.
             if mrt_joints.count(joint) > 1:
-                cmds.warning('MRT Error: One of the character joints has been manually duplicated. \
+                Error('MRT: One of the character joints has been manually duplicated. \
                               Please undo it in order to perform control rigging.')
                 check = False
                 break
@@ -2066,7 +2071,7 @@ def createFKlayerDriverOnJointHierarchy(*args, **kwargs):
     if isinstance(characterJointSet, list) and len(characterJointSet):
         pass
     else:
-        cmds.warning('Not joint set specified from a character. Cannot create driver hierarchy.')
+        Error('MRT: No joint set specified from a character. Cannot create driver hierarchy.')
         # I don't use 'cmds.error' since it generates an exception.
         return
     
@@ -2076,7 +2081,7 @@ def createFKlayerDriverOnJointHierarchy(*args, **kwargs):
     else:
         jointLayerName = args[1]
     if not isinstance(jointLayerName, (unicode, str)):
-        cmds.warning('No name specified for the driver layer. Aborting.')
+        Error('MRT: No name specified for the driver layer. Aborting.')
         return
 
     # 3
@@ -2085,7 +2090,7 @@ def createFKlayerDriverOnJointHierarchy(*args, **kwargs):
     else:
         characterName = args[2]
     if not isinstance(characterName, (unicode, str)):
-        cmds.warning('No character name specified. Aborting.')
+        Error('MRT: No character name specified. Aborting.')
         return
     
     # 4
