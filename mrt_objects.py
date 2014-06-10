@@ -1,9 +1,8 @@
 # *************************************************************************************************************
 #
-#    mrt_objects.py - Init function for Modular rigging tools for Maya.
-#                    Runs startup checks to see MRT is correctly installed and supported.
-#
-#    This file should be placed under the maya scripts directory.
+#    mrt_objects.py - Source for creating all scene objects being used by MRT (except proxy geometry).
+#                     These objects are mainly used to create module components and
+#                     control objects for control rigging.
 #
 #    Can be modified or copied for your own purpose.
 #
@@ -17,19 +16,25 @@ import os
 
 from mrt_functions import lockHideChannelAttrs
 
-def clearParentSwitchControlList():
-    global parentSwitchControls
-    parentSwitchControls = []
 
 def addShapes(parentTransform, shapeTransform):
+    '''
+    For adding shape(s) to a given transform. The shapes are added from the transform "shapeTransform"
+    to the target transform "parentTransform". The "shapeTransform" is then removed.
+    '''
     shapes = cmds.listRelatives(shapeTransform, children=True, shapes=True) or []
     for shape in shapes:
         cmds.parent(shape, parentTransform, relative=True, shape=True)
     if shapes:
         cmds.delete(shapeTransform)
 
-def createRawControlSurface(transformName, modHandleColour, createWithTransform=False):
 
+def createRawControlSurface(transformName, modHandleColour, createWithTransform=False):
+    '''
+    Creates a "rig" dummy surface for a node control handle in a module. This is done since
+    the node control (yellow, spherical) is not a true surface shape that can be used, so a dummy
+    NURBS spherical shape is used "behind" it for rigging purposes. This dummy shape is hidden later.
+    '''
     if createWithTransform:
         handleParent = cmds.createNode('transform', name=transformName+'_control')
         handleShape = cmds.createNode('nurbsSurface', name=handleParent+'Shape', parent=handleParent)
