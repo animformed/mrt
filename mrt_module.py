@@ -14,9 +14,11 @@
 # *************************************************************************************************************
 
 import maya.cmds as cmds
+import maya.mel as mel
+
 import mrt_functions as mfunc
 import mrt_objects as objects
-import maya.mel as mel
+
 import math, os
 from functools import partial
 
@@ -550,14 +552,9 @@ class MRT_Module(object):
                 jointName = cmds.joint(name=self.moduleTypespace+':node_%s_transform'%(index), position=nodePos,
                                                                                 radius=0.0, scaleCompensate=False)
             cmds.setAttr(jointName+'.drawStyle', 2)
-            cmds.setAttr(jointName+'.rotateX', keyable=False)
-            cmds.setAttr(jointName+'.rotateY', keyable=False)
-            cmds.setAttr(jointName+'.rotateZ', keyable=False)
-            cmds.setAttr(jointName+'.scaleX', keyable=False)
-            cmds.setAttr(jointName+'.scaleY', keyable=False)
-            cmds.setAttr(jointName+'.scaleZ', keyable=False)
-            cmds.setAttr(jointName+'.visibility', keyable=False, channelBox=False)
-            cmds.setAttr(jointName+'.radius', keyable=False, channelBox=False)
+
+            mfunc.lockHideChannelAttrs(jointName, 'r', 's', 'v', 'radi', keyable=False)
+
             self.nodeJoints.append(jointName)
 
         # Orient the joints.
@@ -600,10 +597,9 @@ class MRT_Module(object):
         cmds.setAttr(moduleTransform[0]+'.drawStyle', 8)
         cmds.setAttr(moduleTransform[0]+'.drawOrtho', 0)
         cmds.setAttr(moduleTransform[0]+'.wireframeThickness', 2)
-        cmds.setAttr(moduleTransform[1]+'.scaleX', keyable=False)
-        cmds.setAttr(moduleTransform[1]+'.scaleY', keyable=False)
-        cmds.setAttr(moduleTransform[1]+'.scaleZ', keyable=False)
-        cmds.setAttr(moduleTransform[1]+'.visibility', keyable=False)
+
+        mfunc.lockHideChannelAttrs(moduleTransform[1], 's', 'v', keyable=False)
+
         cmds.addAttr(moduleTransform[1], attributeType='float', longName='globalScale',
                                                         hasMinValue=True, minValue=0, defaultValue=1, keyable=True)
         self.moduleTransform = cmds.rename(moduleTransform[1], self.moduleTypespace+':module_transform')
@@ -902,13 +898,7 @@ class MRT_Module(object):
         cmds.setAttr(startHandle[0]+'.localScaleZ', 0.4)
         cmds.setAttr(startHandle[0]+'.drawStyle', 3)
         cmds.setAttr(startHandle[0]+'.wireframeThickness', 2)
-        cmds.setAttr(startHandle[1]+'.rotateX', keyable=False)
-        cmds.setAttr(startHandle[1]+'.rotateY', keyable=False)
-        cmds.setAttr(startHandle[1]+'.rotateZ', keyable=False)
-        cmds.setAttr(startHandle[1]+'.scaleX', keyable=False)
-        cmds.setAttr(startHandle[1]+'.scaleY', keyable=False)
-        cmds.setAttr(startHandle[1]+'.scaleZ', keyable=False)
-        cmds.setAttr(startHandle[1]+'.visibility', keyable=False)
+        mfunc.lockHideChannelAttrs(startHandle[1], 'r', 's', 'v', keyable=False)
         startHandle = cmds.rename(startHandle[1], self.moduleTypespace+':splineStartHandleTransform')
         
         # Position the start module transform and constrain the start cluster to it.
@@ -924,13 +914,7 @@ class MRT_Module(object):
         cmds.setAttr(endHandle[0]+'.localScaleZ', 0.35)
         cmds.setAttr(endHandle[0]+'.drawStyle', 3)
         cmds.setAttr(endHandle[0]+'.wireframeThickness', 2)
-        cmds.setAttr(endHandle[1]+'.rotateX', keyable=False)
-        cmds.setAttr(endHandle[1]+'.rotateY', keyable=False)
-        cmds.setAttr(endHandle[1]+'.rotateZ', keyable=False)
-        cmds.setAttr(endHandle[1]+'.scaleX', keyable=False)
-        cmds.setAttr(endHandle[1]+'.scaleY', keyable=False)
-        cmds.setAttr(endHandle[1]+'.scaleZ', keyable=False)
-        cmds.setAttr(endHandle[1]+'.visibility', keyable=False)
+        mfunc.lockHideChannelAttrs(endHandle[1], 'r', 's', 'v', keyable=False)
         endHandle = cmds.rename(endHandle[1], self.moduleTypespace+':splineEndHandleTransform')
 
         # Position the end module transform and constrain the end cluster to it.
@@ -1324,14 +1308,7 @@ class MRT_Module(object):
         
         # Root node handle.
         rootHandle = objects.createRawControlSurface(self.nodeJoints[0], self.modHandleColour, True)
-
-        cmds.setAttr(rootHandle[0]+'.rotateX', keyable=False)
-        cmds.setAttr(rootHandle[0]+'.rotateY', keyable=False)
-        cmds.setAttr(rootHandle[0]+'.rotateZ', keyable=False)
-        cmds.setAttr(rootHandle[0]+'.scaleX', keyable=False)
-        cmds.setAttr(rootHandle[0]+'.scaleY', keyable=False)
-        cmds.setAttr(rootHandle[0]+'.scaleZ', keyable=False)
-        cmds.setAttr(rootHandle[0]+'.visibility', keyable=False)
+        mfunc.lockHideChannelAttrs(rootHandle[0], 'r', 's', 'v', keyable=False)
         cmds.xform(rootHandle[0], worldSpace=True, absolute=True, translation=self.initNodePos[0])
         rootHandleConstraint = cmds.pointConstraint(rootHandle[0], self.nodeJoints[0], maintainOffset=False,
                                                                     name=self.nodeJoints[0]+'_pointConstraint')
@@ -1340,27 +1317,14 @@ class MRT_Module(object):
         # Mid hinge or elbow node handle.
         elbowHandle = objects.createRawControlSurface(self.nodeJoints[1], self.modHandleColour, True)
 
-        cmds.setAttr(elbowHandle[0]+'.rotateX', keyable=False)
-        cmds.setAttr(elbowHandle[0]+'.rotateY', keyable=False)
-        cmds.setAttr(elbowHandle[0]+'.rotateZ', keyable=False)
-        cmds.setAttr(elbowHandle[0]+'.scaleX', keyable=False)
-        cmds.setAttr(elbowHandle[0]+'.scaleY', keyable=False)
-        cmds.setAttr(elbowHandle[0]+'.scaleZ', keyable=False)
-        cmds.setAttr(elbowHandle[0]+'.visibility', keyable=False)
+        mfunc.lockHideChannelAttrs(elbowHandle[0], 'r', 's', 'v', keyable=False)
         cmds.xform(elbowHandle[0], worldSpace=True, absolute=True, translation=self.initNodePos[1])
         elbowHandleConstraint = cmds.poleVectorConstraint(elbowHandle[0], ikHandle, name=ikHandle+'_poleVectorConstraint')
         cmds.parent(elbowHandle[0], self.moduleIKnodesGrp, absolute=True)
 
         # End node handle.
         endHandle = objects.createRawControlSurface(self.nodeJoints[-1], self.modHandleColour, True)
-
-        cmds.setAttr(endHandle[0]+'.rotateX', keyable=False)
-        cmds.setAttr(endHandle[0]+'.rotateY', keyable=False)
-        cmds.setAttr(endHandle[0]+'.rotateZ', keyable=False)
-        cmds.setAttr(endHandle[0]+'.scaleX', keyable=False)
-        cmds.setAttr(endHandle[0]+'.scaleY', keyable=False)
-        cmds.setAttr(endHandle[0]+'.scaleZ', keyable=False)
-        cmds.setAttr(endHandle[0]+'.visibility', keyable=False)
+        mfunc.lockHideChannelAttrs(endHandle[0], 'r', 's', 'v', keyable=False)
         cmds.xform(endHandle[0], worldSpace=True, absolute=True, translation=self.initNodePos[2])
         endHandleConstraint = cmds.pointConstraint(endHandle[0], ikHandle, maintainOffset=False, name=ikHandle+'_pointConstraint')
         cmds.parent(endHandle[0], self.moduleIKnodesGrp, absolute=True)
@@ -1668,10 +1632,7 @@ class MRT_Module(object):
         cmds.setAttr(moduleTransform[0]+'.drawStyle', 8)
         cmds.setAttr(moduleTransform[0]+'.drawOrtho', 0)
         cmds.setAttr(moduleTransform[0]+'.wireframeThickness', 2)
-        cmds.setAttr(moduleTransform[1]+'.scaleX', keyable=False)
-        cmds.setAttr(moduleTransform[1]+'.scaleY', keyable=False)
-        cmds.setAttr(moduleTransform[1]+'.scaleZ', keyable=False)
-        cmds.setAttr(moduleTransform[1]+'.visibility', keyable=False)
+        mfunc.lockHideChannelAttrs(moduleTransform[1], 's', 'v', keyable=False)
         cmds.addAttr(moduleTransform[1], attributeType='float', longName='globalScale', 
                                         hasMinValue=True, minValue=0, defaultValue=1, keyable=True)
         self.moduleTransform = cmds.rename(moduleTransform[1], self.moduleTypespace+':module_transform')

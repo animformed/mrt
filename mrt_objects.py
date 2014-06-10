@@ -15,6 +15,8 @@ import maya.cmds as cmds
 import maya.mel as mel
 import os
 
+from mrt_functions import lockHideChannelAttrs
+
 def clearParentSwitchControlList():
     global parentSwitchControls
     parentSwitchControls = []
@@ -138,16 +140,8 @@ def createRawControlSurface(transformName, modHandleColour, createWithTransform=
 def createRawSegmentCurve(modHandleColour):
 
     segment = cmds.curve(p=([1, 0, 0], [-1, 0, 0]), degree=1, name='segmentCurve')
-    cmds.setAttr(segment+'.translateX', channelBox=False, keyable=False)
-    cmds.setAttr(segment+'.translateY', channelBox=False, keyable=False)
-    cmds.setAttr(segment+'.translateZ', channelBox=False, keyable=False)
-    cmds.setAttr(segment+'.rotateX', channelBox=False, keyable=False)
-    cmds.setAttr(segment+'.rotateY', channelBox=False, keyable=False)
-    cmds.setAttr(segment+'.rotateZ', channelBox=False, keyable=False)
-    cmds.setAttr(segment+'.scaleX', channelBox=False, keyable=False)
-    cmds.setAttr(segment+'.scaleY', channelBox=False, keyable=False)
-    cmds.setAttr(segment+'.scaleZ', channelBox=False, keyable=False)
-    cmds.setAttr(segment+'.visibility', channelBox=False, keyable=False)
+
+    lockHideChannelAttrs(segment, 't', 'r', 's', 'v', keyable=False)
 
     segmentShape = cmds.listRelatives(segment, children=True, shapes=True)[0]
     cmds.setAttr(segmentShape+'.overrideEnabled', 1)
@@ -185,15 +179,9 @@ def createRawOrientationRepresentation(aimAxis):
 
     representationTransformGroup = cmds.createNode('transform', name='orient_repr_transformGrp')
     representationTransform = cmds.createNode('transform', name='orient_repr_transform', parent='orient_repr_transformGrp')
-    cmds.setAttr(representationTransform+'.translateX', channelBox=False, keyable=False)
-    cmds.setAttr(representationTransform+'.translateY', channelBox=False, keyable=False)
-    cmds.setAttr(representationTransform+'.translateZ', channelBox=False, keyable=False)
-    cmds.setAttr(representationTransform+'.rotateY', channelBox=False, keyable=False)
-    cmds.setAttr(representationTransform+'.rotateZ', channelBox=False, keyable=False)
-    cmds.setAttr(representationTransform+'.scaleX', channelBox=False, keyable=False)
-    cmds.setAttr(representationTransform+'.scaleY', channelBox=False, keyable=False)
-    cmds.setAttr(representationTransform+'.scaleZ', channelBox=False, keyable=False)
-    cmds.setAttr(representationTransform+'.visibility', channelBox=False, keyable=False)
+
+    lockHideChannelAttrs(segment, 't', 'ry', 'rz', 's', 'v', keyable=False)
+
     cmds.setAttr(representationTransform+'.rotatePivot', 0.09015, 0, 0, type='double3')
     cmds.setAttr(representationTransform+'.scalePivot', 0.09015, 0, 0, type='double3')
 
@@ -324,6 +312,9 @@ def createRawOrientationRepresentation(aimAxis):
 
 def createRawSingleOrientationRepresentation():
     orientationTransform = cmds.createNode('transform', name='single_orient_repr_transform')
+
+    lockHideChannelAttrs(orientationTransform, 't', 's', 'v', keyable=False)
+
     cmds.setAttr(orientationTransform+'.translateX', keyable=False)
     cmds.setAttr(orientationTransform+'.translateY', keyable=False)
     cmds.setAttr(orientationTransform+'.translateZ', keyable=False)
@@ -404,16 +395,8 @@ def createRawSingleOrientationRepresentation():
 def createRawHierarchyRepresentation(aimAxis):
 
     hierarchyRepresentation = cmds.createNode('transform', name='hierarchy_repr')
-    cmds.setAttr(hierarchyRepresentation+'.translateX', channelBox=False, keyable=False)
-    cmds.setAttr(hierarchyRepresentation+'.translateY', channelBox=False, keyable=False)
-    cmds.setAttr(hierarchyRepresentation+'.translateZ', channelBox=False, keyable=False)
-    cmds.setAttr(hierarchyRepresentation+'.rotateX', channelBox=False, keyable=False)
-    cmds.setAttr(hierarchyRepresentation+'.rotateY', channelBox=False, keyable=False)
-    cmds.setAttr(hierarchyRepresentation+'.rotateZ', channelBox=False, keyable=False)
-    cmds.setAttr(hierarchyRepresentation+'.scaleX', channelBox=False, keyable=False)
-    cmds.setAttr(hierarchyRepresentation+'.scaleY', channelBox=False, keyable=False)
-    cmds.setAttr(hierarchyRepresentation+'.scaleZ', channelBox=False, keyable=False)
-    cmds.setAttr(hierarchyRepresentation+'.visibility', channelBox=False, keyable=False)
+
+    lockHideChannelAttrs(hierarchyRepresentation, 't', 'r', 's', 'v', keyable=False)
 
     if aimAxis == 'X':
 
@@ -510,13 +493,7 @@ def createRawSplineAdjustCurveTransform(modHandleColour):
 
     cmds.parent(splineAdjustCurveTransform, splineAdjustCurvePreTransform, relative=True)
 
-    cmds.setAttr(splineAdjustCurveTransform+'.rotateX', keyable=False)
-    cmds.setAttr(splineAdjustCurveTransform+'.rotateY', keyable=False)
-    cmds.setAttr(splineAdjustCurveTransform+'.rotateZ', keyable=False)
-    cmds.setAttr(splineAdjustCurveTransform+'.scaleX', keyable=False)
-    cmds.setAttr(splineAdjustCurveTransform+'.scaleY', keyable=False)
-    cmds.setAttr(splineAdjustCurveTransform+'.scaleZ', keyable=False)
-    cmds.setAttr(splineAdjustCurveTransform+'.visibility', keyable=False)
+    lockHideChannelAttrs(splineAdjustCurveTransform, 'r', 's', 'v', keyable=False)
 
     splineAdjustCurveShape = cmds.listRelatives(splineAdjustCurveTransform, children=True, shapes=True)[0]
     cmds.setAttr(splineAdjustCurveShape+'.overrideEnabled', 1)
@@ -528,17 +505,9 @@ def createRawSplineAdjustCurveTransform(modHandleColour):
 
 def createRawLocalAxesInfoRepresentation():
     axesInfoPreTransform = cmds.createNode('transform', name='localAxesInfoRepr_preTransform')
+
     axesInfoTransform = cmds.createNode('transform', name='localAxesInfoRepr', parent=axesInfoPreTransform)
-    cmds.setAttr('.translateX', keyable=False)
-    cmds.setAttr('.translateY', keyable=False)
-    cmds.setAttr('.translateZ', keyable=False)
-    cmds.setAttr('.rotateX', keyable=False)
-    cmds.setAttr('.rotateY', keyable=False)
-    cmds.setAttr('.rotateZ', keyable=False)
-    cmds.setAttr('.scaleX', keyable=False)
-    cmds.setAttr('.scaleY', keyable=False)
-    cmds.setAttr('.scaleZ', keyable=False)
-    cmds.setAttr('.visibility', keyable=False)
+    lockHideChannelAttrs(axesInfoTransform, 't', 'r', 's', 'v', keyable=False)
 
     repr_X = cmds.curve(p=[(-0.0, 0.0, 0.0), (0.8325, 0.0, 0.0)], knot=[0, 0], degree=1)
     repr_X_shape = cmds.listRelatives(repr_X, children=True, shapes=True)[0]
@@ -589,16 +558,7 @@ def createRawIKPreferredRotationRepresentation(planeAxis):
                                         degree=1,
                                         knot=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20])
 
-    cmds.setAttr(representationTransform+'.visibility', keyable=False)
-    cmds.setAttr(representationTransform+'.translateX', keyable=False)
-    cmds.setAttr(representationTransform+'.translateY', keyable=False)
-    cmds.setAttr(representationTransform+'.translateZ', keyable=False)
-    cmds.setAttr(representationTransform+'.rotateX', keyable=False)
-    cmds.setAttr(representationTransform+'.rotateY', keyable=False)
-    cmds.setAttr(representationTransform+'.rotateZ', keyable=False)
-    cmds.setAttr(representationTransform+'.scaleX', keyable=False)
-    cmds.setAttr(representationTransform+'.scaleY', keyable=False)
-    cmds.setAttr(representationTransform+'.scaleZ', keyable=False)
+    lockHideChannelAttrs(representationTransform, 't', 'r', 's', 'v', keyable=False)
 
     representationShape = cmds.listRelatives(representationTransform, children=True, shapes=True)[0]
     cmds.setAttr(representationShape+'.overrideEnabled', 1)
@@ -614,17 +574,9 @@ def createRawIKPreferredRotationRepresentation(planeAxis):
 
 
 def createRawIKhingeAxisRepresenation(upFrontAxes):
+
     representationTransform = cmds.createNode('transform', name='IKhingeAxisRepresenation')
-    cmds.setAttr('.visibility', keyable=False)
-    cmds.setAttr('.translateX', keyable=False)
-    cmds.setAttr('.translateY', keyable=False)
-    cmds.setAttr('.translateZ', keyable=False)
-    cmds.setAttr('.rotateX', keyable=False)
-    cmds.setAttr('.rotateY', keyable=False)
-    cmds.setAttr('.rotateZ', keyable=False)
-    cmds.setAttr('.scaleX', keyable=False)
-    cmds.setAttr('.scaleY', keyable=False)
-    cmds.setAttr('.scaleZ', keyable=False)
+    lockHideChannelAttrs(representationTransform, 't', 'r', 's', 'v', keyable=False)
 
     if upFrontAxes == 'XY':
         xy_up_repr = cmds.curve(p=[(0.0, -0.0, 0.0),
@@ -1013,11 +965,8 @@ def load_xhandleShape(transformName, modHandleColour, createWithTransform=False)
         xhandle_shape = cmds.createNode('xhandleShape', name=transformName+'Shape', parent=transformName, skipSelect=True)
     cmds.setAttr(xhandle_shape+'.overrideEnabled', 1)
     cmds.setAttr(xhandle_shape+'.overrideColor', modHandleColour)
-    cmds.setAttr(xhandle_shape+'.localScaleX', keyable=False)
-    cmds.setAttr(xhandle_shape+'.localScaleY', keyable=False)
-    cmds.setAttr(xhandle_shape+'.localScaleZ', keyable=False)
-    cmds.setAttr(xhandle_shape+'.localPositionX', keyable=False)
-    cmds.setAttr(xhandle_shape+'.localPositionY', keyable=False)
-    cmds.setAttr(xhandle_shape+'.localPositionZ', keyable=False)
+
+    lockHideChannelAttrs(xhandle_shape, 'localScale', 'localPosition', keyable=False)
+
     xhandle_parent = cmds.listRelatives(xhandle_shape, parent=True, type='transform')[0]
     return [xhandle_shape, xhandle_parent]

@@ -12,7 +12,7 @@
 import maya.cmds as cmds
 import maya.mel as mel
 
-import mrt_module
+from mrt_module import MRT_Module
 
 from maya.OpenMaya import MGlobal; Error = MGlobal.displayError
 
@@ -1028,6 +1028,42 @@ def returnConstraintWeightIndexForTransform(transform, constraintNode, matchAttr
         return eval(re.split('^\w+W', indexAttr)[1]), indexAttr
     else:
         return None
+
+
+def lockHideChannelAttrs(node, *attrList, **setAttrs):
+    """
+    Sets the lock/channelBox/keyable state of passed-in channel attributes for a node.
+    attrList - Sequence of node attributes to be set.
+    setAttr - Default arguments to be used to set the states of the attributes.
+
+    Set the following states for an attribute:
+    visible - Visible in the channel box, but non-keyable.
+    keyable - Keyable & visible in the channel box.
+    lock - Lock the attribute.
+    """
+    if cmds.objExists(node) and not cmds.referenceQuery(node, isNodeReferenced=True):
+
+        # Go through the passed-in node attributes.
+        for attr in attrList:
+
+            # Get the child attribute(s) if an attribute is compound.
+            for attr in cmds.attributeQuery(attr, node=node, listChildren=True) or [attr]:
+
+                # Set the attribute states.
+                if 'visible' in setAttrs:
+                    cmds.setAttr('%s.%s' % (node, attr), keyable=False, channelBox=setAttrs['visible'])
+
+                if 'keyable' in setAttrs:
+
+                    keyable = setAttrs['keyable']
+
+                    if keyable:
+                        cmds.setAttr('%s.%s' % (node, attr), keyable=keyable)
+                    else:
+                        cmds.setAttr('%s.%s' % (node, attr), channelBox=keyable, keyable=keyable)
+
+                if 'lock' in setAttrs:
+                    cmds.setAttr('%s.%s' % (node, attr), lock=setAttrs['lock'])
 
 
 def returnMayaVersion():
@@ -2400,7 +2436,7 @@ def createModuleFromAttributes(moduleAttrsDict, createFromUI=False):
     modules = []    # Collect modules as they're created
 
     # Get the module instance and create it based on its type
-    moduleInst = mrt_module.MRT_Module(moduleAttrsDict)
+    moduleInst = MRT_Module(moduleAttrsDict)
     eval('moduleInst.create%sModule()' % moduleAttrsDict['node_type'])
 
     # Collect it
@@ -2421,7 +2457,7 @@ def createModuleFromAttributes(moduleAttrsDict, createFromUI=False):
         moduleAttrsDict['mirrorModule'] = True
 
         # Create the mirror module and collect it
-        mirrorModuleInst = mrt_module.MRT_Module(moduleAttrsDict)
+        mirrorModuleInst = MRT_Module(moduleAttrsDict)
         eval('mirrorModuleInst.create%sModule()' % moduleAttrsDict['node_type'])
         modules.append(moduleAttrsDict['module_Namespace'])
         del mirrorModuleInst
