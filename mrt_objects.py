@@ -14,6 +14,7 @@ import maya.cmds as cmds
 import maya.mel as mel
 import os
 
+# For locking and hiding channel box attributes on input transforms.
 from mrt_functions import lockHideChannelAttrs
 
 
@@ -143,41 +144,31 @@ def createRawControlSurface(transformName, modHandleColour, createWithTransform=
 
 
 def createRawSegmentCurve(modHandleColour):
+    '''
+    Creates a one degree, 2 CV curve with locators at each ends driving the curve.
+    '''
+    segment = {}
+    
+    segment['curve'] = cmds.curve(p=([1, 0, 0], [-1, 0, 0]), degree=1, name='segmentCurve')
 
-    segment = cmds.curve(p=([1, 0, 0], [-1, 0, 0]), degree=1, name='segmentCurve')
+    lockHideChannelAttrs(segment['curve'], 't', 'r', 's', 'v', keyable=False)
 
-    lockHideChannelAttrs(segment, 't', 'r', 's', 'v', keyable=False)
+    shape = cmds.listRelatives(segment['curve'], children=True, shapes=True)[0]
+    cmds.setAttr(shape+'.overrideEnabled', 1)
+    cmds.setAttr(shape+'.overrideColor', modHandleColour)
+    segment['curveShape'] = cmds.rename(shape, 'segmentCurveShape')
 
-    segmentShape = cmds.listRelatives(segment, children=True, shapes=True)[0]
-    cmds.setAttr(segmentShape+'.overrideEnabled', 1)
-    cmds.setAttr(segmentShape+'.overrideColor', modHandleColour)
-    segmentShape = cmds.rename(segmentShape, 'segmentCurveShape')
-
-    startCluster = cmds.cluster(segment+'.cv[0]', relative=True, name='segmentCurve_startCluster')
-    cmds.setAttr(startCluster[1]+'.visibility', 0)
-    endCluster = cmds.cluster(segment+'.cv[1]', relative=True, name='segmentCurve_endCluster')
-    cmds.setAttr(endCluster[1]+'.visibility', 0)
-
-    startPosLocator = cmds.spaceLocator(name='segmentCurve_startLocator')[0]
-    cmds.setAttr(startPosLocator + '.visibility', 0)
-    tempConstraint = cmds.pointConstraint(startCluster[1], startPosLocator, maintainOffset=False)
-    cmds.delete(tempConstraint)
-    startClusterOnLocatorConstraint = cmds.pointConstraint(startPosLocator, startCluster[1], maintainOffset=False, name='startClusterOnLocator_pointConstraint')[0]
-    endPosLocator = cmds.spaceLocator(name='segmentCurve_endLocator')[0]
-    cmds.setAttr(endPosLocator + '.visibility', 0)
-    tempConstraint = cmds.pointConstraint(endCluster[1], endPosLocator, maintainOffset=False)
-    cmds.delete(tempConstraint)
-    endClusterOnLocatorConstraint = cmds.pointConstraint(endPosLocator, endCluster[1], maintainOffset=False, name='endClusterOnLocator_pointConstraint')[0]
-    # Collect nodes and remove unnecessary ones.
-    nodes = cmds.listConnections(segmentShape, source=True, destination=True)[1:]
-
-    for i, node in enumerate(nodes):
-        if cmds.nodeType(node) == 'tweak':
-            cmds.delete(node)
-            nodes.pop(i)
-            break
-
-    return segmentShape, segment, startCluster, endCluster, nodes, startPosLocator, endPosLocator, startClusterOnLocatorConstraint, endClusterOnLocatorConstraint
+    segment['startLoc'] = cmds.spaceLocator(name='segmentCurve_startLocator')[0]
+    cmds.xform(segment['startLoc'], worldSpace=True, translation=[1, 0, 0])
+    cmds.setAttr(segment['startLoc'] + '.visibility', 0)
+    cmds.connectAttr(segment['startLoc']+'.worldPosition', segment['curveShape']+'.controlPoints[0]')
+    
+    segment['endLoc'] = cmds.spaceLocator(name='segmentCurve_endLocator')[0]
+    cmds.xform(segment['endLoc'], worldSpace=True, translation=[-1, 0, 0])
+    cmds.setAttr(segment['endLoc'] + '.visibility', 0)
+    cmds.connectAttr(segment['endLoc']+'.worldPosition', segment['curveShape']+'.controlPoints[1]')
+    
+    return segment
 
 
 def createRawOrientationRepresentation(aimAxis):
@@ -185,7 +176,7 @@ def createRawOrientationRepresentation(aimAxis):
     representationTransformGroup = cmds.createNode('transform', name='orient_repr_transformGrp')
     representationTransform = cmds.createNode('transform', name='orient_repr_transform', parent='orient_repr_transformGrp')
 
-    lockHideChannelAttrs(segment, 't', 'ry', 'rz', 's', 'v', keyable=False)
+    lockHideChannelAttrs(representationTransform, 't', 'ry', 'rz', 's', 'v', keyable=False)
 
     cmds.setAttr(representationTransform+'.rotatePivot', 0.09015, 0, 0, type='double3')
     cmds.setAttr(representationTransform+'.scalePivot', 0.09015, 0, 0, type='double3')

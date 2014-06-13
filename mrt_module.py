@@ -304,71 +304,44 @@ class MRT_Module(object):
             # Iterate through every joint except the last joint.
             for j, joint in enumerate(self.nodeJoints[:-1]):
             
-                # Create a raw segment object.
-                handleSegmentParts = objects.createRawSegmentCurve(self.modHandleColour)
-                
-                # Rename its associated non DAG nodes and collect them.
-                for node in handleSegmentParts[4]:
-                    if cmds.objExists(node):
-                        containedNodes.append(cmds.rename(node,
-                                        self.moduleTypespace+':'+mfunc.stripMRTNamespace(joint)[1]+'_clusterParts_'+node))
-            
+                # Create a segment curve to be attached between two nodes (current node joint and the next one).
+                segment = objects.createRawSegmentCurve(self.modHandleColour)
+
                 # Now set up DG connections with appropriate nodes to help limit the segment curve between the
-                # handle surfaces. This is done so that the length of this segment curve can be used to adjust
-                # the length of the orientation representation control object, so that it always fits between
-                # two node handle surfaces, even if they change in sizes.
+                # handle surfaces for the two nodes. This is done so that the length of this segment curve can be used
+                # to adjust the length of the orientation representation control object between the two nodes, so that
+                # it always fits between two node handle surfaces, even if they change in sizes.
                 startClosestPointOnSurface = cmds.createNode('closestPointOnSurface',
-                                                              name=joint+'_'+handleSegmentParts[5]+'_closestPointOnSurface')
+                                                              name=joint+'_'+segment['startLoc']+'_closestPointOnSurface')
                 
                 cmds.connectAttr(joint+'_controlShape.worldSpace[0]', startClosestPointOnSurface+'.inputSurface')
                 cmds.connectAttr(self.nodeJoints[j+1]+'_worldPosLocator.worldPosition', startClosestPointOnSurface+'.inPosition')
-                cmds.connectAttr(startClosestPointOnSurface+'.position', handleSegmentParts[5]+'.translate')
+                cmds.connectAttr(startClosestPointOnSurface+'.position', segment['startLoc']+'.translate')
                 endClosestPointOnSurface = cmds.createNode('closestPointOnSurface',
-                                            name=self.nodeJoints[j+1]+'_'+handleSegmentParts[6]+'_closestPointOnSurface')
+                                            name=self.nodeJoints[j+1]+'_'+segment['endLoc']+'_closestPointOnSurface')
 
                 cmds.connectAttr(self.nodeJoints[j+1]+'_controlShape.worldSpace[0]', endClosestPointOnSurface+'.inputSurface')
                 cmds.connectAttr(joint+'_worldPosLocator.worldPosition', endClosestPointOnSurface+'.inPosition')
-                cmds.connectAttr(endClosestPointOnSurface+'.position', handleSegmentParts[6]+'.translate')
+                cmds.connectAttr(endClosestPointOnSurface+'.position', segment['endLoc']+'.translate')
                 
-                # Parent the segment and its related nodes to their associated group.
-                cmds.parent([handleSegmentParts[1], handleSegmentParts[2][1], handleSegmentParts[3][1],
-                             handleSegmentParts[5], handleSegmentParts[6]], self.moduleHandleSegmentGrp, absolute=True)
+                # Parent the segment curve and its related nodes to their associated group.
+                cmds.parent([segment['curve'], segment['startLoc'], segment['endLoc']],
+                                        self.moduleHandleSegmentGrp, absolute=True)
                 
                 # Rename the nodes.
                 # Rename the curve transform.
-                cmds.rename(handleSegmentParts[1],
-                            self.moduleTypespace+':'+mfunc.stripMRTNamespace(joint)[1]+'_'+handleSegmentParts[1])
+                cmds.rename(segment['curve'],
+                            self.moduleTypespace+':'+mfunc.stripMRTNamespace(joint)[1]+'_'+segment['curve'])
                             
-                # Rename the 'start' and 'end' locators which constrain the cluster handles.
-                cmds.rename(handleSegmentParts[5], joint+'_'+handleSegmentParts[5])
-                cmds.rename(handleSegmentParts[6], self.nodeJoints[j+1]+'_'+handleSegmentParts[6])
-                
-                # Rename the cluster handles.
-                startClusterHandle = cmds.rename(handleSegmentParts[2][1],
-                                self.moduleTypespace+':'+mfunc.stripMRTNamespace(joint)[1]+'_'+handleSegmentParts[2][1])
-                endClusterHandle = cmds.rename(handleSegmentParts[3][1],
-                    self.moduleTypespace+':'+mfunc.stripMRTNamespace(self.nodeJoints[j+1])[1]+'_'+handleSegmentParts[3][1])
-                
-                # Rename the constraints on the cluster handles. Here, it is necessary to specify the
-                # constraints by their DAG path.
-                cmds.rename(startClusterHandle+'|'+handleSegmentParts[7].rpartition('|')[2],
-                                                            joint+'_'+handleSegmentParts[7].rpartition('|')[2])
-                cmds.rename(endClusterHandle + '|'+handleSegmentParts[8].rpartition('|')[2],
-                                             self.nodeJoints[j+1]+'_'+handleSegmentParts[8].rpartition('|')[2])
-                                             
-                startClusterGrpParts = cmds.rename('segmentCurve_startClusterGroupParts',
-                                                    startClusterHandle+'_clusterGroupParts')
-                                                    
-                endClusterGrpParts = cmds.rename('segmentCurve_endClusterGroupParts',
-                                                  endClusterHandle+'_clusterGroupParts')
+                # Rename the 'start' and 'end' locators which drive the segment curve.
+                cmds.rename(segment['startLoc'], joint+'_'+segment['startLoc'])
+                cmds.rename(segment['endLoc'], self.nodeJoints[j+1]+'_'+segment['endLoc'])
                 
                 # Clear the selection, and force an update on DG.
                 cmds.select(clear=True)
                 
                 # Collect the nodes.
-                containedNodes.extend([startClusterHandle+'Cluster', endClusterHandle+'Cluster',
-                                       startClosestPointOnSurface, endClosestPointOnSurface,
-                                       startClusterGrpParts, endClusterGrpParts])
+                containedNodes.extend([startClosestPointOnSurface, endClosestPointOnSurface])
 
         return containedNodes
     
@@ -381,75 +354,55 @@ class MRT_Module(object):
         '''
         containedNodes  = []
         
-        # Create a segment curve with hierarchy representation.
-        handleSegmentParts = objects.createRawSegmentCurve(3)
+        # Create a segment curve with hierarchy representation (to be attached at the middle position of the curve).
+        segment = objects.createRawSegmentCurve(3)
         hierarchyRepr = objects.createRawHierarchyRepresentation('X')
+
         cmds.setAttr(hierarchyRepr+'.scale', 1.0, 1.0, 1.0, type='double3')
         cmds.makeIdentity(hierarchyRepr, scale=True, apply=True)
         hierarchyReprShape = cmds.listRelatives(hierarchyRepr, children=True, shapes=True)[0]
         cmds.setAttr(hierarchyReprShape+'.overrideColor', 2)
         
-        # Add their parts to the module container.
-        for node in handleSegmentParts[4]:
-            if cmds.objExists(node):
-                containedNodes.append(cmds.rename(node, self.moduleTypespace+':moduleParentReprSegment_clusterParts_'+node))
-        
         # Place them under the module parenting representation group.
-        cmds.parent([handleSegmentParts[1], handleSegmentParts[2][1], handleSegmentParts[3][1], handleSegmentParts[5],
-                                                handleSegmentParts[6]], self.moduleParentReprGrp, absolute=True)
+        cmds.parent([segment['curve'], segment['startLoc'], segment['endLoc']], self.moduleParentReprGrp, absolute=True)
                                                         
         # Constrain the start handle for the hierarchy "module parenting" representation
         # to the root node of the current module.
-        cmds.pointConstraint(self.nodeJoints[0], handleSegmentParts[5], maintainOffset=False,
+        cmds.pointConstraint(self.nodeJoints[0], segment['startLoc'], maintainOffset=False,
                             name=self.moduleTypespace+':moduleParentRepresentationSegment_startLocator_pointConstraint')
         
         # Constrain the module parenting hierarchy representation arrow (So that it stays at the mid
         # position of the segment curve as created above.
-        cmds.pointConstraint(handleSegmentParts[5], handleSegmentParts[6], hierarchyRepr, maintainOffset=False,
+        cmds.pointConstraint(segment['startLoc'], segment['endLoc'], hierarchyRepr, maintainOffset=False,
                                         name=self.moduleTypespace+':moduleParentReprSegment_hierarchyRepr_pointConstraint')
-                                        
+
         # Scale constrain the hierarchy representation to the joint in iteration.
         cmds.scaleConstraint(self.nodeJoints[0], hierarchyRepr, maintainOffset=False,
                              name=self.moduleTypespace+':moduleParentReprSegment_hierarchyRepr_scaleConstraint')
-        cmds.aimConstraint(handleSegmentParts[5], hierarchyRepr, maintainOffset=False, aimVector=[1.0, 0.0, 0.0],
+
+        # Aim the hierarchy representation "arrow" with the segment curve's start locator.
+        cmds.aimConstraint(segment['startLoc'], hierarchyRepr, maintainOffset=False, aimVector=[1.0, 0.0, 0.0],
                            upVector=[0.0, 1.0, 0.0], worldUpVector=[0.0, 1.0, 0.0], worldUpType='objectRotation',
-                           worldUpObject=handleSegmentParts[5],
+                           worldUpObject=segment['startLoc'],
                            name=self.moduleTypespace+':moduleParentReprSegment_hierarchyRepr_aimConstraint')
-                           
-        # Parent the orientation representation pre-transform and the hierarchy representation to their appropriate group.
+
+        # Place the hierarchy representation "arrow" under the module parenting representation group.
         cmds.parent(hierarchyRepr, self.moduleParentReprGrp, absolute=True)
+
+        # Rename it.
         cmds.rename(hierarchyRepr, self.moduleTypespace+':moduleParentReprSegment_'+hierarchyRepr)
-        tempConstraint = cmds.pointConstraint(self.nodeJoints[0], handleSegmentParts[6], maintainOffset=False)
-        cmds.delete(tempConstraint)
-        cmds.rename(handleSegmentParts[1], self.moduleTypespace+':moduleParentReprSegment_'+handleSegmentParts[1])
+
+        # Rename the segment curve.
+        cmds.rename(segment['curve'], self.moduleTypespace+':moduleParentReprSegment_'+segment['curve'])
         
-        # Rename the 'start' and 'end' locators which constrain the cluster handles.
-        cmds.rename(handleSegmentParts[5], self.moduleTypespace+':moduleParentReprSegment_'+handleSegmentParts[5])
-        cmds.rename(handleSegmentParts[6], self.moduleTypespace+':moduleParentReprSegment_'+handleSegmentParts[6])
-        
-        # Rename the cluster handles.
-        startClusterHandle = cmds.rename(handleSegmentParts[2][1],
-                                            self.moduleTypespace+':moduleParentReprSegment_'+handleSegmentParts[2][1])
-        endClusterHandle = cmds.rename(handleSegmentParts[3][1],
-                                          self.moduleTypespace+':moduleParentReprSegment_'+handleSegmentParts[3][1])
-                                          
-        # Rename the constraints on the cluster handles. Here, it is necessary to specify the
-        # constraints by their DAG path.
-        cmds.rename(startClusterHandle+'|'+handleSegmentParts[7].rpartition('|')[2],
-                    self.moduleTypespace+':moduleParentReprSegment_'+handleSegmentParts[7].rpartition('|')[2])
-        cmds.rename(endClusterHandle + '|'+handleSegmentParts[8].rpartition('|')[2],
-                    self.moduleTypespace+':moduleParentReprSegment_'+handleSegmentParts[8].rpartition('|')[2])
-                    
-        startClusterGrpParts = cmds.rename('segmentCurve_startClusterGroupParts', startClusterHandle+'_clusterGroupParts')
-        endClusterGrpParts = cmds.rename('segmentCurve_endClusterGroupParts', endClusterHandle+'_clusterGroupParts')
-        
+        # Rename the 'start' and 'end' locators which drives the segment curve.
+        cmds.rename(segment['startLoc'], self.moduleTypespace+':moduleParentReprSegment_'+segment['startLoc'])
+        cmds.rename(segment['endLoc'], self.moduleTypespace+':moduleParentReprSegment_'+segment['endLoc'])
+
         # Clear the selection, and force an update on DG.
         cmds.select(clear=True)
         cmds.setAttr(self.moduleParentReprGrp+'.visibility', 0)
-        
-        # Collect the nodes.
-        containedNodes.extend([startClusterHandle+'Cluster', endClusterHandle+'Cluster',
-                                                    startClusterGrpParts, endClusterGrpParts])
+
         return containedNodes
 
 
@@ -1393,65 +1346,36 @@ class MRT_Module(object):
                 break
             
             # Create the raw segment parts (between two consecutive nodes).
-            handleSegmentParts = objects.createRawSegmentCurve(self.modHandleColour)
+            segment = objects.createRawSegmentCurve(self.modHandleColour)
             extra_nodes = []
-            
-            # Rename the parts.
-            for node in handleSegmentParts[4]:
-                if cmds.objExists(node):
-                    extra_nodes.append(cmds.rename(node, '%s:%s_clusterParts_%s' \
-                                                    % (self.moduleTypespace, mfunc.stripMRTNamespace(joint)[1], node)))
-            containedNodes.extend(extra_nodes)
             
             # Connect the segment between two consecutive nodes with their control handle surfaces.
             startClosestPointOnSurface = cmds.createNode('closestPointOnSurface', name='%s_%s_closestPointOnSurface' \
-                                                                                        % (joint, handleSegmentParts[5]))
+                                                                                        % (joint, segment['startLoc']))
 
             cmds.connectAttr(joint+'_controlShape.worldSpace[0]', startClosestPointOnSurface+'.inputSurface')
             cmds.connectAttr(self.nodeJoints[j+1]+'_worldPosLocator.worldPosition', startClosestPointOnSurface+'.inPosition')
-            cmds.connectAttr(startClosestPointOnSurface+'.position', handleSegmentParts[5]+'.translate')
+            cmds.connectAttr(startClosestPointOnSurface+'.position', segment['startLoc']+'.translate')
+
             endClosestPointOnSurface = cmds.createNode('closestPointOnSurface', name='%s_%s_closestPointOnSurface' \
-                                                                        % (self.nodeJoints[j+1], handleSegmentParts[6]))
+                                                                        % (self.nodeJoints[j+1], segment['endLoc']))
 
             cmds.connectAttr(self.nodeJoints[j+1]+'_controlShape.worldSpace[0]', endClosestPointOnSurface+'.inputSurface')
             cmds.connectAttr(joint+'_worldPosLocator.worldPosition', endClosestPointOnSurface+'.inPosition')
-            cmds.connectAttr(endClosestPointOnSurface+'.position', handleSegmentParts[6]+'.translate')
+            cmds.connectAttr(endClosestPointOnSurface+'.position', segment['endLoc']+'.translate')
             
             # Parent the segment curve parts under "moduleHandleSegmentCurveGrp".
-            cmds.parent([handleSegmentParts[1], handleSegmentParts[2][1], handleSegmentParts[3][1], handleSegmentParts[5],
-                                                        handleSegmentParts[6]], self.moduleHandleSegmentGrp, absolute=True)
+            cmds.parent([segment['curve'], segment['startLoc'], segment['endLoc']], self.moduleHandleSegmentGrp, absolute=True)
             
             # Rename the segment curve.
-            cmds.rename(handleSegmentParts[1], '%s:%s_%s' \
-                                                % (self.moduleTypespace, mfunc.stripMRTNamespace(joint)[1], handleSegmentParts[1]))
+            cmds.rename(segment['curve'], '%s:%s_%s' \
+                                                % (self.moduleTypespace, mfunc.stripMRTNamespace(joint)[1], segment['curve']))
             
             # Rename the segment curve start/end position locators.
             # The start and end description here is the current and the next node, between
             # which the segment curve is connected.             
-            cmds.rename(handleSegmentParts[5], '%s_%s' % (joint, handleSegmentParts[5]))
-            cmds.rename(handleSegmentParts[6], '%s_%s' % (self.nodeJoints[j+1], handleSegmentParts[6]))
-            
-            # Rename the cluster handles for start and end positions (clusters for their control handle shapes).
-            startClusterHandle = cmds.rename(handleSegmentParts[2][1], '%s:%s_%s' \
-                                                                            % (self.moduleTypespace, 
-                                                                               mfunc.stripMRTNamespace(joint)[1], 
-                                                                               handleSegmentParts[2][1]))
-                                                                               
-            endClusterHandle = cmds.rename(handleSegmentParts[3][1], '%s:%s_%s' \
-                                                                            % (self.moduleTypespace, 
-                                                                               mfunc.stripMRTNamespace(self.nodeJoints[j+1])[1], 
-                                                                               handleSegmentParts[3][1]))
-                                                                               
-            # Rename the constraints for the cluster handles (from the start and end position locators).                                  
-            cmds.rename('%s|%s' % (startClusterHandle, handleSegmentParts[7].rpartition('|')[2]), 
-                                    '%s_%s' % (joint, handleSegmentParts[7].rpartition('|')[2]))
-                                    
-            cmds.rename('%s|%s' % (endClusterHandle, handleSegmentParts[8].rpartition('|')[2]), 
-                                    '%s_%s' % (self.nodeJoints[j+1], handleSegmentParts[8].rpartition('|')[2]))
-            
-            # Rename the groupParts for the start and end clusters.
-            startClusterGrpParts = cmds.rename('segmentCurve_startClusterGroupParts', startClusterHandle+'_clusterGroupParts')
-            endClusterGrpParts = cmds.rename('segmentCurve_endClusterGroupParts', endClusterHandle+'_clusterGroupParts')
+            cmds.rename(segment['startLoc'], '%s_%s' % (joint, segment['startLoc']))
+            cmds.rename(segment['endLoc'], '%s_%s' % (self.nodeJoints[j+1], segment['endLoc']))
             
             # Attach an arclen to measure the length of the segment curve.
             arclen = cmds.arclen(joint+'_segmentCurve', constructionHistory=True)
@@ -1460,76 +1384,46 @@ class MRT_Module(object):
             cmds.select(clear=True)
             
             # Add the created nodes to the module container.
-            containedNodes.extend([startClusterHandle, endClusterHandle, startClusterHandle+'Cluster', 
-                                   endClusterHandle+'Cluster', startClosestPointOnSurface, endClosestPointOnSurface, 
-                                   namedArclen, startClusterGrpParts, endClusterGrpParts])
+            containedNodes.extend([startClosestPointOnSurface, endClosestPointOnSurface, namedArclen])
         
         # Create a segment curve between the root and the end node.
-        rootEndHandleSegmentParts = objects.createRawSegmentCurve(3)
-        extra_nodes = []
-        for node in rootEndHandleSegmentParts[4]:
-            if cmds.objExists(node):
-                extra_nodes.append(cmds.rename(node, self.moduleTypespace+':'+'rootEndHandleIKsegment_clusterParts_'+node))
-        containedNodes.extend(extra_nodes)
+        rootEndSegment = objects.createRawSegmentCurve(3)
         
         # Connect the start and end segment position locators to the node control handle surfaces.
         startClosestPointOnSurface = cmds.createNode('closestPointOnSurface', name='%s:startHandleIKsegment_%s_closestPointOnSurface' \
                                                                                     % (self.moduleTypespace,
-                                                                                       rootEndHandleSegmentParts[5]))
+                                                                                       rootEndSegment['startLoc']))
                                                                                        
         cmds.connectAttr(self.nodeJoints[0]+'_controlShape.worldSpace[0]', startClosestPointOnSurface+'.inputSurface')
         cmds.connectAttr(self.nodeJoints[-1]+'_worldPosLocator.worldPosition', startClosestPointOnSurface+'.inPosition')
-        cmds.connectAttr(startClosestPointOnSurface+'.position', rootEndHandleSegmentParts[5]+'.translate')
+        cmds.connectAttr(startClosestPointOnSurface+'.position', rootEndSegment['startLoc']+'.translate')
         
         endClosestPointOnSurface = cmds.createNode('closestPointOnSurface', name='%s:endHandleIKsegment_%s_closestPointOnSurface' \
                                                                                    % (self.moduleTypespace,
-                                                                                      rootEndHandleSegmentParts[6]))
+                                                                                      rootEndSegment['endLoc']))
                                                                                       
         cmds.connectAttr(self.nodeJoints[-1]+'_controlShape.worldSpace[0]', endClosestPointOnSurface+'.inputSurface')
         cmds.connectAttr(self.nodeJoints[0]+'_worldPosLocator.worldPosition', endClosestPointOnSurface+'.inPosition')
-        cmds.connectAttr(endClosestPointOnSurface+'.position', rootEndHandleSegmentParts[6]+'.translate')
+        cmds.connectAttr(endClosestPointOnSurface+'.position', rootEndSegment['endLoc']+'.translate')
 
-        cmds.parent([rootEndHandleSegmentParts[1], rootEndHandleSegmentParts[2][1], rootEndHandleSegmentParts[3][1], 
-                     rootEndHandleSegmentParts[5], rootEndHandleSegmentParts[6]], self.moduleHandleSegmentGrp, absolute=True)
+        cmds.parent([rootEndSegment['curve'], rootEndSegment['startLoc'], rootEndSegment['endLoc']],
+                                                            self.moduleHandleSegmentGrp, absolute=True)
         
         # Rename the root-end segment curve.
-        rootEndHandleIKsegmentCurve = cmds.rename(rootEndHandleSegmentParts[1], '%s:rootEndHandleIKsegment_%s' \
+        rootEndHandleIKsegmentCurve = cmds.rename(rootEndSegment['curve'], '%s:rootEndHandleIKsegment_%s' \
                                                                                   % (self.moduleTypespace,
-                                                                                     rootEndHandleSegmentParts[1]))
+                                                                                     rootEndSegment['curve']))
         # Rename the root-end segment curve start/end position locators.
-        newStartLocator = cmds.rename(rootEndHandleSegmentParts[5], '%s:startHandleIKsegment_%s' \
-                                                                      % (self.moduleTypespace,
-                                                                         rootEndHandleSegmentParts[5]))
+        cmds.rename(rootEndSegment['startLoc'], '%s:startHandleIKsegment_%s' \
+                                                    % (self.moduleTypespace, rootEndSegment['startLoc']))
                                                                          
-        newEndLocator = cmds.rename(rootEndHandleSegmentParts[6], '%s:endHandleIKsegment_%s' \
-                                                                      % (self.moduleTypespace,
-                                                                         rootEndHandleSegmentParts[6]))
-                                                                         
-        # Rename the cluster handles for start and end positions (clusters for their control handle shapes).
-        startClusterHandle = cmds.rename(rootEndHandleSegmentParts[2][1], '%s:startHandleIKsegment_%s' \
-                                                                            % (self.moduleTypespace,
-                                                                               rootEndHandleSegmentParts[2][1]))
-                                                                               
-        endClusterHandle = cmds.rename(rootEndHandleSegmentParts[3][1], '%s:endHandleIKsegment_%s' \
-                                                                          % (self.moduleTypespace,
-                                                                             rootEndHandleSegmentParts[3][1]))
-        
-        # Rename the constraints for the cluster handles (from the start and end position locators).      
-        cmds.rename('%s|%s' % (startClusterHandle, rootEndHandleSegmentParts[7].rpartition('|')[2]),
-                    '%s:startHandleIKsegment_%s' % (self.moduleTypespace, rootEndHandleSegmentParts[7].rpartition('|')[2]))
-        cmds.rename('%s|%s' % (endClusterHandle, rootEndHandleSegmentParts[8].rpartition('|')[2]), 
-                    '%s:endHandleIKsegment_%s' % (self.moduleTypespace, rootEndHandleSegmentParts[8].rpartition('|')[2]))
-        
-        # Rename the groupParts for the start and end clusters.
-        startClusterGrpParts = cmds.rename('segmentCurve_startClusterGroupParts', startClusterHandle+'_clusterGroupParts')
-        endClusterGrpParts = cmds.rename('segmentCurve_endClusterGroupParts', endClusterHandle+'_clusterGroupParts')
+        cmds.rename(rootEndSegment['endLoc'], '%s:endHandleIKsegment_%s' \
+                                                    % (self.moduleTypespace, rootEndSegment['endLoc']))
 
         cmds.select(clear=True)
         
         # Add the created nodes to the module container.
-        containedNodes.extend([startClusterHandle, endClusterHandle, startClusterHandle+'Cluster', 
-                               endClusterHandle+'Cluster', startClosestPointOnSurface, endClosestPointOnSurface, 
-                               startClusterGrpParts, endClusterGrpParts])
+        containedNodes.extend([startClosestPointOnSurface, endClosestPointOnSurface])
         
         # Create a locator attached at the mid position on the root-end segment curve.
         # This locator will be used to visually identify the mid position of the IK chain,

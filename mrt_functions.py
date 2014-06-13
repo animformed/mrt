@@ -12,9 +12,7 @@
 import maya.cmds as cmds
 import maya.mel as mel
 
-from mrt_module import MRT_Module
-
-from maya.OpenMaya import MGlobal; Error = MGlobal.displayError
+from maya.OpenMaya import MGlobal; Error = MGlobal.displayError; Warning = MGlobal.displayWarning
 
 from functools import partial    # Alternative "from pymel.core.windows import Callback"
 import os, math, sys, re, glob, shutil, platform
@@ -557,7 +555,7 @@ def loadXhandleShapePlugin():
             shutil.copy2(plugin_source_path, plugin_dest_path)
 
     except IOError:
-        Error('MRT cannot write to plugin path "%s". Check access?' % plugin_dest_path)
+        Warning('MRT cannot access path "%s" for writing. Skipping plugin update.' % plugin_dest_path)
 
     finally:
         try:
@@ -2434,6 +2432,9 @@ def createModuleFromAttributes(moduleAttrsDict, createFromUI=False):
 
     # Create the module from its updated attributes
     modules = []    # Collect modules as they're created
+
+    # For creating module instances.
+    from mrt_module import MRT_Module
 
     # Get the module instance and create it based on its type
     moduleInst = MRT_Module(moduleAttrsDict)
