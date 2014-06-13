@@ -172,7 +172,10 @@ def createRawSegmentCurve(modHandleColour):
 
 
 def createRawOrientationRepresentation(aimAxis):
-
+    '''
+    Create the raw curve transform representation which is to be used as a control
+    for defining the axial orientation of a module node (used in JointNode and HingeNode modules).
+    '''
     representationTransformGroup = cmds.createNode('transform', name='orient_repr_transformGrp')
     representationTransform = cmds.createNode('transform', name='orient_repr_transform', parent='orient_repr_transformGrp')
 
@@ -180,6 +183,9 @@ def createRawOrientationRepresentation(aimAxis):
 
     cmds.setAttr(representationTransform+'.rotatePivot', 0.09015, 0, 0, type='double3')
     cmds.setAttr(representationTransform+'.scalePivot', 0.09015, 0, 0, type='double3')
+
+    # For eg., If the node aim axis is 'X', create the representation indicating the Y and Z axes. The control
+    # will be used and aligned with the node and then it'll rotate along the aim axis.
 
     if aimAxis == 'X':
 
@@ -307,17 +313,15 @@ def createRawOrientationRepresentation(aimAxis):
 
 
 def createRawSingleOrientationRepresentation():
+    '''
+    Create a raw curve transform representation to be used as a control
+    for defining the orientation of a JointNode module with a single node.
+
+    This creates the transform with three curve arrows along the X, Y and Z axes.
+    '''
     orientationTransform = cmds.createNode('transform', name='single_orient_repr_transform')
 
     lockHideChannelAttrs(orientationTransform, 't', 's', 'v', keyable=False)
-
-    cmds.setAttr(orientationTransform+'.translateX', keyable=False)
-    cmds.setAttr(orientationTransform+'.translateY', keyable=False)
-    cmds.setAttr(orientationTransform+'.translateZ', keyable=False)
-    cmds.setAttr(orientationTransform+'.scaleX', keyable=False)
-    cmds.setAttr(orientationTransform+'.scaleY', keyable=False)
-    cmds.setAttr(orientationTransform+'.scaleZ', keyable=False)
-    cmds.setAttr(orientationTransform+'.visibility', keyable=False)
 
     orient_repr_Y = cmds.curve(p=[(0.0, 0.0, 0.0),
                                   (0.0, 0.5349, 0.0),
@@ -389,7 +393,12 @@ def createRawSingleOrientationRepresentation():
 
 
 def createRawHierarchyRepresentation(aimAxis):
+    '''
+    Creates an 'arrow' curve aligned (along world) with the specified aim axis. This is used
+    to represent the direction of hierarchy for nodes in JointNode and HingeNode modules.
 
+    This is also used to create hierarchy representation for module parenting.
+    '''
     hierarchyRepresentation = cmds.createNode('transform', name='hierarchy_repr')
 
     lockHideChannelAttrs(hierarchyRepresentation, 't', 'r', 's', 'v', keyable=False)
@@ -464,7 +473,9 @@ def createRawHierarchyRepresentation(aimAxis):
 
 
 def createRawSplineAdjustCurveTransform(modHandleColour):
-
+    '''
+    
+    '''
     splineAdjustCurvePreTransform = cmds.createNode('transform', name='spline_adjustCurve_preTransform')
     splineAdjustCurveTransform = cmds.curve(name='spline_adjustCurve_transform',
                                             p=[(-0.2929, 0.2929, 0.2929),
