@@ -474,7 +474,8 @@ def createRawHierarchyRepresentation(aimAxis):
 
 def createRawSplineAdjustCurveTransform(modHandleColour):
     '''
-    
+    Creates a "cube" curve transform, which is later used in a SplineNode module as one of the 
+    controls to adjust the spline curve for adjusting the node positions.
     '''
     splineAdjustCurvePreTransform = cmds.createNode('transform', name='spline_adjustCurve_preTransform')
     splineAdjustCurveTransform = cmds.curve(name='spline_adjustCurve_transform',
@@ -511,6 +512,10 @@ def createRawSplineAdjustCurveTransform(modHandleColour):
 
 
 def createRawLocalAxesInfoRepresentation():
+    '''
+    Creates a three-axes curve transform to be used as a representation for node orientations
+    in a SplineNode module type. 
+    '''
     axesInfoPreTransform = cmds.createNode('transform', name='localAxesInfoRepr_preTransform')
 
     axesInfoTransform = cmds.createNode('transform', name='localAxesInfoRepr', parent=axesInfoPreTransform)
@@ -539,8 +544,12 @@ def createRawLocalAxesInfoRepresentation():
 
     return axesInfoPreTransform, axesInfoTransform
 
-def createRawIKPreferredRotationRepresentation(planeAxis):
 
+def createRawIKPreferredRotationRepresentation(planeAxis):
+    '''
+    Creates a "curved" arrow transform to be used as a representation for indicating the direction
+    of rotation of the hinge joint for a two bone joint chain to be generated from HingeNode module.
+    '''
     representationTransform = cmds.curve(name='IKPreferredRotationRepr', p=[(-0.0, -0.8197, -0.17),
                                                                             (0.0371, -0.5773, -0.3753),
                                                                             (0.0371, -0.5363, -0.3136),
@@ -581,7 +590,11 @@ def createRawIKPreferredRotationRepresentation(planeAxis):
 
 
 def createRawIKhingeAxisRepresenation(upFrontAxes):
-
+    '''
+    Creates two perpendicular arrow curves under a transform which is used to indicate the
+    up-axis and the plane-axis (the axis normal to the module creation plane, also called
+    front axis) for the hinge node in a HingeNode module. 
+    '''
     representationTransform = cmds.createNode('transform', name='IKhingeAxisRepresenation')
     lockHideChannelAttrs(representationTransform, 't', 'r', 's', 'v', keyable=False)
 
@@ -871,7 +884,10 @@ def createRawIKhingeAxisRepresenation(upFrontAxes):
 
 
 def createRawCharacterTransformControl():
-
+    '''
+    Creates a raw curve control transform hierarchy to be used as the character root and world
+    transform controls. It creates the world transform with the root transform below in hierarchy.
+    '''
     worldTransform = cmds.curve(name='__world_transform', p=[(-0.0012, 0.0, 0.0),
                                                               (-0.0009, 0.0, -0.0005),
                                                               (-0.0009, 0.0, -0.0003),
@@ -962,18 +978,24 @@ def createRawCharacterTransformControl():
     cmds.rename(root_xu_shape, '__root_transform_xuShape')
     addShapes(rootTransform, root_xu)
 
-    return [rootTransform, worldTransform]
+    return rootTransform, worldTransform
 
 
 def load_xhandleShape(transformName, modHandleColour, createWithTransform=False):
+    '''
+    Creates a custom locator control shape. This shape can be parented to an input transform
+    "transformName" or else a new one can be created for it.
+    '''
     if createWithTransform:
         xhandle_shape = cmds.createNode('xhandleShape', name=transformName+'Shape', skipSelect=True)
     else:
         xhandle_shape = cmds.createNode('xhandleShape', name=transformName+'Shape', parent=transformName, skipSelect=True)
+        
     cmds.setAttr(xhandle_shape+'.overrideEnabled', 1)
     cmds.setAttr(xhandle_shape+'.overrideColor', modHandleColour)
 
     lockHideChannelAttrs(xhandle_shape, 'localScale', 'localPosition', keyable=False)
 
     xhandle_parent = cmds.listRelatives(xhandle_shape, parent=True, type='transform')[0]
-    return [xhandle_shape, xhandle_parent]
+    
+    return xhandle_shape, xhandle_parent
