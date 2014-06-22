@@ -32,20 +32,23 @@
 // Maya libs
 # include <maya/MTypeId.h>
 # include <maya/MPxLocatorNode.h>
-//# include <maya/M3dView.h>
-//# include <maya/MMatrix.h>
-//# include <maya/MTransformationMatrix.h>
+# include <maya/M3dView.h>
+# include <maya/MMatrix.h>
+# include <maya/MTransformationMatrix.h>
 //# include <maya/MQuaternion.h>
-//# include <maya/MDagPath.h>
+# include <maya/MDagPath.h>
 //# include <maya/MFnTransform.h>
-//# include <maya/MFnDependencyNode.h>
+# include <maya/MFnDagNode.h>
 # include <maya/MFnNumericAttribute.h>
 # include <maya/MFnEnumAttribute.h>
 //# include <maya/MFnPlugin.h>
 # include <maya/MDistance.h>
+//# include <maya/MIOStream.h>
 //# include <maya/MPlug.h>
 //# include <maya/MHardwareRenderer.h>
-
+# include <maya/MGlobal.h>
+# include <maya/MGLFunctionTable.h>
+# include <maya/MGLdefinitions.h>
 
 // Vertex points for draw
 
@@ -96,8 +99,7 @@ class xhandleShape : public MPxLocatorNode
         virtual void draw(M3dView &view, const MDagPath &path,
                           M3dView::DisplayStyle style, M3dView::DisplayStatus status);
     
-        virtual void drawShapes(short enumType, bool drawWire, float unit_multiplier,
-                                     GLfloat w_size, short drawOrtho, bool selection);
+        virtual void drawShapes(bool selection);
     
         virtual bool isBounded() const;
         
@@ -108,24 +110,32 @@ class xhandleShape : public MPxLocatorNode
         
         static MTypeId id;
         
-		static float* dLocalPosition;
+		static float l_positionX;
+        static float l_positionY;
+        static float l_positionZ;
 
-        static float* dAddScale;
+        static float add_scaleX;
+        static float add_scaleY;
+        static float add_scaleZ;
         
-		static float* dLocalScale;
+		static float l_scaleX;
+        static float l_scaleY;
+        static float l_scaleZ;
 
         static bool dDrawOrtho; 
         
         static int dDrawStyle;
         
-        static float dThickness;
+        static GLfloat dThickness;
         
         static bool dTransformScaling;
         
         static bool dBlendHColour;
         
         static bool dDrawAxColour;
-        
+    
+        static GLfloat uMult;
+    
         
         // Attributes 
         
