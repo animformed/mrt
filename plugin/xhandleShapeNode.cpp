@@ -34,23 +34,37 @@
 // Data
 
 MTypeId xhandleShape::id(0x80090);
-float xhandleShape::l_positionX;
-float xhandleShape::l_positionY;
-float xhandleShape::l_positionZ;
-float xhandleShape::add_scaleX;
-float xhandleShape::add_scaleY;
-float xhandleShape::add_scaleZ;
-float xhandleShape::l_scaleX;
-float xhandleShape::l_scaleY;
-float xhandleShape::l_scaleZ;
+double xhandleShape::l_positionX;
+double xhandleShape::l_positionY;
+double xhandleShape::l_positionZ;
+
+double xhandleShape::add_scaleX;
+double xhandleShape::add_scaleY;
+double xhandleShape::add_scaleZ;
+
+double xhandleShape::l_scaleX;
+double xhandleShape::l_scaleY;
+double xhandleShape::l_scaleZ;
+
 bool xhandleShape::dDrawOrtho;
+
 int xhandleShape::dDrawStyle;
+
 GLfloat xhandleShape::dThickness;
+
 bool xhandleShape::dTransformScaling;
+
 bool xhandleShape::dBlendHColour;
+
 bool xhandleShape::dDrawAxColour;
+
 GLfloat xhandleShape::uMult;
 
+bool xhandleShape::colorOverride;
+
+int xhandleShape::colorId;
+
+//int xhandleShape::i_color;
 
 // Attributes
 
@@ -66,14 +80,22 @@ MObject xhandleShape::aBlendHColour;
 MObject xhandleShape::aDrawAxColour;
 
 
-xhandleShape::xhandleShape() { }
+xhandleShape::xhandleShape() {
+    
+    // Get a pointer to a GL function table
+    MHardwareRenderer *rend = MHardwareRenderer::theRenderer();
+	glft = rend->glFunctionTable();
+}
 
 xhandleShape::~xhandleShape() { }
 
-void* xhandleShape::creator() { return new xhandleShape(); }
+void* xhandleShape::creator() {
+
+    return new xhandleShape();
+}
 
 MStatus xhandleShape::initialize() {
-
+    
     MFnNumericAttribute dsAttr;
     aDrawStyle = dsAttr.create("drawStyle", "ds", MFnNumericData::kShort);
     CHECK_MSTATUS (dsAttr.setMax(8));
@@ -173,290 +195,293 @@ MStatus xhandleShape::initialize() {
     CHECK_MSTATUS (addAttribute(aTransformScaling));
     CHECK_MSTATUS (addAttribute(aBlendHColour));
     CHECK_MSTATUS (addAttribute(aDrawAxColour));
-
+    
     return MS::kSuccess;
 }
 
 
-MStatus xhandleShape::compute(const MPlug& /*plug*/, MDataBlock& dataBlock)
-{		
-		MStatus status;
-    
-        // Get the internal unit multiplier from maya for GL draw.
-        MDistance distanceObject;
-        uMult = (float) distanceObject.uiToInternal(1.0);
-    
-        // Get the local position attributes
-        MDataHandle localPositionXHandle = dataBlock.inputValue(localPositionX, &status);
-        CHECK_MSTATUS (status);
-        l_positionX = localPositionXHandle.asFloat();
-    
-        MDataHandle localPositionYHandle = dataBlock.inputValue(localPositionY, &status);
-        CHECK_MSTATUS (status);
-        l_positionY = localPositionYHandle.asFloat();
-    
-        MDataHandle localPositionZHandle = dataBlock.inputValue(localPositionZ, &status);
-        CHECK_MSTATUS (status);
-        l_positionZ = localPositionZHandle.asFloat();
-    
-		// Get the local scale attributes
-        MDataHandle localScaleXHandle = dataBlock.inputValue(localScaleX, &status);
-        CHECK_MSTATUS (status);
-        l_scaleX = localScaleXHandle.asFloat();
-    
-        MDataHandle localScaleYHandle = dataBlock.inputValue(localScaleY, &status);
-        CHECK_MSTATUS (status);
-        l_scaleY = localScaleYHandle.asFloat();
-    
-        MDataHandle localScaleZHandle = dataBlock.inputValue(localScaleZ, &status);
-        CHECK_MSTATUS (status);
-        l_scaleZ = localScaleZHandle.asFloat();
 
-        // Get the add scale attributes
-        MDataHandle addScaleXHandle = dataBlock.inputValue(aAddScaleX, &status);
-        CHECK_MSTATUS (status);
-        add_scaleX = addScaleXHandle.asFloat();
+MStatus xhandleShape::compute(const MPlug& /*plug*/, MDataBlock& /*block*/) {
     
-        MDataHandle addScaleYHandle = dataBlock.inputValue(aAddScaleY, &status);
-        CHECK_MSTATUS (status);
-        add_scaleY = addScaleYHandle.asFloat();
-    
-        MDataHandle addScaleZHandle = dataBlock.inputValue(aAddScaleZ, &status);
-        CHECK_MSTATUS (status);
-        add_scaleZ = addScaleZHandle.asFloat();
-
-        // Get the draw ortho attribute
-		MDataHandle drawOrthoHandle = dataBlock.inputValue(aDrawOrtho, &status);
-		CHECK_MSTATUS (status);
-		dDrawOrtho = drawOrthoHandle.asBool();
-
-		// Get the draw style attribute
-        MDataHandle drawStyleHandle = dataBlock.inputValue(aDrawStyle, &status);
-        CHECK_MSTATUS (status);
-		dDrawStyle = drawStyleHandle.asInt();
-        
-		// Get the draw thickness attribute
-		MDataHandle wThicknessHandle = dataBlock.inputValue(aThickness, &status);
-        CHECK_MSTATUS (status);
-		dThickness = wThicknessHandle.asFloat();
-
-		// Get the transform scaling attribute
-		MDataHandle trnsScalingHandle = dataBlock.inputValue(aTransformScaling, &status);
-        CHECK_MSTATUS (status);
-		dTransformScaling = trnsScalingHandle.asBool();
-        
-        // Get the draw blend colour attribute
-		MDataHandle blendHClrHandle = dataBlock.inputValue(aBlendHColour, &status);
-        CHECK_MSTATUS (status);
-		dBlendHColour = blendHClrHandle.asBool();
-        
-        // Get the draw axes colour attribute
-		MDataHandle drawAxClrHandle = dataBlock.inputValue(aDrawAxColour, &status);
-        CHECK_MSTATUS (status);
-		dDrawAxColour = drawAxClrHandle.asBool();
-        
-    return MS::kSuccess;
+    return MS::kUnknownParameter;
 }
+
+
+void xhandleShape::setInternalAttrs() const {
+    
+    MObject thisNode = thisMObject();
+    
+    MPlug plug(thisNode, localPositionX);
+    plug.getValue(l_positionX);
+    
+    plug.setAttribute(localPositionY);
+    plug.getValue(l_positionY);
+    
+    plug.setAttribute(localPositionZ);
+    plug.getValue(l_positionZ);
+    
+    plug.setAttribute(aAddScaleX);
+    plug.getValue(add_scaleX);
+    
+    plug.setAttribute(aAddScaleY);
+    plug.getValue(add_scaleY);
+    
+    plug.setAttribute(aAddScaleZ);
+    plug.getValue(add_scaleZ);
+    
+    plug.setAttribute(localScaleX);
+    plug.getValue(l_scaleX);
+    
+    plug.setAttribute(localScaleY);
+    plug.getValue(l_scaleY);
+    
+    plug.setAttribute(localScaleZ);
+    plug.getValue(l_scaleZ);
+ 
+    plug.setAttribute(aDrawOrtho);
+    plug.getValue(dDrawOrtho);
+    
+    plug.setAttribute(aDrawStyle);
+    plug.getValue(dDrawStyle);
+    
+    plug.setAttribute(aThickness);
+    plug.getValue(dThickness);
+    
+    plug.setAttribute(aTransformScaling);
+    plug.getValue(dTransformScaling);
+    
+    plug.setAttribute(aBlendHColour);
+    plug.getValue(dBlendHColour);
+    
+    plug.setAttribute(aDrawAxColour);
+    plug.getValue(dDrawAxColour);
+    
+    // Get the internal unit multiplier from maya for GL draw.
+    MDistance distanceObject;
+    uMult = (float) distanceObject.uiToInternal(1.0);
+    
+    MFnDependencyNode shapeNodeFn(thisNode);
+    MObject ovEnabled = shapeNodeFn.attribute("overrideEnabled");
+	MObject ovColor = shapeNodeFn.attribute("overrideColor");
+    
+    plug.setAttribute(ovEnabled);
+    plug.getValue(colorOverride);
+    
+    plug.setAttribute(ovColor);
+    plug.getValue(colorId);
+
+}
+
 
 void xhandleShape::drawShapes(bool selection)
 {
     // Draw according to drawStyle attribute value passed to enumType.
     switch(dDrawStyle) {
     
-    case 1: glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
-            glEnable(GL_POINT_SMOOTH);
-            glLineWidth(dThickness);
-            glPointSize(dThickness);
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            glBegin(GL_POINTS);
-            glVertex3f(0.0f, 1.0f * uMult, 0.0f);
-            glVertex3f(1.0f * uMult, -1.0f * uMult, 0.0f);
-            glVertex3f(-1.0f * uMult, -1.0f * uMult, 0.0f);
-            glEnd();
-            glBegin(GL_LINE_LOOP);
-            glVertex3f(0.0f, 1.0f * uMult, 0.0f);
-            glVertex3f(1.0f * uMult, -1.0f * uMult, 0.0f);
-            glVertex3f(-1.0f * uMult, -1.0f * uMult, 0.0f);
-            glEnd();
+    case 1: glft->glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
+            glft->glEnable(GL_POINT_SMOOTH);
+            glft->glLineWidth(dThickness);
+            glft->glPointSize(dThickness);
+            glft->glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            glft->glBegin(GL_POINTS);
+            glft->glVertex3f(0.0f, 1.0f * uMult, 0.0f);
+            glft->glVertex3f(1.0f * uMult, -1.0f * uMult, 0.0f);
+            glft->glVertex3f(-1.0f * uMult, -1.0f * uMult, 0.0f);
+            glft->glEnd();
+            glft->glBegin(GL_LINE_LOOP);
+            glft->glVertex3f(0.0f, 1.0f * uMult, 0.0f);
+            glft->glVertex3f(1.0f * uMult, -1.0f * uMult, 0.0f);
+            glft->glVertex3f(-1.0f * uMult, -1.0f * uMult, 0.0f);
+            glft->glEnd();
             break;
             
-    case 2: glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
-            glRotatef(180.0f, 0.0f, 0.0f, 1.0f);
-            glEnable(GL_POINT_SMOOTH);
-            glLineWidth(dThickness);
-            glPointSize(dThickness);
-            glBegin(GL_POINTS);
-            glVertex3f(0.0f, 1.0f * uMult, 0.0f);
-            glVertex3f(1.0f * uMult, -1.0f * uMult, 0.0f);
-            glVertex3f(-1.0f * uMult, -1.0f * uMult, 0.0f);
-            glEnd();
-            glBegin(GL_LINE_LOOP);
-            glVertex3f(0.0f, 1.0f * uMult, 0.0f);
-            glVertex3f(1.0f * uMult, -1.0f * uMult, 0.0f);
-            glVertex3f(-1.0f * uMult, -1.0f * uMult, 0.0f);
-            glEnd();
+    case 2: glft->glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
+            glft->glRotatef(180.0f, 0.0f, 0.0f, 1.0f);
+            glft->glEnable(GL_POINT_SMOOTH);
+            glft->glLineWidth(dThickness);
+            glft->glPointSize(dThickness);
+            glft->glBegin(GL_POINTS);
+            glft->glVertex3f(0.0f, 1.0f * uMult, 0.0f);
+            glft->glVertex3f(1.0f * uMult, -1.0f * uMult, 0.0f);
+            glft->glVertex3f(-1.0f * uMult, -1.0f * uMult, 0.0f);
+            glft->glEnd();
+            glft->glBegin(GL_LINE_LOOP);
+            glft->glVertex3f(0.0f, 1.0f * uMult, 0.0f);
+            glft->glVertex3f(1.0f * uMult, -1.0f * uMult, 0.0f);
+            glft->glVertex3f(-1.0f * uMult, -1.0f * uMult, 0.0f);
+            glft->glEnd();
             break;
     
-    case 3: glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
-            glEnable(GL_POINT_SMOOTH);
-            glLineWidth(dThickness);
-            glPointSize(dThickness);
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            glBegin(GL_POINTS);
-            glVertex3f(-1.0f * uMult, 1.0f * uMult, 0.0f);
-            glVertex3f(1.0f * uMult, 1.0f * uMult, 0.0f);
-            glVertex3f(1.0f * uMult, -1.0f * uMult, 0.0f);
-            glVertex3f(-1.0f * uMult, -1.0f * uMult, 0.0f);
-            glEnd();
-            glBegin(GL_LINE_LOOP);
-            glVertex3f(-1.0f * uMult, 1.0f * uMult, 0.0f);
-            glVertex3f(1.0f * uMult, 1.0f * uMult, 0.0f);
-            glVertex3f(1.0f * uMult, -1.0f * uMult, 0.0f);
-            glVertex3f(-1.0f * uMult, -1.0f * uMult, 0.0f);
-            glEnd();
+    case 3: glft->glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
+            glft->glEnable(GL_POINT_SMOOTH);
+            glft->glLineWidth(dThickness);
+            glft->glPointSize(dThickness);
+            glft->glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            glft->glBegin(GL_POINTS);
+            glft->glVertex3f(-1.0f * uMult, 1.0f * uMult, 0.0f);
+            glft->glVertex3f(1.0f * uMult, 1.0f * uMult, 0.0f);
+            glft->glVertex3f(1.0f * uMult, -1.0f * uMult, 0.0f);
+            glft->glVertex3f(-1.0f * uMult, -1.0f * uMult, 0.0f);
+            glft->glEnd();
+            glft->glBegin(GL_LINE_LOOP);
+            glft->glVertex3f(-1.0f * uMult, 1.0f * uMult, 0.0f);
+            glft->glVertex3f(1.0f * uMult, 1.0f * uMult, 0.0f);
+            glft->glVertex3f(1.0f * uMult, -1.0f * uMult, 0.0f);
+            glft->glVertex3f(-1.0f * uMult, -1.0f * uMult, 0.0f);
+            glft->glEnd();
             break;
     
-    case 4: glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
-            glEnable(GL_POINT_SMOOTH);
-            glLineWidth(dThickness);
-            glPointSize(dThickness);
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            glBegin(GL_POINTS);
+    case 4: glft->glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
+            glft->glEnable(GL_POINT_SMOOTH);
+            glft->glLineWidth(dThickness);
+            glft->glPointSize(dThickness);
+            glft->glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            glft->glBegin(GL_POINTS);
             for (int i=0; i<8; i++)
-                glVertex3f(handle_low[i][0] * uMult, handle_low[i][1] * uMult, 0.0f);
-            glEnd();
-            glBegin(GL_LINE_LOOP);
+                glft->glVertex3f(handle_low[i][0] * uMult, handle_low[i][1] * uMult, 0.0f);
+            glft->glEnd();
+            glft->glBegin(GL_LINE_LOOP);
             for (int i=0; i<8; i++)
-                glVertex3f(handle_low[i][0] * uMult, handle_low[i][1] * uMult, 0.0f);
-            glEnd();
+                glft->glVertex3f(handle_low[i][0] * uMult, handle_low[i][1] * uMult, 0.0f);
+            glft->glEnd();
             break;
     
-    case 5: glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
-            glEnable(GL_POINT_SMOOTH);
-            glLineWidth(dThickness);
-            glPointSize(dThickness);
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            glBegin(GL_POINTS);
+    case 5: glft->glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
+            glft->glEnable(GL_POINT_SMOOTH);
+            glft->glLineWidth(dThickness);
+            glft->glPointSize(dThickness);
+            glft->glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            glft->glBegin(GL_POINTS);
             for (int i=0; i<16; i++)
-                glVertex3f(handle_high[i][0] * 6.66f * uMult, handle_high[i][1] * 6.66f * uMult, 0.0f);
-            glEnd();
-            glBegin(GL_LINE_LOOP);
+                glft->glVertex3f(handle_high[i][0] * 6.66f * uMult, handle_high[i][1] * 6.66f * uMult, 0.0f);
+            glft->glEnd();
+            glft->glBegin(GL_LINE_LOOP);
             for (int i=0; i<16; i++)
-                glVertex3f(handle_high[i][0] * 6.66f * uMult, handle_high[i][1] * 6.66f * uMult, 0.0f);
-            glEnd();
+                glft->glVertex3f(handle_high[i][0] * 6.66f * uMult, handle_high[i][1] * 6.66f * uMult, 0.0f);
+            glft->glEnd();
             break;
     
-    case 6: glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
-            glBegin(GL_LINE_LOOP);
-            glVertex3f(-1.0f * uMult, 1.0f * uMult, 0.0f);
-            glVertex3f(1.0f * uMult, 1.0f * uMult, 0.0f);
-            glVertex3f(1.0f * uMult, -1.0f * uMult, 0.0f);
-            glVertex3f(-1.0f * uMult, -1.0f * uMult, 0.0f);
-            glEnd();
-            glBegin(GL_POINTS);
-            glVertex3f(-1.0f * uMult, 1.0f * uMult, 0.0f);
-            glVertex3f(1.0f * uMult, 1.0f * uMult, 0.0f);
-            glVertex3f(1.0f * uMult, -1.0f * uMult, 0.0f);
-            glVertex3f(-1.0f * uMult, -1.0f * uMult, 0.0f);
-            glEnd();
-            glEnable(GL_POINT_SMOOTH);
-            glLineWidth(dThickness);
-            glPointSize(dThickness);
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            glBegin(GL_POINTS);
+    case 6: glft->glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
+            glft->glBegin(GL_LINE_LOOP);
+            glft->glVertex3f(-1.0f * uMult, 1.0f * uMult, 0.0f);
+            glft->glVertex3f(1.0f * uMult, 1.0f * uMult, 0.0f);
+            glft->glVertex3f(1.0f * uMult, -1.0f * uMult, 0.0f);
+            glft->glVertex3f(-1.0f * uMult, -1.0f * uMult, 0.0f);
+            glft->glEnd();
+            glft->glBegin(GL_POINTS);
+            glft->glVertex3f(-1.0f * uMult, 1.0f * uMult, 0.0f);
+            glft->glVertex3f(1.0f * uMult, 1.0f * uMult, 0.0f);
+            glft->glVertex3f(1.0f * uMult, -1.0f * uMult, 0.0f);
+            glft->glVertex3f(-1.0f * uMult, -1.0f * uMult, 0.0f);
+            glft->glEnd();
+            glft->glEnable(GL_POINT_SMOOTH);
+            glft->glLineWidth(dThickness);
+            glft->glPointSize(dThickness);
+            glft->glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            glft->glBegin(GL_POINTS);
             for (int i=0; i<8; i++)
-                glVertex3f(handle_low[i][0] * 0.525f * uMult, handle_low[i][1] * 0.525f * uMult, 0.0f);
-            glEnd();
-            glBegin(GL_LINE_LOOP);
+                glft->glVertex3f(handle_low[i][0] * 0.525f * uMult, handle_low[i][1] * 0.525f * uMult, 0.0f);
+            glft->glEnd();
+            glft->glBegin(GL_LINE_LOOP);
             for (int i=0; i<8; i++)
-                glVertex3f(handle_low[i][0] * 0.525f * uMult, handle_low[i][1] * 0.525f * uMult, 0.0f);
-            glEnd();
+                glft->glVertex3f(handle_low[i][0] * 0.525f * uMult, handle_low[i][1] * 0.525f * uMult, 0.0f);
+            glft->glEnd();
             break;
     
-    case 7: glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
-            glBegin(GL_LINE_LOOP);
-            glVertex3f(-1.0f * uMult, 1.0f * uMult, 0.0f);
-            glVertex3f(1.0f * uMult, 1.0f * uMult, 0.0f);
-            glVertex3f(1.0f * uMult, -1.0f * uMult, 0.0f);
-            glVertex3f(-1.0f * uMult, -1.0f * uMult, 0.0f);
-            glEnd();
-            glBegin(GL_POINTS);
-            glVertex3f(-1.0f * uMult, 1.0f * uMult, 0.0f);
-            glVertex3f(1.0f * uMult, 1.0f * uMult, 0.0f);
-            glVertex3f(1.0f * uMult, -1.0f * uMult, 0.0f);
-            glVertex3f(-1.0f * uMult, -1.0f * uMult, 0.0f);
-            glEnd();
-            glEnable(GL_POINT_SMOOTH);
-            glLineWidth(dThickness);
-            glPointSize(dThickness);
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            glBegin(GL_POINTS);
+    case 7: glft->glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
+            glft->glBegin(GL_LINE_LOOP);
+            glft->glVertex3f(-1.0f * uMult, 1.0f * uMult, 0.0f);
+            glft->glVertex3f(1.0f * uMult, 1.0f * uMult, 0.0f);
+            glft->glVertex3f(1.0f * uMult, -1.0f * uMult, 0.0f);
+            glft->glVertex3f(-1.0f * uMult, -1.0f * uMult, 0.0f);
+            glft->glEnd();
+            glft->glBegin(GL_POINTS);
+            glft->glVertex3f(-1.0f * uMult, 1.0f * uMult, 0.0f);
+            glft->glVertex3f(1.0f * uMult, 1.0f * uMult, 0.0f);
+            glft->glVertex3f(1.0f * uMult, -1.0f * uMult, 0.0f);
+            glft->glVertex3f(-1.0f * uMult, -1.0f * uMult, 0.0f);
+            glft->glEnd();
+            glft->glEnable(GL_POINT_SMOOTH);
+            glft->glLineWidth(dThickness);
+            glft->glPointSize(dThickness);
+            glft->glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            glft->glBegin(GL_POINTS);
             for (int i=0; i<16; i++)
-                glVertex3f(handle_high[i][0] * 3.5f * uMult, handle_high[i][1] * 3.5f * uMult, 0.0f);
-            glEnd();
-            glBegin(GL_LINE_LOOP);
+                glft->glVertex3f(handle_high[i][0] * 3.5f * uMult, handle_high[i][1] * 3.5f * uMult, 0.0f);
+            glft->glEnd();
+            glft->glBegin(GL_LINE_LOOP);
             for (int i=0; i<16; i++)
-                glVertex3f(handle_high[i][0] * 3.5f * uMult, handle_high[i][1] * 3.5f * uMult, 0.0f);
-            glEnd();
+                glft->glVertex3f(handle_high[i][0] * 3.5f * uMult, handle_high[i][1] * 3.5f * uMult, 0.0f);
+            glft->glEnd();
             break;
     
-    case 8: glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
-            glLineWidth(dDrawOrtho);
+    case 8: glft->glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
+            glft->glLineWidth(dDrawOrtho);
             if ((dDrawAxColour == 1) && (dDrawOrtho == 0) && (selection == false))
-                glColor3f(1.0f, 0.0f, 0.0f);
-            glBegin(GL_LINES);
-            glVertex3f(1.0f * uMult, 0.0f, 0.0f);
-            glVertex3f(-1.0f * uMult, 0.0f, 0.0f);
-            glEnd();
+                glft->glColor3f(1.0f, 0.0f, 0.0f);
+            glft->glBegin(GL_LINES);
+            glft->glVertex3f(1.0f * uMult, 0.0f, 0.0f);
+            glft->glVertex3f(-1.0f * uMult, 0.0f, 0.0f);
+            glft->glEnd();
             if ((dDrawAxColour == 1) && (dDrawOrtho == 0) && (selection == false))
-                glColor3f(0.0f, 0.0f, 1.0f);
-            glBegin(GL_LINES);
-            glVertex3f(0.0f, 1.0f * uMult, 0.0f);
-            glVertex3f(0.0f, -1.0f * uMult, 0.0f);
-            glEnd();
+                glft->glColor3f(0.0f, 0.0f, 1.0f);
+            glft->glBegin(GL_LINES);
+            glft->glVertex3f(0.0f, 1.0f * uMult, 0.0f);
+            glft->glVertex3f(0.0f, -1.0f * uMult, 0.0f);
+            glft->glEnd();
             if (!dDrawOrtho) {
                 if ((dDrawAxColour == 1) && (dDrawOrtho == 0) && (selection == false))
-                    glColor3f(0.0f, 1.0f, 0.0f);
+                    glft->glColor3f(0.0f, 1.0f, 0.0f);
             }
-            glBegin(GL_LINES);
-            glVertex3f(0.0f, 0.0f, 1.0f * uMult);
-            glVertex3f(0.0f, 0.0f, -1.0f * uMult);
-            glEnd();
+            glft->glBegin(GL_LINES);
+            glft->glVertex3f(0.0f, 0.0f, 1.0f * uMult);
+            glft->glVertex3f(0.0f, 0.0f, -1.0f * uMult);
+            glft->glEnd();
             break;
         }
 
 }
 
 void xhandleShape::draw(M3dView &view, const MDagPath &path, M3dView::DisplayStyle style, M3dView::DisplayStatus status)
-{   
-    glPushAttrib(GL_ALL_ATTRIB_BITS);
+{
+    setInternalAttrs();
+    
+    glft->glPushAttrib(GL_ALL_ATTRIB_BITS);
     
     view.beginGL();
     
     // The draw operation happens in the local matrix space.
     // Apply any position offsets before the draw operations.
-    glMatrixMode(GL_MODELVIEW);
-
-    glTranslatef(l_positionX, l_positionY, l_positionZ);
+    glft->glMatrixMode(GL_MODELVIEW);
+    glft->glTranslatef(l_positionX, l_positionY, l_positionZ);
     
     // If the draw "ortho" only is enabled for draw operations,
-    // then we want to negate all transformations applied to GL draw operations
-    // as a result of locator transformations in maya's scene space.
     if (dDrawOrtho == 1) {
         
-        // Based on the maya viewport, get the camera inverse matr
-        MDagPath cameraPath;
-        view.getCamera(cameraPath);
-        MMatrix camInvMMatrix = cameraPath.inclusiveMatrix().inverse();
-        glMultMatrixd(&(camInvMMatrix.matrix[0][0]));
+        // Negate all transformations applied to GL draw operations
+        // as a result of locator transformations in maya's scene space.
+        MMatrix pathInvMatrix = path.inclusiveMatrixInverse();
+		glft->glMultMatrixd(&(pathInvMatrix.matrix[0][0]));
         
-        // Apply world translation only to the current draw space.
-        MMatrix path_t_Matrix = path.inclusiveMatrix();
-        MTransformationMatrix trans_matrix(path_t_Matrix);
-        MVector trans_vec = trans_matrix.getTranslation(MSpace::kTransform);
-        glTranslated(trans_vec[0], trans_vec[1], trans_vec[2]);
+        // Apply translations only to the draw space.
+		MMatrix pathMatrix = path.inclusiveMatrix();
+		MTransformationMatrix trans_matrix(pathMatrix);
+		MVector trans_vec = trans_matrix.getTranslation(MSpace::kTransform);
+		glft->glTranslated(trans_vec[0], trans_vec[1], trans_vec[2]);
         
-        glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
+        // Rotate the draw space based on the viewport camera.
+		MDagPath cameraPath;
+		view.getCamera(cameraPath);
+		MMatrix camMatrix = cameraPath.inclusiveMatrix();
+		MTransformationMatrix camTransMatrix(camMatrix);
+		MQuaternion camRotation = camTransMatrix.rotation();
+		MVector camRotAxis;
+		double camRotTheta;
+		camRotation.getAxisAngle(camRotAxis, camRotTheta);
+		glft->glRotated(RAD_TO_DEG(camRotTheta), camRotAxis[0], camRotAxis[1], camRotAxis[2]);
+        
+        // Now rotate 90 deg to face the viewport camera.
+        glft->glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
     }
     
     // Apply scaling to draw space
@@ -468,41 +493,54 @@ void xhandleShape::draw(M3dView &view, const MDagPath &path, M3dView::DisplaySty
     MTransformationMatrix pathTransMatrix(pathMatrix);
     double scale[3];
     pathTransMatrix.getScale(scale, MSpace::kTransform);
-    glScaled(scale[0], scale[1], scale[2]);
+    glft->glScaled(scale[0], scale[1], scale[2]);
     
-    if (dDrawOrtho == 1) {      
-        glScalef((l_scaleX * add_scaleX), (l_scaleZ * add_scaleZ), (l_scaleY * add_scaleY));
+    if (dDrawOrtho == 1) {
+        glft->glScalef((l_scaleX * add_scaleX),
+                 (l_scaleZ * add_scaleZ),
+                 (l_scaleY * add_scaleY));
     }
-    if (dDrawOrtho == 0) {      
-        glScalef((l_scaleX * add_scaleX), (l_scaleY * add_scaleY), (l_scaleZ * add_scaleZ));
+    if (dDrawOrtho == 0) {
+        glft->glScalef((l_scaleX * add_scaleX),
+                 (l_scaleY * add_scaleY),
+                 (l_scaleZ * add_scaleZ));
     }
 
     // Set the draw color based on the current display status.
-    view.setDrawColor(colorRGB(status));
-
+    if (status == M3dView::kLead)
+		view.setDrawColor(18, M3dView::kActiveColors);
+	if (status == M3dView::kActive)
+        view.setDrawColor(15, M3dView::kActiveColors);
+	if (status == M3dView::kDormant)
+	{
+        view.setDrawColor(color(M3dView::kDormant), M3dView::kDormantColors);
+		if (colorOverride == true)
+			view.setDrawColor(color(M3dView::kDormant), M3dView::kDormantColors);
+	}
+    
     // Set the blend colour state.
     if (dBlendHColour == 0)
-        glDisable(GL_BLEND);
+        glft->glDisable(GL_BLEND);
     
     if (dBlendHColour == 1) {
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_DST_COLOR, GL_SRC_COLOR);
+        glft->glEnable(GL_BLEND);
+        glft->glBlendFunc(GL_DST_COLOR, GL_SRC_COLOR);
     }
     
     if ((style == M3dView::kWireFrame) || (style == M3dView::kPoints)) {
-        glEnable(GL_LINE_SMOOTH);
+        glft->glEnable(GL_LINE_SMOOTH);
         drawShapes(status == M3dView::kActive);
     }   
     if ((style == M3dView::kFlatShaded) || (style == M3dView::kGouraudShaded)) {
-        glClearDepth(0.0);
-        glDepthFunc(GL_ALWAYS);
-        glEnable(GL_LINE_SMOOTH);
+        glft->glClearDepth(0.0);
+        glft->glDepthFunc(GL_ALWAYS);
+        glft->glEnable(GL_LINE_SMOOTH);
         drawShapes(status == M3dView::kActive);
     }
     
     view.endGL();
     
-    glPopAttrib();
+    glft->glPopAttrib();
 }
 
 
@@ -510,7 +548,9 @@ bool xhandleShape::isBounded() const { return true; }
 
 
 MBoundingBox xhandleShape::boundingBox() const
-{   
+{
+    setInternalAttrs();
+    
     MObject thisNode = thisMObject();
     
     MVector translation_vec(l_positionX, l_positionY, l_positionZ);
@@ -545,10 +585,6 @@ MBoundingBox xhandleShape::boundingBox() const
 
     MBoundingBox b_box(corner1, corner2);
     b_box.transformUsing(localPos_matrix);
-
-    //MPlug transformScalingPlug(thisNode, aTransformScaling);
-    //short transformScaling;
-    //transformScalingPlug.getValue(transformScaling);
 
     if (dTransformScaling == 0) {
         MDagPath path;

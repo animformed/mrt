@@ -35,7 +35,7 @@
 # include <maya/M3dView.h>
 # include <maya/MMatrix.h>
 # include <maya/MTransformationMatrix.h>
-//# include <maya/MQuaternion.h>
+# include <maya/MQuaternion.h>
 # include <maya/MDagPath.h>
 //# include <maya/MFnTransform.h>
 # include <maya/MFnDagNode.h>
@@ -43,12 +43,13 @@
 # include <maya/MFnEnumAttribute.h>
 //# include <maya/MFnPlugin.h>
 # include <maya/MDistance.h>
-//# include <maya/MIOStream.h>
+# include <maya/MIOStream.h>
 //# include <maya/MPlug.h>
-//# include <maya/MHardwareRenderer.h>
-# include <maya/MGlobal.h>
+# include <maya/MHardwareRenderer.h>
 # include <maya/MGLFunctionTable.h>
-# include <maya/MGLdefinitions.h>
+# include <maya/MGlobal.h>
+
+# define RAD_TO_DEG(rad) (rad * 57.2957795130f)
 
 // Vertex points for draw
 
@@ -78,7 +79,8 @@ static GLfloat handle_high[][3] = { {0.15f, 0.0f, 0.0f},
                                     {0.104f, -0.108f, 0.0f},
                                     {0.138f, -0.06f, 0.0f} };
 
-// Declaration
+
+// Node class declaration
 
 class xhandleShape : public MPxLocatorNode
 {
@@ -96,33 +98,35 @@ class xhandleShape : public MPxLocatorNode
         
         virtual MStatus compute(const MPlug& plug, MDataBlock& data);
     
-        virtual void draw(M3dView &view, const MDagPath &path,
-                          M3dView::DisplayStyle style, M3dView::DisplayStatus status);
+        virtual void setInternalAttrs() const;
     
         virtual void drawShapes(bool selection);
+    
+        virtual void draw(M3dView &view, const MDagPath &path,
+                          M3dView::DisplayStyle style, M3dView::DisplayStatus status);
     
         virtual bool isBounded() const;
         
         virtual MBoundingBox boundingBox() const;
     
-        
+    
         // Data
         
         static MTypeId id;
+    
+        static double l_positionX;
+        static double l_positionY;
+        static double l_positionZ;
         
-		static float l_positionX;
-        static float l_positionY;
-        static float l_positionZ;
-
-        static float add_scaleX;
-        static float add_scaleY;
-        static float add_scaleZ;
+        static double add_scaleX;
+        static double add_scaleY;
+        static double add_scaleZ;
         
-		static float l_scaleX;
-        static float l_scaleY;
-        static float l_scaleZ;
-
-        static bool dDrawOrtho; 
+        static double l_scaleX;
+        static double l_scaleY;
+        static double l_scaleZ;
+        
+        static bool dDrawOrtho;
         
         static int dDrawStyle;
         
@@ -133,11 +137,16 @@ class xhandleShape : public MPxLocatorNode
         static bool dBlendHColour;
         
         static bool dDrawAxColour;
-    
+        
         static GLfloat uMult;
     
-        
-        // Attributes 
+        static bool colorOverride;
+    
+        static int colorId;
+    
+        static int i_color;
+    
+        // Attributes
         
         static MObject aAddScale;
         
@@ -158,4 +167,9 @@ class xhandleShape : public MPxLocatorNode
         static MObject aBlendHColour;      
         
         static MObject aDrawAxColour;
+    
+    protected:
+        MGLFunctionTable *glft;
+    
+    
 };

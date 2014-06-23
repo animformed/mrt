@@ -21,7 +21,7 @@
 MStatus initializePlugin(MObject obj)   // Register the plugin
 {
     MStatus status;
-    MFnPlugin plugin(obj, "hb", "0.1", "2014");
+    MFnPlugin plugin(obj, "hb", "1.0", "2014");
 
     status = plugin.registerNode("xhandleShape",
                                  xhandleShape::id,
