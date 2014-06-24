@@ -30,6 +30,7 @@
 */
 
 // Maya libs
+
 # include <maya/MTypeId.h>
 # include <maya/MPxLocatorNode.h>
 # include <maya/M3dView.h>
@@ -37,14 +38,11 @@
 # include <maya/MTransformationMatrix.h>
 # include <maya/MQuaternion.h>
 # include <maya/MDagPath.h>
-//# include <maya/MFnTransform.h>
 # include <maya/MFnDagNode.h>
 # include <maya/MFnNumericAttribute.h>
 # include <maya/MFnEnumAttribute.h>
-//# include <maya/MFnPlugin.h>
 # include <maya/MDistance.h>
 # include <maya/MIOStream.h>
-//# include <maya/MPlug.h>
 # include <maya/MHardwareRenderer.h>
 # include <maya/MGLFunctionTable.h>
 # include <maya/MGlobal.h>
@@ -146,6 +144,7 @@ class xhandleShape : public MPxLocatorNode
     
         static int i_color;
     
+    
         // Attributes
         
         static MObject aAddScale;
@@ -169,6 +168,7 @@ class xhandleShape : public MPxLocatorNode
         static MObject aDrawAxColour;
     
     protected:
+    
         MGLFunctionTable *glft;
     
     

@@ -1,7 +1,9 @@
 /*
 
-    mrt_xhandleShapePlugin.cpp
-    
+    PLUGIN: xhandleShape v1.0
+ 
+    xhandleShapePlugin.cpp
+ 
     ////////////////////////////////////////////////////////////////////////////
 
     Plugin registration/de-registration for xhandleShape node.

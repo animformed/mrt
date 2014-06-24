@@ -6,19 +6,6 @@
 
     Source for xhandleShape node plugin, for use as control locators in modules
     and control rigging for modular rigging tools for maya.
-
-    This is derived from an MPxLocatorNode, with the following
-    added attributes :
-
-    addScaleX
-    addScaleY
-    addScaleZ
-    drawStyle
-    drawAxisColour
-    drawOrtho
-    transformScaling
-    wireframeThickness
-    blendColour
     
     ////////////////////////////////////////////////////////////////////////////
     
@@ -37,34 +24,22 @@ MTypeId xhandleShape::id(0x80090);
 double xhandleShape::l_positionX;
 double xhandleShape::l_positionY;
 double xhandleShape::l_positionZ;
-
 double xhandleShape::add_scaleX;
 double xhandleShape::add_scaleY;
 double xhandleShape::add_scaleZ;
-
 double xhandleShape::l_scaleX;
 double xhandleShape::l_scaleY;
 double xhandleShape::l_scaleZ;
-
 bool xhandleShape::dDrawOrtho;
-
 int xhandleShape::dDrawStyle;
-
 GLfloat xhandleShape::dThickness;
-
 bool xhandleShape::dTransformScaling;
-
 bool xhandleShape::dBlendHColour;
-
 bool xhandleShape::dDrawAxColour;
-
 GLfloat xhandleShape::uMult;
-
 bool xhandleShape::colorOverride;
-
 int xhandleShape::colorId;
 
-//int xhandleShape::i_color;
 
 // Attributes
 
@@ -96,6 +71,8 @@ void* xhandleShape::creator() {
 
 MStatus xhandleShape::initialize() {
     
+    // Add node attributes
+    
     MFnNumericAttribute dsAttr;
     aDrawStyle = dsAttr.create("drawStyle", "ds", MFnNumericData::kShort);
     CHECK_MSTATUS (dsAttr.setMax(8));
@@ -119,6 +96,7 @@ MStatus xhandleShape::initialize() {
     MFnNumericAttribute wtAttr;
     aThickness = wtAttr.create("wireframeThickness", "wt", MFnNumericData::kFloat);
     CHECK_MSTATUS (wtAttr.setMin(1.0f));
+    CHECK_MSTATUS (wtAttr.setMax(10.0f));
     CHECK_MSTATUS (wtAttr.setDefault(5.0f));
     CHECK_MSTATUS (wtAttr.setStorable(true));
     CHECK_MSTATUS (wtAttr.setReadable(true));
@@ -209,6 +187,9 @@ MStatus xhandleShape::compute(const MPlug& /*plug*/, MDataBlock& /*block*/) {
 
 void xhandleShape::setInternalAttrs() const {
     
+     // Store and update the node attributes values //
+     // for internal use. //
+    
     MObject thisNode = thisMObject();
     
     MPlug plug(thisNode, localPositionX);
@@ -260,6 +241,7 @@ void xhandleShape::setInternalAttrs() const {
     MDistance distanceObject;
     uMult = (float) distanceObject.uiToInternal(1.0);
     
+    // Get the override colour value for the locator shape.
     MFnDependencyNode shapeNodeFn(thisNode);
     MObject ovEnabled = shapeNodeFn.attribute("overrideEnabled");
 	MObject ovColor = shapeNodeFn.attribute("overrideColor");
@@ -275,7 +257,17 @@ void xhandleShape::setInternalAttrs() const {
 
 void xhandleShape::drawShapes(bool selection)
 {
-    // Draw according to drawStyle attribute value passed to enumType.
+    // Draw according to drawStyle attribute value (stored in dDrawStyle).
+    
+    // 1 - Triangle
+    // 2 - Inverted triangle
+    // 3 - Square
+    // 4 - Octagon
+    // 5 - Circle
+    // 6 - Octagon within a square
+    // 7 - Circle within a square
+    // 8 - Three axes
+    
     switch(dDrawStyle) {
     
     case 1: glft->glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
@@ -444,7 +436,7 @@ void xhandleShape::drawShapes(bool selection)
 
 void xhandleShape::draw(M3dView &view, const MDagPath &path, M3dView::DisplayStyle style, M3dView::DisplayStatus status)
 {
-    setInternalAttrs();
+    setInternalAttrs(); // Update/Get the node attribute values.
     
     glft->glPushAttrib(GL_ALL_ATTRIB_BITS);
     
@@ -484,7 +476,7 @@ void xhandleShape::draw(M3dView &view, const MDagPath &path, M3dView::DisplaySty
         glft->glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
     }
     
-    // Apply scaling to draw space
+    // Apply scaling to draw space.
     MMatrix pathMatrix;
     if ((dTransformScaling == 0) && (dDrawOrtho == 0))
         pathMatrix = path.inclusiveMatrixInverse();
@@ -549,18 +541,19 @@ bool xhandleShape::isBounded() const { return true; }
 
 MBoundingBox xhandleShape::boundingBox() const
 {
-    setInternalAttrs();
+    // This method is called for drawing bounding box only.
+    
+    setInternalAttrs(); // Update/Get the node attribute values.
     
     MObject thisNode = thisMObject();
     
-    MVector translation_vec(l_positionX, l_positionY, l_positionZ);
-    MTransformationMatrix t_matrix;
-    t_matrix.setTranslation(translation_vec, MSpace::kTransform);
-    MMatrix localPos_matrix = t_matrix.asMatrix();
-
+    // Define and calculate the two corner points for the bounding box.
+    // By default, set the corner points to be coplanar.
     float c1[3] = {-1.0, 0.0, 1.0};
     float c2[3] = {1.0, 0.0, -1.0};
-
+    
+    // If drawOrtho is disabled, or if drawStyle is set to three axes,
+    // Separate the corners in -/+ 1 unit in Y.
     if ((dDrawOrtho == 0) && (dDrawStyle == 8)) {
         c1[1] = 1.0;
         c2[1] = -1.0;
@@ -569,7 +562,9 @@ MBoundingBox xhandleShape::boundingBox() const
         c1[1] = 1.0;
         c2[1] = -1.0;
     }
-
+    
+    // Apply scaling from localScale and addScale to corners points if any.
+    
     c1[0] = c1[0] * (l_scaleX * add_scaleX);
     c2[0] = c2[0] * (l_scaleX * add_scaleX);
     c1[1] = c1[1] * (l_scaleY * add_scaleY);
@@ -582,22 +577,39 @@ MBoundingBox xhandleShape::boundingBox() const
 
     corner1 = corner1 * uMult;
     corner2 = corner2 * uMult;
-
+    
+    // Now define the bounding box.
     MBoundingBox b_box(corner1, corner2);
+    
+    // Translate the position of the bounding box as per "localPosition" values.
+    MVector translation_vec(l_positionX, l_positionY, l_positionZ);
+    MTransformationMatrix t_matrix;
+    t_matrix.setTranslation(translation_vec, MSpace::kTransform);
+    MMatrix localPos_matrix = t_matrix.asMatrix();
     b_box.transformUsing(localPos_matrix);
-
+    
+    // If "transformScaling" is disabled, negate any scaling from parent transforms.
     if (dTransformScaling == 0) {
+        
+        // Get the inverse worldMatrix for transformation/
         MDagPath path;
         MFnDagNode pathNode(thisNode);
         pathNode.getPath(path);
         MMatrix pathMatrix = path.inclusiveMatrixInverse();
         MTransformationMatrix pathTransMatrix(pathMatrix);
+        
+        // Get the scaling from transformation matrix.
         double scale[3];
         pathTransMatrix.getScale(scale, MSpace::kTransform);
+        
+        // Create the inverse scaling matrix.
         MTransformationMatrix s_matrix;
         s_matrix.setScale(scale, MSpace::kTransform);
         MMatrix scale_matrix = s_matrix.asMatrix();
+        
+        // Apply it to the bounding box.
         b_box.transformUsing(scale_matrix);
+        
     }
     
     return b_box;
