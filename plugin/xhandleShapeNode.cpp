@@ -442,10 +442,33 @@ void xhandleShape::draw(M3dView &view, const MDagPath &path, M3dView::DisplaySty
     
     view.beginGL();
     
+	// First, apply scaling to draw space.
+
+    MMatrix pathMatrix;
+    if ((dTransformScaling == 0) && (dDrawOrtho == 0))
+        pathMatrix = path.inclusiveMatrixInverse();
+    if ((dTransformScaling == 1) && (dDrawOrtho == 1))
+        pathMatrix = path.inclusiveMatrix();
+    MTransformationMatrix pathTransMatrix(pathMatrix);
+    double scale[3];
+    pathTransMatrix.getScale(scale, MSpace::kWorld);
+    glft->glScaled(scale[0], scale[1], scale[2]);
+    
+    if (dDrawOrtho == 1) {
+        glft->glScaled((l_scaleX * add_scaleX),
+                 (l_scaleZ * add_scaleZ),
+                 (l_scaleY * add_scaleY));
+    }
+    if (dDrawOrtho == 0) {
+        glft->glScaled((l_scaleX * add_scaleX),
+                 (l_scaleY * add_scaleY),
+                 (l_scaleZ * add_scaleZ));
+    }
+
     // The draw operation happens in the local matrix space.
     // Apply any position offsets before the draw operations.
     glft->glMatrixMode(GL_MODELVIEW);
-    glft->glTranslatef(l_positionX, l_positionY, l_positionZ);
+    glft->glTranslated(l_positionX, l_positionY, l_positionZ);
     
     // If the draw "ortho" only is enabled for draw operations,
     if (dDrawOrtho == 1) {
@@ -474,28 +497,6 @@ void xhandleShape::draw(M3dView &view, const MDagPath &path, M3dView::DisplaySty
         
         // Now rotate 90 deg to face the viewport camera.
         glft->glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
-    }
-    
-    // Apply scaling to draw space.
-    MMatrix pathMatrix;
-    if ((dTransformScaling == 0) && (dDrawOrtho == 0))
-        pathMatrix = path.inclusiveMatrixInverse();
-    if ((dTransformScaling == 1) && (dDrawOrtho == 1))
-        pathMatrix = path.inclusiveMatrix();
-    MTransformationMatrix pathTransMatrix(pathMatrix);
-    double scale[3];
-    pathTransMatrix.getScale(scale, MSpace::kTransform);
-    glft->glScaled(scale[0], scale[1], scale[2]);
-    
-    if (dDrawOrtho == 1) {
-        glft->glScalef((l_scaleX * add_scaleX),
-                 (l_scaleZ * add_scaleZ),
-                 (l_scaleY * add_scaleY));
-    }
-    if (dDrawOrtho == 0) {
-        glft->glScalef((l_scaleX * add_scaleX),
-                 (l_scaleY * add_scaleY),
-                 (l_scaleZ * add_scaleZ));
     }
 
     // Set the draw color based on the current display status.
@@ -549,8 +550,8 @@ MBoundingBox xhandleShape::boundingBox() const
     
     // Define and calculate the two corner points for the bounding box.
     // By default, set the corner points to be coplanar.
-    float c1[3] = {-1.0, 0.0, 1.0};
-    float c2[3] = {1.0, 0.0, -1.0};
+    double c1[3] = {-1.0, 0.0, 1.0};
+    double c2[3] = {1.0, 0.0, -1.0};
     
     // If drawOrtho is disabled, or if drawStyle is set to three axes,
     // Separate the corners in -/+ 1 unit in Y.
