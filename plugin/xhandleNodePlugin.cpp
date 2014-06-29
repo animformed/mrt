@@ -1,12 +1,12 @@
 /*
 
-    PLUGIN: xhandleShape v1.0
+    PLUGIN: xhandleNodePlugin v1.0
  
-    xhandleShapePlugin.cpp
+    xhandleNodePlugin.cpp
  
     ////////////////////////////////////////////////////////////////////////////
 
-    Plugin registration/de-registration for xhandleShape node.
+    Plugin and command registration/de-registration for xhandleShape node.
     
     ////////////////////////////////////////////////////////////////////////////
     
@@ -17,7 +17,7 @@
 */
 
 
-# include "xhandleShape.h"
+# include "xhandleNode.h"
 # include <maya/MFnPlugin.h>
 
 MStatus initializePlugin(MObject obj)   // Register the plugin
@@ -27,12 +27,21 @@ MStatus initializePlugin(MObject obj)   // Register the plugin
 
     status = plugin.registerNode("xhandleShape",
                                  xhandleShape::id,
-                                 &xhandleShape::creator,
-                                 &xhandleShape::initialize,
+                                 xhandleShape::creator,
+                                 xhandleShape::initialize,
                                  MPxNode::kLocatorNode);   
     if (!status) {
+        
         status.perror("Failed to register node \"xhandleShape\"");
         return status; 
+    }
+    
+    status = plugin.registerCommand("xhandle", xhandle::creator);
+    
+    if (!status) {
+        
+        status.perror("Failed to register command \"xhandle\"");
+        return status;
     }
     
     return status;
@@ -47,7 +56,16 @@ MStatus uninitializePlugin(MObject obj)     // De-register the plugin
     status = plugin.deregisterNode(xhandleShape::id);
 
     if (!status) {
+        
         status.perror("Failed to de-register node \"xhandleShape\"");
+        return status;
+    }
+    
+    status = plugin.deregisterCommand("xhandle");
+    
+    if (!status) {
+        
+        status.perror("Failed to de-register command \"xhandle\"");
         return status;
     }
 

@@ -1,8 +1,8 @@
 /*
 
-    PLUGIN: xhandleShape v1.0
+    PLUGIN: xhandleNodePlugin v1.0
     
-    xhandleShape.h
+    xhandleNode.h
     
     ////////////////////////////////////////////////////////////////////////////
 
@@ -11,15 +11,29 @@
     This is derived from an MPxLocatorNode, with the following
     added attributes :
 
-    addScaleX
+    addScaleX - Additional local scaling attribute multiplied with localScale.
     addScaleY
     addScaleZ
-    drawStyle
-    drawAxisColour
-    drawOrtho
-    transformScaling
-    wireframeThickness
-    blendColour
+ 
+    drawStyle - Draw shape type with values from 1 to 8.
+                1 - Triangle
+                2 - Inverted triangle
+                3 - Square
+                4 - Octagon
+                5 - Circle
+                6 - Octagon within a square
+                7 - Circle within a square
+                8 - Three axes
+ 
+    drawAxisColour - Draw shape type 8 with coloured axes, red, green and blue.
+ 
+    drawOrtho - Draw the current draw shape orthogonally facing the viewport camera.
+ 
+    transformScaling - Enable / Disable scaling for the draw shape from parent transform.
+ 
+    wireframeThickness - Draw thickness for the shape, with values from 1 to 10.
+ 
+    blendColour - Blend the shape draw colour with viewport background.
     
     ////////////////////////////////////////////////////////////////////////////
     
@@ -46,8 +60,9 @@
 # include <maya/MHardwareRenderer.h>
 # include <maya/MGLFunctionTable.h>
 # include <maya/MGlobal.h>
-
-# define RAD_TO_DEG(rad) (rad * 57.2957795130f)
+# include <maya/MArgList.h>
+# include <maya/MPxCommand.h>
+# include <maya/MDGModifier.h>
 
 // Vertex points for draw
 
@@ -78,7 +93,7 @@ static GLfloat handle_high[][3] = { {0.15f, 0.0f, 0.0f},
                                     {0.138f, -0.06f, 0.0f} };
 
 
-// Node class declaration
+// xhandleShape node class declaration
 
 class xhandleShape : public MPxLocatorNode
 {
@@ -96,9 +111,11 @@ class xhandleShape : public MPxLocatorNode
         
         virtual MStatus compute(const MPlug& plug, MDataBlock& data);
     
-        virtual void setInternalAttrs() const;
+        inline double RAD_TO_DEG(double);
     
-        virtual void drawShapes(bool selection);
+        void setInternalAttrs() const;
+    
+        void drawShapes(bool selection);
     
         virtual void draw(M3dView &view, const MDagPath &path,
                           M3dView::DisplayStyle style, M3dView::DisplayStatus status);
@@ -142,8 +159,6 @@ class xhandleShape : public MPxLocatorNode
     
         static int colorId;
     
-        static int i_color;
-    
     
         // Attributes
         
@@ -171,5 +186,42 @@ class xhandleShape : public MPxLocatorNode
     
         MGLFunctionTable *glft;
     
-    
 };
+
+
+// xhandle command class declaration
+
+class xhandle : public MPxCommand
+{
+    public:
+        
+        xhandle();
+        
+        virtual ~xhandle();
+    
+        static void* creator();
+    
+        MStatus doIt(const MArgList&);
+    
+        MStatus redoIt();
+    
+        MStatus undoIt();
+        
+        inline bool isUndoable() const;
+    
+        MString commandString() const;
+    
+    private:
+    
+        MString xhandleName;    // Name passed in with the -name or -n flag.
+    
+        MPoint position;    // Local position passed in with the -position or -p flag.
+    
+        bool nodeCreated;   // To record if node is successfully created for a command
+    
+        bool positionSpecified;     // If a position is specified during a command.
+    
+        MObject xhandleNode;    // To store the node object, if successfully created.
+
+};
+

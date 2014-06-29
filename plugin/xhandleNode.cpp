@@ -1,11 +1,16 @@
 /*
-
-    xhandleShapeNode.cpp
+    
+    PLUGIN: xhandleNodePlugin v1.0
+ 
+    xhandleNode.cpp
     
     ////////////////////////////////////////////////////////////////////////////
 
-    Source for xhandleShape node plugin, for use as control locators in modules
-    and control rigging for modular rigging tools for maya.
+    Source for xhandleShape node plugin/command, for use as control locators in 
+    modules and control rigging for modular rigging tools for maya.
+ 
+    Current limitations:
+    Negative scaling while using "draw ortho" might draw incorrectly.
     
     ////////////////////////////////////////////////////////////////////////////
     
@@ -15,12 +20,13 @@
 
 */
 
-# include "xhandleShape.h"
+# include "xhandleNode.h"
 
 
 // Data
 
 MTypeId xhandleShape::id(0x80090);
+
 double xhandleShape::l_positionX;
 double xhandleShape::l_positionY;
 double xhandleShape::l_positionZ;
@@ -185,6 +191,12 @@ MStatus xhandleShape::compute(const MPlug& /*plug*/, MDataBlock& /*block*/) {
 }
 
 
+double xhandleShape::RAD_TO_DEG(double rad) {
+    
+    return rad * 57.2957795130f;
+}
+
+
 void xhandleShape::setInternalAttrs() const {
     
      // Store and update the node attributes values //
@@ -253,7 +265,6 @@ void xhandleShape::setInternalAttrs() const {
     plug.getValue(colorId);
 
 }
-
 
 void xhandleShape::drawShapes(bool selection)
 {
@@ -436,52 +447,44 @@ void xhandleShape::drawShapes(bool selection)
 
 void xhandleShape::draw(M3dView &view, const MDagPath &path, M3dView::DisplayStyle style, M3dView::DisplayStatus status)
 {
-    setInternalAttrs(); // Update/Get the node attribute values.
+    // Update/Get the node attribute values.
+    setInternalAttrs();
     
     glft->glPushAttrib(GL_ALL_ATTRIB_BITS);
     
+    // Set the current matrix type.
+    glft->glMatrixMode(GL_MODELVIEW);
+    
     view.beginGL();
     
-	// First, apply scaling to draw space.
-
-    MMatrix pathMatrix;
-    if ((dTransformScaling == 0) && (dDrawOrtho == 0))
-        pathMatrix = path.inclusiveMatrixInverse();
-    if ((dTransformScaling == 1) && (dDrawOrtho == 1))
-        pathMatrix = path.inclusiveMatrix();
+    // Get the path world matrix and inv matrix.
+    MMatrix pathMatrix = path.inclusiveMatrix();
+    MMatrix pathInvMatrix = path.inclusiveMatrixInverse();
     MTransformationMatrix pathTransMatrix(pathMatrix);
-    double scale[3];
-    pathTransMatrix.getScale(scale, MSpace::kWorld);
-    glft->glScaled(scale[0], scale[1], scale[2]);
+    MTransformationMatrix pathTransInvMatrix(pathInvMatrix);
     
-    if (dDrawOrtho == 1) {
-        glft->glScaled((l_scaleX * add_scaleX),
-                 (l_scaleZ * add_scaleZ),
-                 (l_scaleY * add_scaleY));
-    }
-    if (dDrawOrtho == 0) {
-        glft->glScaled((l_scaleX * add_scaleX),
-                 (l_scaleY * add_scaleY),
-                 (l_scaleZ * add_scaleZ));
-    }
-
-    // The draw operation happens in the local matrix space.
-    // Apply any position offsets before the draw operations.
-    glft->glMatrixMode(GL_MODELVIEW);
-    glft->glTranslated(l_positionX, l_positionY, l_positionZ);
+    // Get the inverse/real scaling values (inclusive).
+    double scale[3];
+    double inv_scale[3];
+    pathTransMatrix.getScale(scale, MSpace::kTransform);
+    pathTransInvMatrix.getScale(inv_scale, MSpace::kTransform);
     
     // If the draw "ortho" only is enabled for draw operations,
-    if (dDrawOrtho == 1) {
+    if (dDrawOrtho) {
         
         // Negate all transformations applied to GL draw operations
         // as a result of locator transformations in maya's scene space.
-        MMatrix pathInvMatrix = path.inclusiveMatrixInverse();
 		glft->glMultMatrixd(&(pathInvMatrix.matrix[0][0]));
         
-        // Apply translations only to the draw space.
-		MMatrix pathMatrix = path.inclusiveMatrix();
-		MTransformationMatrix trans_matrix(pathMatrix);
-		MVector trans_vec = trans_matrix.getTranslation(MSpace::kTransform);
+        // Apply scaling if enabled. To be applied before any translations.
+        if (dTransformScaling)
+            glft->glScaled(scale[0], scale[1], scale[2]);
+        
+        // Apply local translation (localPosition).
+        glft->glTranslated(l_positionX, l_positionY, l_positionZ);
+        
+        // Apply translations only to the draw space (from the parent transforms).
+		MVector trans_vec = pathTransMatrix.getTranslation(MSpace::kTransform);
 		glft->glTranslated(trans_vec[0], trans_vec[1], trans_vec[2]);
         
         // Rotate the draw space based on the viewport camera.
@@ -495,8 +498,23 @@ void xhandleShape::draw(M3dView &view, const MDagPath &path, M3dView::DisplaySty
 		camRotation.getAxisAngle(camRotAxis, camRotTheta);
 		glft->glRotated(RAD_TO_DEG(camRotTheta), camRotAxis[0], camRotAxis[1], camRotAxis[2]);
         
+        // Apply local scaling (localScale and addScale).
+        glft->glScaled((l_scaleX * add_scaleX), (l_scaleY * add_scaleY), (l_scaleZ * add_scaleZ));
+        
         // Now rotate 90 deg to face the viewport camera.
         glft->glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
+        
+    } else {    // If "draw ortho" is disabled.
+        
+        // Negate scaling if applicable (tansform scaling is disabled).
+        if (! dTransformScaling)
+            glft->glScaled(inv_scale[0], inv_scale[1], inv_scale[2]);
+        
+        // Apply local translation (localPosition).
+        glft->glTranslated(l_positionX, l_positionY, l_positionZ);
+        
+        // Apply local scaling (localScale and addScale).
+        glft->glScaled((l_scaleX * add_scaleX), (l_scaleY * add_scaleY), (l_scaleZ * add_scaleZ));
     }
 
     // Set the draw color based on the current display status.
@@ -519,7 +537,7 @@ void xhandleShape::draw(M3dView &view, const MDagPath &path, M3dView::DisplaySty
         glft->glEnable(GL_BLEND);
         glft->glBlendFunc(GL_DST_COLOR, GL_SRC_COLOR);
     }
-    
+    // Now draw the shapes.
     if ((style == M3dView::kWireFrame) || (style == M3dView::kPoints)) {
         glft->glEnable(GL_LINE_SMOOTH);
         drawShapes(status == M3dView::kActive);
@@ -592,7 +610,7 @@ MBoundingBox xhandleShape::boundingBox() const
     // If "transformScaling" is disabled, negate any scaling from parent transforms.
     if (dTransformScaling == 0) {
         
-        // Get the inverse worldMatrix for transformation/
+        // Get the inverse worldMatrix for transformation.
         MDagPath path;
         MFnDagNode pathNode(thisNode);
         pathNode.getPath(path);
@@ -614,6 +632,130 @@ MBoundingBox xhandleShape::boundingBox() const
     }
     
     return b_box;
+}
+
+// "xhandle" command implementation //
+
+xhandle::xhandle() { }
+
+
+xhandle::~xhandle() { }
+
+
+void* xhandle::creator() { return new xhandle(); }
+
+
+bool xhandle::isUndoable() const { return true; }
+
+
+MString xhandle::commandString() const { return "xhandle"; }
+
+
+MStatus xhandle::doIt(const MArgList& args) {
+    
+    MStatus status;
+    positionSpecified = nodeCreated = false;
+    
+    for (unsigned i = 0; i < args.length(); i++) {
+        
+        if ((MString("-name")==args.asString(i)) || (MString("-n")==args.asString(i)))
+
+            xhandleName = args.asString(++i);   // Store the node name provided.
+        
+        else if ((MString("-position")==args.asString(i)) || (MString("-p")==args.asString(i))) {
+            
+            positionSpecified = true;
+            position = args.asPoint(++i, 3, &status);   // Store the xhandleShape local position provided.
+            
+            if (!status) {
+                status.perror("(xhandle) Incorrect position specified.");
+                return MS::kFailure;
+            }
+        }
+        
+        else {  // If a flag specified is invalid.
+            
+            displayError("(xhandle) Invalid flag: " + args.asString(i));
+            return MS::kFailure;
+        }
+    }
+
+    return redoIt();
+    
+}
+
+// This method is executed by doIt() if the command returns no errors.
+MStatus xhandle::redoIt() {
+    
+    nodeCreated = true;     // This method if executed, creates the xhandle.
+    
+    MFnDependencyNode nodeFn;   // To create the dependency node.
+    
+    // "node" may store the parent transform node, and not the xhandleShape shape node.
+    MObject node = nodeFn.create("xhandleShape");
+    
+    // Get the transform for the xhandleShape.
+    
+    // To get the path.
+    MDagPath xhandlePath;
+    
+    // To operate on dag path.
+    MFnDagNode xhandleDagNode(node);
+    
+    // Set the dag path.
+    xhandleDagNode.getPath(xhandlePath);
+    
+    // Get the transform.
+    xhandleNode = xhandlePath.transform();
+    
+    // Get the fn for the transform.
+    MFnDependencyNode xhandleNodeFn(xhandleNode);
+    
+    // Set the name (for the transform) given using the command.
+    if (xhandleName != "")
+        xhandleNodeFn.setName(xhandleName);
+    
+    // Get the new name set for the node.
+    xhandleName = xhandleNodeFn.name();
+
+    // Set the local position (for xhandleShape) given using the command.
+    if (positionSpecified) {
+        
+        xhandlePath.extendToShape();
+        MFnDependencyNode xhandleShapeNodeFn(xhandlePath.node());
+        
+        MPlug localPositionX = xhandleShapeNodeFn.findPlug("localPositionX");
+        localPositionX.setValue(position.x);
+
+        MPlug localPositionY = xhandleShapeNodeFn.findPlug("localPositionY");
+        localPositionY.setValue(position.y);
+        
+        MPlug localPositionZ = xhandleShapeNodeFn.findPlug("localPositionZ");
+        localPositionZ.setValue(position.z);
+    }
+    
+    // To return the name of the created node after the command is executed.
+    setResult(xhandleName);
+    
+    return MStatus::kSuccess;
+}
+
+
+MStatus xhandle::undoIt() {
+    
+    // To delete the xhandle if successfully created by the command.
+    
+    MStatus status;
+    
+    if (nodeCreated)
+        status = MGlobal::deleteNode(xhandleNode);
+    else
+        status = MS::kInvalidParameter;
+    
+    // Return status for maya if the node is successfully deleted after creation in the undo queue.
+    // If a correct status is not returned, maya may crash while parsing through the undo queue.
+    return status;
+
 }
 
 
