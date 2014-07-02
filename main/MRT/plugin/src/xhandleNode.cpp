@@ -10,7 +10,10 @@
     modules and control rigging for modular rigging tools for maya.
  
     Current limitations:
+ 
     Negative scaling while using "draw ortho" might draw incorrectly.
+ 
+    In Maya 2015 and beyond, the draw is supported only in legacy default viewport.
     
     ////////////////////////////////////////////////////////////////////////////
     
@@ -26,6 +29,8 @@
 // Data
 
 MTypeId xhandleShape::id(0x80090);
+
+// Internal storage
 
 double xhandleShape::l_positionX;
 double xhandleShape::l_positionY;
@@ -526,7 +531,7 @@ void xhandleShape::draw(M3dView &view, const MDagPath &path, M3dView::DisplaySty
 	{
         view.setDrawColor(color(M3dView::kDormant), M3dView::kDormantColors);
 		if (colorOverride == true)
-			view.setDrawColor(color(M3dView::kDormant), M3dView::kDormantColors);
+			view.setDrawColor(colorId-1, M3dView::kDormantColors);
 	}
     
     // Set the blend colour state.

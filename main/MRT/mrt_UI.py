@@ -193,6 +193,7 @@ class MRT_UI(object):
 
         # Check if the main UI window exists; if true, delete it.
         for ui in ['mrt_UI_window',
+                   'mrt_UI_dockWindow',
                    'mrt_collectionDescription_input_UI_window',
                    'mrt_collection_noDescpError_UI_window',
                    'mrt_loadCollectionClearMode_setting_UI_window',
@@ -227,9 +228,14 @@ class MRT_UI(object):
         except:
             # For some reason, maya occasionally prompts the window element doesn't exist under windowPref. Not sure why.
             pass
-
+        
         # Create a menu bar under main window, with two menu elements, 'File' and 'Help'.
         cmds.menuBarLayout()
+        
+        # Create the dock control for the main window. This is done after creating the initial layout.
+        self.uiVars['dockWindow'] = cmds.dockControl('mrt_UI_dockWindow', label='Modular Rigging Tools',
+                                                    area='left', content=self.uiVars['window'],
+                                                    allowedArea=['left', 'right'])
 
         # The 'File' menu will have saving and loading file operations.
         self.uiVars['fileMenu_windowBar'] = cmds.menu(label='File')
@@ -307,15 +313,6 @@ class MRT_UI(object):
 
         # Edit the tab layout for the tab labels.
         cmds.tabLayout(self.uiVars['tabs'], edit=True, tabLabelIndex=([1, 'Create'], [2, 'Edit'], [3, 'Rig']))
-
-        # Show the main window.
-        cmds.showWindow(self.uiVars['window'])
-
-        # DEPRECATED #
-        # I didn't like the dock control on this. You want it? Enable and test it.
-        # self.uiVars['dockWindow'] = cmds.dockControl('mrt_UI_dockWindow', label='Modular Rigging Tools',
-        #                                                    area='left', content=self.uiVars['window'],
-        #                                                    allowedArea=['left', 'right'])
 
         # Reset UI prefernces
         self.resetListHeightForSceneModulesUI()
@@ -1238,8 +1235,8 @@ class MRT_UI(object):
         cmds.text(label='Creation Plane', font='boldLabelFont')
 
         self.uiVars['creationPlane_radioColl'] = cmds.radioCollection()
-        cmds.radioButton('XY', label='XY', select=True)
-        cmds.radioButton('YZ', label='YZ', select=False)
+        cmds.radioButton('XY', label='XY', select=False)
+        cmds.radioButton('YZ', label='YZ', select=True)
         cmds.radioButton('XZ', label='XZ', select=False)
 
         # Set parent to the 'Creation Options' frame layout.

@@ -18,6 +18,23 @@ import os
 from mrt_functions import lockHideChannelAttrs
 
 
+def curve(**kwargs):
+    
+    if 'name' in kwargs:
+        name = kwargs['name'] + 'Shape'
+
+    if 'shapeName' in kwargs:
+        name = kwargs['shapeName']
+        kwargs.pop('shapeName')
+        
+    crv = cmds.curve(**kwargs)
+        
+    crvShape = cmds.listRelatives(crv, children=True, shapes=True, type='nurbsCurve')[0]
+    crvShape = cmds.rename(crvShape, name)
+    
+    return crv, crvShape
+    
+    
 def addShapes(parentTransform, shapeTransform):
     '''
     For adding shape(s) to a given transform. The shapes are added from the transform "shapeTransform"
@@ -149,14 +166,12 @@ def createRawSegmentCurve(modHandleColour):
     '''
     segment = {}
     
-    segment['curve'] = cmds.curve(p=([1, 0, 0], [-1, 0, 0]), degree=1, name='segmentCurve')
+    segment['curve'], segment['curveShape'] = curve(p=([1, 0, 0], [-1, 0, 0]), degree=1, name='segmentCurve')
 
     lockHideChannelAttrs(segment['curve'], 't', 'r', 's', 'v', keyable=False)
 
-    shape = cmds.listRelatives(segment['curve'], children=True, shapes=True)[0]
-    cmds.setAttr(shape+'.overrideEnabled', 1)
-    cmds.setAttr(shape+'.overrideColor', modHandleColour)
-    segment['curveShape'] = cmds.rename(shape, 'segmentCurveShape')
+    cmds.setAttr(segment['curveShape']+'.overrideEnabled', 1)
+    cmds.setAttr(segment['curveShape']+'.overrideColor', modHandleColour)
 
     segment['startLoc'] = cmds.spaceLocator(name='segmentCurve_startLocator')[0]
     cmds.xform(segment['startLoc'], worldSpace=True, translation=[1, 0, 0])
@@ -323,7 +338,8 @@ def createRawSingleOrientationRepresentation():
 
     lockHideChannelAttrs(orientationTransform, 't', 's', 'v', keyable=False)
 
-    orient_repr_Y = cmds.curve(p=[(0.0, 0.0, 0.0),
+    orient_repr_Y,
+    orient_repr_YShape = curve(p=[(0.0, 0.0, 0.0),
                                   (0.0, 0.5349, 0.0),
                                   (0.0, 0.5349, 0.0472),
                                   (0.0, 0.6903, 0.0),
@@ -337,15 +353,16 @@ def createRawSingleOrientationRepresentation():
                                   (0.0, 0.5349, -0.0472),
                                   (-0.0472, 0.5349, 0.0),
                                   (0.0, 0.5349, 0.0)],
+                                  shapeName='single_orientation_repr_transform_Y_Shape',
                                   degree=1,
                                   knot=[142, 162, 166, 175, 184, 188, 192, 201, 210, 215, 221, 227, 232, 236])
 
-    orient_repr_YShape = cmds.listRelatives(orient_repr_Y, children=True, shapes=True)[0]
     cmds.setAttr(orient_repr_YShape+'.overrideEnabled', 1)
     cmds.setAttr(orient_repr_YShape+'.overrideColor', 14)
     addShapes(orientationTransform, orient_repr_Y)
 
-    orient_repr_X = cmds.curve(p=[(0.0, 0.0, 0.0),
+    orient_repr_X,
+    orient_repr_XShape = curve(p=[(0.0, 0.0, 0.0),
                                   (0.5349, 0.0, 0.0),
                                   (0.5349, 0.0, 0.0472),
                                   (0.6903, 0.0, 0.0),
@@ -359,15 +376,16 @@ def createRawSingleOrientationRepresentation():
                                   (0.5349, 0.0, -0.0472),
                                   (0.5349, 0.0472, 0.0),
                                   (0.5349, 0.0, 0.0)],
+                                  shapeName='single_orientation_repr_transform_X_Shape',
                                   degree=1,
                                   knot=[142, 162, 166, 175, 184, 188, 192, 201, 210, 215, 221, 227, 232, 236])
 
-    orient_repr_XShape = cmds.listRelatives(orient_repr_X, children=True, shapes=True)[0]
     cmds.setAttr(orient_repr_XShape+'.overrideEnabled', 1)
     cmds.setAttr(orient_repr_XShape+'.overrideColor', 13)
     addShapes(orientationTransform, orient_repr_X)
 
-    orient_repr_Z = cmds.curve(p=[(0.0, -0.0, 0.0),
+    orient_repr_Z,
+    orient_repr_ZShape = curve(p=[(0.0, -0.0, 0.0),
                                   (0.0, -0.0, 0.5349),
                                   (-0.0472, -0.0, 0.5349),
                                   (0.0, -0.0, 0.6903),
@@ -381,10 +399,10 @@ def createRawSingleOrientationRepresentation():
                                   (0.0472, -0.0, 0.5349),
                                   (0.0, 0.0472, 0.5349),
                                   (0.0, -0.0, 0.5349)],
+                                  shapeName='single_orientation_repr_transform_Z_Shape',
                                   degree=1,
                                   knot=[142, 162, 166, 175, 184, 188, 192, 201, 210, 215, 221, 227, 232, 236])
 
-    orient_repr_ZShape = cmds.listRelatives(orient_repr_Z, children=True, shapes=True)[0]
     cmds.setAttr(orient_repr_ZShape+'.overrideEnabled', 1)
     cmds.setAttr(orient_repr_ZShape+'.overrideColor', 6)
     addShapes(orientationTransform, orient_repr_Z)
@@ -405,7 +423,8 @@ def createRawHierarchyRepresentation(aimAxis):
 
     if aimAxis == 'X':
 
-        x_repr = cmds.curve(p=[(0.1191, 0.0, 0.0),
+        x_repr, \
+        x_reprShape = curve(p=[(0.1191, 0.0, 0.0),
                                (-0.088, 0.039, 0.039),
                                (-0.088, 0.039, -0.039),
                                (0.1191, 0.0, 0.0),
@@ -417,17 +436,18 @@ def createRawHierarchyRepresentation(aimAxis):
                                (0.1191, 0.0, 0.0),
                                (-0.088, -0.039, 0.039),
                                (-0.088, 0.039, 0.039)],
+                            shapeName='hierarchy_reprShape',
                             degree=1,
                             knot=[12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23])
 
-        x_reprShape = cmds.listRelatives(x_repr, children=True, shapes=True)[0]
         cmds.setAttr(x_reprShape+'.overrideEnabled', 1)
         cmds.setAttr(x_reprShape+'.overrideColor', 13)
         addShapes(hierarchyRepresentation, x_repr)
 
     if aimAxis == 'Y':
 
-        y_repr = cmds.curve(p=[(0.0, 0.1191, 0.0),
+        y_repr, \
+        y_reprShape = curve(p=[(0.0, 0.1191, 0.0),
                                (-0.039, -0.088, 0.039),
                                (-0.039, -0.088, -0.039),
                                (0.0, 0.1191, 0.0),
@@ -439,17 +459,18 @@ def createRawHierarchyRepresentation(aimAxis):
                                (0.0, 0.1191, 0.0),
                                (0.039, -0.088, 0.039),
                                (-0.039, -0.088, 0.039)],
+                            shapeName='hierarchy_reprShape',
                             degree=1,
                             knot=[12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23])
 
-        y_reprShape = cmds.listRelatives(y_repr, children=True, shapes=True)[0]
         cmds.setAttr(y_reprShape+'.overrideEnabled', 1)
         cmds.setAttr(y_reprShape+'.overrideColor', 14)
         addShapes(hierarchyRepresentation, y_repr)
 
     if aimAxis == 'Z':
 
-        z_repr = cmds.curve(p=[(0.0, 0.0, 0.1191),
+        z_repr, \
+        z_reprShape = curve(p=[(0.0, 0.0, 0.1191),
                                (-0.039, 0.039, -0.088),
                                (0.039, 0.039, -0.088),
                                (0.0, 0.0, 0.1191),
@@ -461,10 +482,10 @@ def createRawHierarchyRepresentation(aimAxis):
                                (0.0, 0.0, 0.1191),
                                (-0.039, -0.039, -0.088),
                                (-0.039, 0.039, -0.088)],
+                            shapeName='hierarchy_reprShape',
                             degree=1,
                             knot=[12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23])
 
-        z_reprShape = cmds.listRelatives(y_repr, children=True, shapes=True)[0]
         cmds.setAttr(z_reprShape+'.overrideEnabled', 1)
         cmds.setAttr(z_reprShape+'.overrideColor', 6)
         addShapes(hierarchyRepresentation, z_repr)
@@ -478,7 +499,9 @@ def createRawSplineAdjustCurveTransform(modHandleColour):
     controls to adjust the spline curve for adjusting the node positions.
     '''
     splineAdjustCurvePreTransform = cmds.createNode('transform', name='spline_adjustCurve_preTransform')
-    splineAdjustCurveTransform = cmds.curve(name='spline_adjustCurve_transform',
+    
+    splineAdjustCurveTransform, \
+    splineAdjustCurveShape = curve(name='spline_adjustCurve_transform',
                                             p=[(-0.2929, 0.2929, 0.2929),
                                                (-0.2929, 0.2929, -0.2929),
                                                (0.2929, 0.2929, -0.2929),
@@ -503,7 +526,6 @@ def createRawSplineAdjustCurveTransform(modHandleColour):
 
     lockHideChannelAttrs(splineAdjustCurveTransform, 'r', 's', 'v', keyable=False)
 
-    splineAdjustCurveShape = cmds.listRelatives(splineAdjustCurveTransform, children=True, shapes=True)[0]
     cmds.setAttr(splineAdjustCurveShape+'.overrideEnabled', 1)
     cmds.setAttr(splineAdjustCurveShape+'.overrideColor', modHandleColour)
     cmds.rename(splineAdjustCurveShape, 'spline_adjustCurve_transformShape')
@@ -521,25 +543,25 @@ def createRawLocalAxesInfoRepresentation():
     axesInfoTransform = cmds.createNode('transform', name='localAxesInfoRepr', parent=axesInfoPreTransform)
     lockHideChannelAttrs(axesInfoTransform, 't', 'r', 's', 'v', keyable=False)
 
-    repr_X = cmds.curve(p=[(-0.0, 0.0, 0.0), (0.8325, 0.0, 0.0)], knot=[0, 0], degree=1)
-    repr_X_shape = cmds.listRelatives(repr_X, children=True, shapes=True)[0]
+    repr_X, repr_X_shape = curve(p=[(-0.0, 0.0, 0.0), (0.8325, 0.0, 0.0)], shapeName='localAxesInfoRepr_XShape', 
+                                    knot=[0, 0], degree=1)
+                                    
     cmds.setAttr(repr_X_shape+'.overrideEnabled', 1)
     cmds.setAttr(repr_X_shape+'.overrideColor', 13)
-    cmds.rename(repr_X_shape, 'localAxesInfoRepr_XShape')
     addShapes(axesInfoTransform, repr_X)
 
-    repr_Y = cmds.curve(p=[(0.0, -0.0, 0.0), (0.0, 0.8325, 0.0)], knot=[0, 0], degree=1)
-    repr_Y_shape = cmds.listRelatives(repr_Y, children=True, shapes=True)[0]
+    repr_Y, repr_Y_shape = curve(p=[(0.0, -0.0, 0.0), (0.0, 0.8325, 0.0)], shapeName='localAxesInfoRepr_YShape',
+                                    knot=[0, 0], degree=1)
+                                    
     cmds.setAttr(repr_Y_shape+'.overrideEnabled', 1)
     cmds.setAttr(repr_Y_shape+'.overrideColor', 14)
-    cmds.rename(repr_Y_shape, 'localAxesInfoRepr_YShape')
     addShapes(axesInfoTransform, repr_Y)
 
-    repr_Z = cmds.curve(p=[(0.0, 0.0, -0.0), (0.0, 0.0, 0.8325)], knot=[0, 0], degree=1)
-    repr_Z_shape = cmds.listRelatives(repr_Z, children=True, shapes=True)[0]
+    repr_Z, repr_Z_shape = curve(p=[(0.0, 0.0, -0.0), (0.0, 0.0, 0.8325)], shapeName='localAxesInfoRepr_ZShape',
+                        knot=[0, 0], degree=1)
+
     cmds.setAttr(repr_Z_shape+'.overrideEnabled', 1)
     cmds.setAttr(repr_Z_shape+'.overrideColor', 6)
-    cmds.rename(repr_Z_shape, 'localAxesInfoRepr_ZShape')
     addShapes(axesInfoTransform, repr_Z)
 
     return axesInfoPreTransform, axesInfoTransform
@@ -550,41 +572,40 @@ def createRawIKPreferredRotationRepresentation(planeAxis):
     Creates a "curved" arrow transform to be used as a representation for indicating the direction
     of rotation of the hinge joint for a two bone joint chain to be generated from HingeNode module.
     '''
-    representationTransform = cmds.curve(name='IKPreferredRotationRepr', p=[(-0.0, -0.8197, -0.17),
-                                                                            (0.0371, -0.5773, -0.3753),
-                                                                            (0.0371, -0.5363, -0.3136),
-                                                                            (-0.0, -0.8197, -0.17),
-                                                                            (0.0371, -0.5363, -0.3136),
-                                                                            (-0.0371, -0.5363, -0.3136),
-                                                                            (-0.0, -0.8197, -0.17),
-                                                                            (-0.0371, -0.5363, -0.3136),
-                                                                            (-0.0371, -0.5773, -0.3753),
-                                                                            (-0.0, -0.8197, -0.17),
-                                                                            (0.0371, -0.5773, -0.3753),
-                                                                            (-0.0371, -0.5773, -0.3753),
-                                                                            (-0.0, -0.8197, -0.17),
-                                                                            (0.0, -0.4648, -0.4034),
-                                                                            (0.0, -0.2866, -0.4948),
-                                                                            (0.0, -0.0925, -0.5442),
-                                                                            (0.0, 0.1077, -0.5492),
-                                                                            (0.0, 0.3041, -0.5096),
-                                                                            (0.0, 0.4866, -0.4272),
-                                                                            (0.0, 0.6463, -0.3063),
-                                                                            (0.0, 0.7751, -0.1529)],
+    representationTransform, representationShape = curve(name='IKPreferredRotationRepr', 
+                                                         p=[(-0.0, -0.8197, -0.17),
+                                                            (0.0371, -0.5773, -0.3753),
+                                                            (0.0371, -0.5363, -0.3136),
+                                                            (-0.0, -0.8197, -0.17),
+                                                            (0.0371, -0.5363, -0.3136),
+                                                            (-0.0371, -0.5363, -0.3136),
+                                                            (-0.0, -0.8197, -0.17),
+                                                            (-0.0371, -0.5363, -0.3136),
+                                                            (-0.0371, -0.5773, -0.3753),
+                                                            (-0.0, -0.8197, -0.17),
+                                                            (0.0371, -0.5773, -0.3753),
+                                                            (-0.0371, -0.5773, -0.3753),
+                                                            (-0.0, -0.8197, -0.17),
+                                                            (0.0, -0.4648, -0.4034),
+                                                            (0.0, -0.2866, -0.4948),
+                                                            (0.0, -0.0925, -0.5442),
+                                                            (0.0, 0.1077, -0.5492),
+                                                            (0.0, 0.3041, -0.5096),
+                                                            (0.0, 0.4866, -0.4272),
+                                                            (0.0, 0.6463, -0.3063),
+                                                            (0.0, 0.7751, -0.1529)],
                                         degree=1,
                                         knot=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20])
 
     lockHideChannelAttrs(representationTransform, 't', 'r', 's', 'v', keyable=False)
-
-    representationShape = cmds.listRelatives(representationTransform, children=True, shapes=True)[0]
     cmds.setAttr(representationShape+'.overrideEnabled', 1)
+    
     if planeAxis == 'X':
         cmds.setAttr(representationShape+'.overrideColor', 13)
     if planeAxis == 'Y':
         cmds.setAttr(representationShape+'.overrideColor', 14)
     if planeAxis == 'Z':
         cmds.setAttr(representationShape+'.overrideColor', 6)
-    cmds.rename(representationShape, 'IKPreferredRotationReprShape')
 
     return representationTransform
 
@@ -916,8 +937,7 @@ def createRawCharacterTransformControl():
                         degree=1,
                         knot=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24])
 
-    cmds.setAttr(worldTransform+'.visibility', keyable=False)
-    cmds.setAttr(rootTransform+'.visibility', keyable=False, lock=True)
+    cmds.setAttr(worldTransform+'.visibility', keyable=False, lock=True)
 
     worldTransform_shape = cmds.listRelatives(worldTransform, children=True, shapes=True)[0]
     cmds.setAttr(worldTransform_shape+'.overrideEnabled', 1)
@@ -925,7 +945,8 @@ def createRawCharacterTransformControl():
     cmds.rename(worldTransform_shape, '__world_transformShape')
 
     rootTransform = cmds.createNode('transform', name='__root_transform', parent=worldTransform, skipSelect=True)
-
+    cmds.setAttr(rootTransform+'.visibility', keyable=False, lock=True)
+    
     root_zd = cmds.curve(p=[(0.0003, -0.0, -0.0003),
                             (0.0002, -0.0, -0.0009),
                             (-0.0002, -0.0, -0.0009),
@@ -978,7 +999,7 @@ def createRawCharacterTransformControl():
     cmds.rename(root_xu_shape, '__root_transform_xuShape')
     addShapes(rootTransform, root_xu)
 
-    return rootTransform, worldTransform
+    return [rootTransform, worldTransform]
 
 
 def load_xhandleShape(transformName, modHandleColour, createWithTransform=False):
@@ -998,4 +1019,4 @@ def load_xhandleShape(transformName, modHandleColour, createWithTransform=False)
 
     xhandle_parent = cmds.listRelatives(xhandle_shape, parent=True, type='transform')[0]
     
-    return xhandle_shape, xhandle_parent
+    return [xhandle_shape, xhandle_parent]

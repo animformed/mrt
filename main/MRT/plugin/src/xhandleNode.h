@@ -129,6 +129,13 @@ class xhandleShape : public MPxLocatorNode
         
         static MTypeId id;
     
+        static MString drawDbClassification;
+    
+        static MString drawRegistrantId;
+    
+    
+        // Internal storage
+    
         static double l_positionX;
         static double l_positionY;
         static double l_positionZ;
@@ -181,6 +188,7 @@ class xhandleShape : public MPxLocatorNode
         static MObject aBlendHColour;      
         
         static MObject aDrawAxColour;
+    
     
     protected:
     

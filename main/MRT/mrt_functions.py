@@ -200,9 +200,14 @@ def prep_MRTcontrolRig_source():
 
     # Path to custom control classes.
     path = cmds.internalVar(userScriptDir=True) + 'MRT/userControlClasses/'
-
-    # Get a list of all user custom control class files.
-    f_list = set([item for item in os.listdir(path) if re.match('^controlClass_\w+.py$', item)])
+    
+    if os.path.exists(path):
+    
+        # Get a list of all user custom control class files.
+        f_list = set([item for item in os.listdir(path) if re.match('^controlClass_\w+.py$', item)])
+    
+    else:
+        f_list = []
 
     tmp_coll_f = None
 
