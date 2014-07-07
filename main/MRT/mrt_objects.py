@@ -19,7 +19,10 @@ from mrt_functions import lockHideChannelAttrs, align
 
 
 def curve(**kwargs):
-    
+    '''
+    Convenience function which acts as a wrapper for the maya "curve" command.
+    It renames the curve shape properly, and returns it with its parent transform.
+    '''
     if 'name' in kwargs:
         name = kwargs['name'] + 'Shape'
 
@@ -1047,15 +1050,28 @@ def load_xhandleShape(*args, **kwargs):
     # Get the transform above the xhandleShape.
     xhandle['transform'] = cmds.listRelatives(xhandle['shape'], parent=True, type='transform')[0]
     
+    # Create the pre-transform for the xhandleShape's transform.
     if not transformOnly:
-    
-        # Create the pre-transform for the xhandleShape's transform.
-        nameTokens = transform.split(':') if transform else name.split(':')
+        
+        # Set the name for the pre-transform.
+        nameTokens = transform.split(':') if transform else name.split(':') 
+        
+        # Get the namespace.
         namespace = nameTokens[0] if len(nameTokens) > 1 else ''
+        
+        # Get the node name tokens (separated by underscores)
         nodeNameTokens = nameTokens[-1].split('_')
+        
+        # Modify the last name token with a "pre" prefix.
         partName = 'pre%s' % nodeNameTokens[-1].capitalize()
+        
+        # Get the new node name to be used.
         nodeName = '%s_%s' % ('_'.join(nodeNameTokens[:-1]), partName) if len(nodeNameTokens) > 1 else partName
+        
+        # Set the new full name for the pre-transform.
         fullName = '%s:%s' % (namespace, nodeName)
+        
+        # Create the pre-transform for the xhandle.
         xhandle['preTransform'] = cmds.createNode('transform', name=fullName)
         align(xhandle['transform'], xhandle['preTransform'])
     
@@ -1064,6 +1080,7 @@ def load_xhandleShape(*args, **kwargs):
         if parent:
             cmds.parent(xhandle['preTransform'], parent[0])
         
+        # Parent the xhandle.
         cmds.parent(xhandle['transform'], xhandle['preTransform'])
     
     
