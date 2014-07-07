@@ -1136,22 +1136,19 @@ class MRT_UI(object):
         '''
         Display MRT dev stats
         '''
-        printString1 = '\n\t\t\tModular Rigging Tools v1.0\n\t\t\tfor Maya 2011 - 2013'
-        printString2 = '\n\n\tWritten by Himanish Bhattacharya' \
-            '\n\thimanish@animformed.net' \
-            '\n\n\t________________________________________________' \
-            '\n\n\tFor annoyances or bugs, contact me at, bugs@animformed.net\n'
+        printString1 = '\n\t\t\tModular Rigging Tools v1.0\n\t\t\tfor Maya 2011 and above'
+        printString2 = '\n\n\tOriginally written by Himanish Bhattacharya' \
+                       '\n\n\t________________________________________________________' \
+                       '\n\n\tFeel free to modify the source code for your own purpose\n'
         try:
             cmds.deleteUI('mrt_about_UI_window')
         except:
-            # It's time they put an end to this.
             pass
         self.uiVars['displayMrtAboutWindow'] = cmds.window('mrt_about_UI_window', title='About', maximizeButton=False, \
                                                                                                             sizeable=False)
         try:
             cmds.windowPref(self.uiVars['displayMrtAboutWindow'], remove=True)
         except:
-            # I agrreee.
             pass
 
         self.uiVars['displayMrtAbout_columnLayout'] = cmds.columnLayout()

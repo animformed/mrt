@@ -15,7 +15,7 @@ import maya.mel as mel
 import os
 
 # For locking and hiding channel box attributes on input transforms.
-from mrt_functions import lockHideChannelAttrs
+from mrt_functions import lockHideChannelAttrs, align
 
 
 def curve(**kwargs):
@@ -338,7 +338,7 @@ def createRawSingleOrientationRepresentation():
 
     lockHideChannelAttrs(orientationTransform, 't', 's', 'v', keyable=False)
 
-    orient_repr_Y,
+    orient_repr_Y, \
     orient_repr_YShape = curve(p=[(0.0, 0.0, 0.0),
                                   (0.0, 0.5349, 0.0),
                                   (0.0, 0.5349, 0.0472),
@@ -361,7 +361,7 @@ def createRawSingleOrientationRepresentation():
     cmds.setAttr(orient_repr_YShape+'.overrideColor', 14)
     addShapes(orientationTransform, orient_repr_Y)
 
-    orient_repr_X,
+    orient_repr_X, \
     orient_repr_XShape = curve(p=[(0.0, 0.0, 0.0),
                                   (0.5349, 0.0, 0.0),
                                   (0.5349, 0.0, 0.0472),
@@ -384,7 +384,7 @@ def createRawSingleOrientationRepresentation():
     cmds.setAttr(orient_repr_XShape+'.overrideColor', 13)
     addShapes(orientationTransform, orient_repr_X)
 
-    orient_repr_Z,
+    orient_repr_Z, \
     orient_repr_ZShape = curve(p=[(0.0, -0.0, 0.0),
                                   (0.0, -0.0, 0.5349),
                                   (-0.0472, -0.0, 0.5349),
@@ -1002,21 +1002,69 @@ def createRawCharacterTransformControl():
     return [rootTransform, worldTransform]
 
 
-def load_xhandleShape(transformName, modHandleColour, createWithTransform=False):
+def load_xhandleShape(*args, **kwargs):
     '''
     Creates a custom locator control shape. This shape can be parented to an input transform
     "transformName" or else a new one can be created for it.
     '''
-    if createWithTransform:
-        xhandle_shape = cmds.createNode('xhandleShape', name=transformName+'Shape', skipSelect=True)
+    if 'transform' in kwargs:
+        transform = kwargs['transform'] # If the xhandleShape is to be created under an input transform.
+    elif len(args) > 0:
+        transform = args[0]
     else:
-        xhandle_shape = cmds.createNode('xhandleShape', name=transformName+'Shape', parent=transformName, skipSelect=True)
-        
-    cmds.setAttr(xhandle_shape+'.overrideEnabled', 1)
-    cmds.setAttr(xhandle_shape+'.overrideColor', modHandleColour)
-
-    lockHideChannelAttrs(xhandle_shape, 'localScale', 'localPosition', keyable=False)
-
-    xhandle_parent = cmds.listRelatives(xhandle_shape, parent=True, type='transform')[0]
+        transform = None
     
-    return [xhandle_shape, xhandle_parent]
+    if 'name' in kwargs:
+        name = kwargs['name']
+    elif len(args) > 1:
+        name = args[1]
+    elif transform != None:
+        name = transform
+    else:
+        name = 'xhandle'
+        
+    if 'colour' in kwargs:
+        colour = kwargs['colour']
+    elif len(args) > 2:
+        colour = args[2]
+    else:
+        colour = 1
+        
+    if 'transformOnly' in kwargs:
+        transformOnly = kwargs['transformOnly']
+    else:
+        transformOnly = False
+    
+    xhandle = {}
+    
+    xhandle['shape'] = cmds.createNode('xhandleShape', name=name+'Shape', parent=transform, skipSelect=True)
+
+    cmds.setAttr(xhandle['shape']+'.overrideEnabled', 1)
+    cmds.setAttr(xhandle['shape']+'.overrideColor', colour)
+
+    lockHideChannelAttrs(xhandle['shape'], 'localScale', 'localPosition', keyable=False)
+    
+    # Get the transform above the xhandleShape.
+    xhandle['transform'] = cmds.listRelatives(xhandle['shape'], parent=True, type='transform')[0]
+    
+    if not transformOnly:
+    
+        # Create the pre-transform for the xhandleShape's transform.
+        nameTokens = transform.split(':') if transform else name.split(':')
+        namespace = nameTokens[0] if len(nameTokens) > 1 else ''
+        nodeNameTokens = nameTokens[-1].split('_')
+        partName = 'pre%s' % nodeNameTokens[-1].capitalize()
+        nodeName = '%s_%s' % ('_'.join(nodeNameTokens[:-1]), partName) if len(nodeNameTokens) > 1 else partName
+        fullName = '%s:%s' % (namespace, nodeName)
+        xhandle['preTransform'] = cmds.createNode('transform', name=fullName)
+        align(xhandle['transform'], xhandle['preTransform'])
+    
+        # Get the existing parent for the transform for xhandleShape, if it exists (for input transform).
+        parent = cmds.listRelatives(xhandle['transform'], parent=True, type='transform')
+        if parent:
+            cmds.parent(xhandle['preTransform'], parent[0])
+        
+        cmds.parent(xhandle['transform'], xhandle['preTransform'])
+    
+    
+    return xhandle
