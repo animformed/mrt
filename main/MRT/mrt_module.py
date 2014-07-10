@@ -1059,9 +1059,9 @@ class MRT_Module(object):
         
         # Connect the module global scaling to the module node joints.
         for joint in self.nodeJoints:
-            cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'Shape.addScaleX')
-            cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'Shape.addScaleY')
-            cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'Shape.addScaleZ')
+            cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'Shape.localScaleX')
+            cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'Shape.localScaleY')
+            cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'Shape.localScaleZ')
             cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'_localAxesInfoRepr_preTransform.scaleX')
             cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'_localAxesInfoRepr_preTransform.scaleY')
             cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'_localAxesInfoRepr_preTransform.scaleZ')
@@ -1318,6 +1318,13 @@ class MRT_Module(object):
             
             cmds.connectAttr(endPosVector+'.output', segmentDistance+'.point2')
             
+            # Normalize the segment length by the "globalScale" attribute on the module transform.
+            normalizeDivide = cmds.createNode('multiplyDivide', name=drivenJoint+'_distanceNormNode')
+            cmds.setAttr(normalizeDivide+'.operation', 2)
+            cmds.connectAttr(segmentDistance+'.distance', normalizeDivide+'.input1X')
+            #cmds.connectAttr(segmentDistance+'.scaleX', normalizeDivide+'.input2X')
+            cmds.setAttr(normalizeDivide+'.input2X', 1)
+            
             # Get the aim axis, the axis down the module node chain.
             aimAxis = self.nodeAxes[0]
             
@@ -1325,7 +1332,7 @@ class MRT_Module(object):
             distanceDivideFactor = cmds.createNode('multiplyDivide', name=drivenJoint+'_distanceDivideFactor')
             cmds.setAttr(distanceDivideFactor + '.operation', 2)
             originalLength = cmds.getAttr(drivenJoint+'.translate'+aimAxis)
-            cmds.connectAttr(segmentDistance+'.distance', distanceDivideFactor+'.input1'+aimAxis)
+            cmds.connectAttr(normalizeDivide+'.outputX', distanceDivideFactor+'.input1'+aimAxis)
             cmds.setAttr(distanceDivideFactor+'.input2'+aimAxis, originalLength)
             
             # Finally, drive the position of node joints using the multiplied distance.
@@ -1333,7 +1340,8 @@ class MRT_Module(object):
             cmds.connectAttr(distanceDivideFactor+'.output'+aimAxis, drivenJointAimTranslateMultiply+'.input1'+aimAxis)
             cmds.setAttr(drivenJointAimTranslateMultiply+'.input2'+aimAxis, math.fabs(originalLength))
             cmds.connectAttr(drivenJointAimTranslateMultiply+'.output'+aimAxis, drivenJoint+'.translate'+aimAxis)
-            containedNodes.extend([segmentDistance, distanceDivideFactor, drivenJointAimTranslateMultiply])
+            
+            containedNodes.extend([segmentDistance, normalizeDivide, distanceDivideFactor, drivenJointAimTranslateMultiply])
             
         mfunc.updateAllTransforms()
         
@@ -1838,9 +1846,6 @@ class MRT_Module(object):
                 cmds.connectAttr(self.moduleTransform+'.'+longName, joint+'_controlShape_scaleClusterHandle.scaleX')
                 cmds.connectAttr(self.moduleTransform+'.'+longName, joint+'_controlShape_scaleClusterHandle.scaleY')
                 cmds.connectAttr(self.moduleTransform+'.'+longName, joint+'_controlShape_scaleClusterHandle.scaleZ')
-                cmds.connectAttr(self.moduleTransform+'.'+longName, joint+'Shape.addScaleX')
-                cmds.connectAttr(self.moduleTransform+'.'+longName, joint+'Shape.addScaleY')
-                cmds.connectAttr(self.moduleTransform+'.'+longName, joint+'Shape.addScaleZ')
                 
                 # Publish the attribute to the module container.
                 cmds.container(self.moduleContainer, edit=True, publishAndBind=[self.moduleTransform+'.'+longName,
@@ -1952,9 +1957,6 @@ class MRT_Module(object):
                 cmds.connectAttr(self.moduleTransform+'.'+longName, joint+'_controlShape_scaleClusterHandle.scaleX')
                 cmds.connectAttr(self.moduleTransform+'.'+longName, joint+'_controlShape_scaleClusterHandle.scaleY')
                 cmds.connectAttr(self.moduleTransform+'.'+longName, joint+'_controlShape_scaleClusterHandle.scaleZ')
-                cmds.connectAttr(self.moduleTransform+'.'+longName, joint+'_controlXShape.addScaleX')
-                cmds.connectAttr(self.moduleTransform+'.'+longName, joint+'_controlXShape.addScaleY')
-                cmds.connectAttr(self.moduleTransform+'.'+longName, joint+'_controlXShape.addScaleZ')
                 
                 # Publish to module container.
                 cmds.container(self.moduleContainer, edit=True, publishAndBind=[self.moduleTransform+'.'+longName,

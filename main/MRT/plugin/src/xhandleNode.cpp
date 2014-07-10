@@ -35,16 +35,12 @@ MTypeId xhandleShape::id(0x80090);
 double xhandleShape::l_positionX;
 double xhandleShape::l_positionY;
 double xhandleShape::l_positionZ;
-double xhandleShape::add_scaleX;
-double xhandleShape::add_scaleY;
-double xhandleShape::add_scaleZ;
 double xhandleShape::l_scaleX;
 double xhandleShape::l_scaleY;
 double xhandleShape::l_scaleZ;
 bool xhandleShape::dDrawOrtho;
 int xhandleShape::dDrawStyle;
 GLfloat xhandleShape::dThickness;
-bool xhandleShape::dTransformScaling;
 bool xhandleShape::dBlendHColour;
 bool xhandleShape::dDrawAxColour;
 GLfloat xhandleShape::uMult;
@@ -54,14 +50,9 @@ int xhandleShape::colorId;
 
 // Attributes
 
-MObject xhandleShape::aAddScale;
-MObject xhandleShape::aAddScaleX;
-MObject xhandleShape::aAddScaleY;
-MObject xhandleShape::aAddScaleZ;
 MObject xhandleShape::aDrawOrtho;
 MObject xhandleShape::aDrawStyle;
 MObject xhandleShape::aThickness;
-MObject xhandleShape::aTransformScaling;
 MObject xhandleShape::aBlendHColour;
 MObject xhandleShape::aDrawAxColour;
 
@@ -70,7 +61,7 @@ xhandleShape::xhandleShape() {
     
     // Get a pointer to a GL function table
     MHardwareRenderer *rend = MHardwareRenderer::theRenderer();
-	glft = rend->glFunctionTable();
+    glft = rend->glFunctionTable();
 }
 
 xhandleShape::~xhandleShape() { }
@@ -114,48 +105,6 @@ MStatus xhandleShape::initialize() {
     CHECK_MSTATUS (wtAttr.setWritable(true));
     CHECK_MSTATUS (wtAttr.setKeyable(true));
     
-    MFnEnumAttribute tscAttr;
-    aTransformScaling = tscAttr.create("transformScaling", "tsc");
-    CHECK_MSTATUS (tscAttr.addField("Off", 0));
-    CHECK_MSTATUS (tscAttr.addField("On", 1));
-    CHECK_MSTATUS (tscAttr.setDefault(1));
-    CHECK_MSTATUS (tscAttr.setReadable(true));
-    CHECK_MSTATUS (tscAttr.setStorable(true));
-    CHECK_MSTATUS (tscAttr.setWritable(true));
-    CHECK_MSTATUS (tscAttr.setKeyable(true));
-    
-    MFnNumericAttribute asxAttr;
-    aAddScaleX = asxAttr.create("addScaleX", "asx", MFnNumericData::kFloat);
-    CHECK_MSTATUS (asxAttr.setDefault(1.0));
-    CHECK_MSTATUS (asxAttr.setStorable(true));
-    CHECK_MSTATUS (asxAttr.setReadable(true));
-    CHECK_MSTATUS (asxAttr.setWritable(true));
-    CHECK_MSTATUS (asxAttr.setKeyable(true));
-    
-    MFnNumericAttribute asyAttr;
-    aAddScaleY = asyAttr.create("addScaleY", "asy", MFnNumericData::kFloat);
-    CHECK_MSTATUS (asyAttr.setDefault(1.0));
-    CHECK_MSTATUS (asyAttr.setStorable(true));
-    CHECK_MSTATUS (asyAttr.setReadable(true));
-    CHECK_MSTATUS (asyAttr.setWritable(true));
-    CHECK_MSTATUS (asyAttr.setKeyable(true));
-    
-    MFnNumericAttribute aszAttr;
-    aAddScaleZ = aszAttr.create("addScaleZ", "asz", MFnNumericData::kFloat);
-    CHECK_MSTATUS (aszAttr.setDefault(1.0));
-    CHECK_MSTATUS (aszAttr.setStorable(true));
-    CHECK_MSTATUS (aszAttr.setReadable(true));
-    CHECK_MSTATUS (aszAttr.setWritable(true));
-    CHECK_MSTATUS (aszAttr.setKeyable(true));
-
-    MFnNumericAttribute asAttr;
-    aAddScale = asAttr.create("addScale", "as", aAddScaleX, aAddScaleY, aAddScaleZ);
-    CHECK_MSTATUS (asAttr.setDefault(1.0));
-    CHECK_MSTATUS (asAttr.setStorable(true));
-    CHECK_MSTATUS (asAttr.setReadable(true));
-    CHECK_MSTATUS (asAttr.setWritable(true));
-    CHECK_MSTATUS (asAttr.setKeyable(true));
-    
     MFnEnumAttribute bhcAttr;
     aBlendHColour = bhcAttr.create("blendColour", "bhc");
     CHECK_MSTATUS (bhcAttr.addField("Off", 0));
@@ -177,11 +126,9 @@ MStatus xhandleShape::initialize() {
     CHECK_MSTATUS (daxcAttr.setKeyable(true));
     
     // Add the attributes
-    CHECK_MSTATUS (addAttribute(aAddScale));
     CHECK_MSTATUS (addAttribute(aDrawStyle));
     CHECK_MSTATUS (addAttribute(aDrawOrtho));
     CHECK_MSTATUS (addAttribute(aThickness));
-    CHECK_MSTATUS (addAttribute(aTransformScaling));
     CHECK_MSTATUS (addAttribute(aBlendHColour));
     CHECK_MSTATUS (addAttribute(aDrawAxColour));
     
@@ -218,15 +165,6 @@ void xhandleShape::setInternalAttrs() const {
     plug.setAttribute(localPositionZ);
     plug.getValue(l_positionZ);
     
-    plug.setAttribute(aAddScaleX);
-    plug.getValue(add_scaleX);
-    
-    plug.setAttribute(aAddScaleY);
-    plug.getValue(add_scaleY);
-    
-    plug.setAttribute(aAddScaleZ);
-    plug.getValue(add_scaleZ);
-    
     plug.setAttribute(localScaleX);
     plug.getValue(l_scaleX);
     
@@ -245,9 +183,6 @@ void xhandleShape::setInternalAttrs() const {
     plug.setAttribute(aThickness);
     plug.getValue(dThickness);
     
-    plug.setAttribute(aTransformScaling);
-    plug.getValue(dTransformScaling);
-    
     plug.setAttribute(aBlendHColour);
     plug.getValue(dBlendHColour);
     
@@ -261,7 +196,7 @@ void xhandleShape::setInternalAttrs() const {
     // Get the override colour value for the locator shape.
     MFnDependencyNode shapeNodeFn(thisNode);
     MObject ovEnabled = shapeNodeFn.attribute("overrideEnabled");
-	MObject ovColor = shapeNodeFn.attribute("overrideColor");
+    MObject ovColor = shapeNodeFn.attribute("overrideColor");
     
     plug.setAttribute(ovEnabled);
     plug.getValue(colorOverride);
@@ -462,77 +397,51 @@ void xhandleShape::draw(M3dView &view, const MDagPath &path, M3dView::DisplaySty
     
     view.beginGL();
     
-    // Get the path world matrix and inv matrix.
-    MMatrix pathMatrix = path.inclusiveMatrix();
-    MMatrix pathInvMatrix = path.inclusiveMatrixInverse();
-    MTransformationMatrix pathTransMatrix(pathMatrix);
-    MTransformationMatrix pathTransInvMatrix(pathInvMatrix);
-    
-    // Get the inverse/real scaling values (inclusive).
-    double scale[3];
-    double inv_scale[3];
-    pathTransMatrix.getScale(scale, MSpace::kTransform);
-    pathTransInvMatrix.getScale(inv_scale, MSpace::kTransform);
+    // Apply local translation (localPosition).
+    glft->glTranslated(l_positionX, l_positionY, l_positionZ);
+        
+    // Apply local scaling (localScale and addScale).
+    glft->glScaled(l_scaleX, l_scaleY, l_scaleZ);
+
     
     // If the draw "ortho" only is enabled for draw operations,
     if (dDrawOrtho) {
+
+        // Define the storage for the quaternion to be used for the glRotate function.
+        MVector rotateAxis;
+        double rotateTheta;
         
-        // Negate all transformations applied to GL draw operations
-        // as a result of locator transformations in maya's scene space.
-		glft->glMultMatrixd(&(pathInvMatrix.matrix[0][0]));
-        
-        // Apply scaling if enabled. To be applied before any translations.
-        if (dTransformScaling)
-            glft->glScaled(scale[0], scale[1], scale[2]);
-        
-        // Apply local translation (localPosition).
-        glft->glTranslated(l_positionX, l_positionY, l_positionZ);
-        
-        // Apply translations only to the draw space (from the parent transforms).
-		MVector trans_vec = pathTransMatrix.getTranslation(MSpace::kTransform);
-		glft->glTranslated(trans_vec[0], trans_vec[1], trans_vec[2]);
-        
-        // Rotate the draw space based on the viewport camera.
-		MDagPath cameraPath;
-		view.getCamera(cameraPath);
-		MMatrix camMatrix = cameraPath.inclusiveMatrix();
-		MTransformationMatrix camTransMatrix(camMatrix);
-		MQuaternion camRotation = camTransMatrix.rotation();
-		MVector camRotAxis;
-		double camRotTheta;
-		camRotation.getAxisAngle(camRotAxis, camRotTheta);
-		glft->glRotated(RAD_TO_DEG(camRotTheta), camRotAxis[0], camRotAxis[1], camRotAxis[2]);
-        
-        // Apply local scaling (localScale and addScale).
-        glft->glScaled((l_scaleX * add_scaleX), (l_scaleY * add_scaleY), (l_scaleZ * add_scaleZ));
+        // Get the path world rotate matrix and inv matrix.
+        MMatrix pathInvMatrix = path.inclusiveMatrixInverse();
+        MTransformationMatrix pathTransInvMatrix(pathInvMatrix);
+        MQuaternion pathRotation = pathTransInvMatrix.rotation();
+        pathRotation.getAxisAngle(rotateAxis, rotateTheta);
+        glft->glRotated(RAD_TO_DEG(rotateTheta), rotateAxis[0], rotateAxis[1], rotateAxis[2]);
+    
+        // Rotate the draw space based on the viewport camera, to face it.
+        MDagPath cameraPath;
+        view.getCamera(cameraPath);
+        MMatrix camMatrix = cameraPath.inclusiveMatrix();
+        MTransformationMatrix camTransMatrix(camMatrix);
+        MQuaternion camRotation = camTransMatrix.rotation();
+        camRotation.getAxisAngle(rotateAxis, rotateTheta);
+        glft->glRotated(RAD_TO_DEG(rotateTheta), rotateAxis[0], rotateAxis[1], rotateAxis[2]);
         
         // Now rotate 90 deg to face the viewport camera.
         glft->glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
-        
-    } else {    // If "draw ortho" is disabled.
-        
-        // Negate scaling if applicable (tansform scaling is disabled).
-        if (! dTransformScaling)
-            glft->glScaled(inv_scale[0], inv_scale[1], inv_scale[2]);
-        
-        // Apply local translation (localPosition).
-        glft->glTranslated(l_positionX, l_positionY, l_positionZ);
-        
-        // Apply local scaling (localScale and addScale).
-        glft->glScaled((l_scaleX * add_scaleX), (l_scaleY * add_scaleY), (l_scaleZ * add_scaleZ));
     }
-
+    
     // Set the draw color based on the current display status.
     if (status == M3dView::kLead)
-		view.setDrawColor(18, M3dView::kActiveColors);
-	if (status == M3dView::kActive)
+        view.setDrawColor(18, M3dView::kActiveColors);
+    if (status == M3dView::kActive)
         view.setDrawColor(15, M3dView::kActiveColors);
-	if (status == M3dView::kDormant)
-	{
+    if (status == M3dView::kDormant)
+    {
         view.setDrawColor(color(M3dView::kDormant), M3dView::kDormantColors);
-		if (colorOverride == true)
-			view.setDrawColor(colorId-1, M3dView::kDormantColors);
-	}
+        if (colorOverride == true)
+            view.setDrawColor(colorId-1, M3dView::kDormantColors);
+    }
     
     // Set the blend colour state.
     if (dBlendHColour == 0)
@@ -569,8 +478,6 @@ MBoundingBox xhandleShape::boundingBox() const
     
     setInternalAttrs(); // Update/Get the node attribute values.
     
-    MObject thisNode = thisMObject();
-    
     // Define and calculate the two corner points for the bounding box.
     // By default, set the corner points to be coplanar.
     double c1[3] = {-1.0, 0.0, 1.0};
@@ -589,12 +496,12 @@ MBoundingBox xhandleShape::boundingBox() const
     
     // Apply scaling from localScale and addScale to corners points if any.
     
-    c1[0] = c1[0] * (l_scaleX * add_scaleX);
-    c2[0] = c2[0] * (l_scaleX * add_scaleX);
-    c1[1] = c1[1] * (l_scaleY * add_scaleY);
-    c2[1] = c2[1] * (l_scaleY * add_scaleY);
-    c1[2] = c1[2] * (l_scaleZ * add_scaleZ);
-    c2[2] = c2[2] * (l_scaleZ * add_scaleZ);
+    c1[0] = c1[0] * l_scaleX;
+    c2[0] = c2[0] * l_scaleX;
+    c1[1] = c1[1] * l_scaleY;
+    c2[1] = c2[1] * l_scaleY;
+    c1[2] = c1[2] * l_scaleZ;
+    c2[2] = c2[2] * l_scaleZ;
 
     MPoint corner1(c1[0], c1[1], c1[2]);
     MPoint corner2(c2[0], c2[1], c2[2]);
@@ -611,30 +518,6 @@ MBoundingBox xhandleShape::boundingBox() const
     t_matrix.setTranslation(translation_vec, MSpace::kTransform);
     MMatrix localPos_matrix = t_matrix.asMatrix();
     b_box.transformUsing(localPos_matrix);
-    
-    // If "transformScaling" is disabled, negate any scaling from parent transforms.
-    if (dTransformScaling == 0) {
-        
-        // Get the inverse worldMatrix for transformation.
-        MDagPath path;
-        MFnDagNode pathNode(thisNode);
-        pathNode.getPath(path);
-        MMatrix pathMatrix = path.inclusiveMatrixInverse();
-        MTransformationMatrix pathTransMatrix(pathMatrix);
-        
-        // Get the scaling from transformation matrix.
-        double scale[3];
-        pathTransMatrix.getScale(scale, MSpace::kTransform);
-        
-        // Create the inverse scaling matrix.
-        MTransformationMatrix s_matrix;
-        s_matrix.setScale(scale, MSpace::kTransform);
-        MMatrix scale_matrix = s_matrix.asMatrix();
-        
-        // Apply it to the bounding box.
-        b_box.transformUsing(scale_matrix);
-        
-    }
     
     return b_box;
 }

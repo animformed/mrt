@@ -10,10 +10,6 @@
 
     This is derived from an MPxLocatorNode, with the following
     added attributes :
-
-    addScaleX - Additional local scaling attribute multiplied with localScale.
-    addScaleY
-    addScaleZ
  
     drawStyle - Draw shape type with values from 1 to 8.
                 1 - Triangle
@@ -28,8 +24,6 @@
     drawAxisColour - Draw shape type 8 with coloured axes, red, green and blue.
  
     drawOrtho - Draw the current draw shape orthogonally facing the viewport camera.
- 
-    transformScaling - Enable / Disable scaling for the draw shape from parent transform.
  
     wireframeThickness - Draw thickness for the shape, with values from 1 to 10.
  
@@ -129,21 +123,13 @@ class xhandleShape : public MPxLocatorNode
         
         static MTypeId id;
     
-        static MString drawDbClassification;
-    
-        static MString drawRegistrantId;
-    
     
         // Internal storage
     
         static double l_positionX;
         static double l_positionY;
         static double l_positionZ;
-        
-        static double add_scaleX;
-        static double add_scaleY;
-        static double add_scaleZ;
-        
+
         static double l_scaleX;
         static double l_scaleY;
         static double l_scaleZ;
@@ -153,8 +139,6 @@ class xhandleShape : public MPxLocatorNode
         static int dDrawStyle;
         
         static GLfloat dThickness;
-        
-        static bool dTransformScaling;
         
         static bool dBlendHColour;
         
@@ -169,21 +153,11 @@ class xhandleShape : public MPxLocatorNode
     
         // Attributes
         
-        static MObject aAddScale;
-        
-        static MObject aAddScaleX;
-        
-        static MObject aAddScaleY;
-        
-        static MObject aAddScaleZ;
-        
         static MObject aDrawOrtho;
         
         static MObject aDrawStyle;
         
         static MObject aThickness;
-        
-        static MObject aTransformScaling;
         
         static MObject aBlendHColour;      
         
