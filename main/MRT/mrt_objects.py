@@ -223,7 +223,7 @@ def createRawOrientationRepresentation(aimAxis):
         representationZShape = cmds.listRelatives(representationZ, children=True, shapes=True)[0]
         cmds.setAttr(representationZShape+'.overrideEnabled', 1)
         cmds.setAttr(representationZShape+'.overrideColor', 6)
-        cmds.rename(representationZShape, 'orient_repr_transform_Z_Shape')
+        cmds.rename(representationZShape, 'orient_repr_transformShape')
         addShapes(representationTransform, representationZ)
 
 
@@ -243,7 +243,7 @@ def createRawOrientationRepresentation(aimAxis):
         representationYShape = cmds.listRelatives(representationY, children=True, shapes=True)[0]
         cmds.setAttr(representationYShape+'.overrideEnabled', 1)
         cmds.setAttr(representationYShape+'.overrideColor', 14)
-        cmds.rename(representationYShape, 'orient_repr_transform_Y_Shape')
+        cmds.rename(representationYShape, 'orient_repr_transformShape1')
         addShapes(representationTransform, representationY)
 
     if aimAxis == 'Z':
@@ -263,7 +263,7 @@ def createRawOrientationRepresentation(aimAxis):
         representationYShape = cmds.listRelatives(representationY, children=True, shapes=True)[0]
         cmds.setAttr(representationYShape+'.overrideEnabled', 1)
         cmds.setAttr(representationYShape+'.overrideColor', 14)
-        cmds.rename(representationYShape, 'orient_repr_transform_Y_Shape')
+        cmds.rename(representationYShape, 'orient_repr_transformShape')
         addShapes(representationTransform, representationY)
 
         representationX = cmds.curve(p=[(-0.0469, 0.0, 0.0901),
@@ -282,7 +282,7 @@ def createRawOrientationRepresentation(aimAxis):
         representationXShape = cmds.listRelatives(representationX, children=True, shapes=True)[0]
         cmds.setAttr(representationXShape+'.overrideEnabled', 1)
         cmds.setAttr(representationXShape+'.overrideColor', 13)
-        cmds.rename(representationXShape, 'orient_repr_transform_X_Shape')
+        cmds.rename(representationXShape, 'orient_repr_transformShape1')
         addShapes(representationTransform, representationX)
 
     if aimAxis == 'Y':
@@ -303,7 +303,7 @@ def createRawOrientationRepresentation(aimAxis):
         representationZShape = cmds.listRelatives(representationZ, children=True, shapes=True)[0]
         cmds.setAttr(representationZShape+'.overrideEnabled', 1)
         cmds.setAttr(representationZShape+'.overrideColor', 6)
-        cmds.rename(representationZShape, 'orient_repr_transform_Z_Shape')
+        cmds.rename(representationZShape, 'orient_repr_transformShape')
         addShapes(representationTransform, representationZ)
 
         representationX = cmds.curve(p=[(-0.0469, 0.0901, 0.0),
@@ -322,7 +322,7 @@ def createRawOrientationRepresentation(aimAxis):
         representationXShape = cmds.listRelatives(representationX, children=True, shapes=True)[0]
         cmds.setAttr(representationXShape+'.overrideEnabled', 1)
         cmds.setAttr(representationXShape+'.overrideColor', 13)
-        cmds.rename(representationXShape, 'orient_repr_transform_X_Shape')
+        cmds.rename(representationXShape, 'orient_repr_transformShape1')
         addShapes(representationTransform, representationX)
 
     cmds.select(clear=True)
@@ -356,7 +356,7 @@ def createRawSingleOrientationRepresentation():
                                   (0.0, 0.5349, -0.0472),
                                   (-0.0472, 0.5349, 0.0),
                                   (0.0, 0.5349, 0.0)],
-                                  shapeName='single_orientation_repr_transform_Y_Shape',
+                                  shapeName='single_orient_repr_transformShape',
                                   degree=1,
                                   knot=[142, 162, 166, 175, 184, 188, 192, 201, 210, 215, 221, 227, 232, 236])
 
@@ -379,7 +379,7 @@ def createRawSingleOrientationRepresentation():
                                   (0.5349, 0.0, -0.0472),
                                   (0.5349, 0.0472, 0.0),
                                   (0.5349, 0.0, 0.0)],
-                                  shapeName='single_orientation_repr_transform_X_Shape',
+                                  shapeName='single_orient_repr_transformShape1',
                                   degree=1,
                                   knot=[142, 162, 166, 175, 184, 188, 192, 201, 210, 215, 221, 227, 232, 236])
 
@@ -402,7 +402,7 @@ def createRawSingleOrientationRepresentation():
                                   (0.0472, -0.0, 0.5349),
                                   (0.0, 0.0472, 0.5349),
                                   (0.0, -0.0, 0.5349)],
-                                  shapeName='single_orientation_repr_transform_Z_Shape',
+                                  shapeName='single_orient_repr_transformShape2',
                                   degree=1,
                                   knot=[142, 162, 166, 175, 184, 188, 192, 201, 210, 215, 221, 227, 232, 236])
 
@@ -643,7 +643,7 @@ def createRawIKhingeAxisRepresenation(upFrontAxes):
         xy_up_repr_shape = cmds.listRelatives(xy_up_repr, children=True, shapes=True)[0]
         cmds.setAttr(xy_up_repr_shape+'.overrideEnabled', 1)
         cmds.setAttr(xy_up_repr_shape+'.overrideColor', 13)
-        cmds.rename(xy_up_repr_shape, 'IKhingeAxisRepresenation_upAxis_Shape')
+        cmds.rename(xy_up_repr_shape, 'IKhingeAxisRepresenationShape')
         addShapes(representationTransform, xy_up_repr)
 
         xy_hinge_repr = cmds.curve(p=[(0.0, 0.0, 0.0),
@@ -666,7 +666,7 @@ def createRawIKhingeAxisRepresenation(upFrontAxes):
         xy_hinge_repr_shape = cmds.listRelatives(xy_hinge_repr, children=True, shapes=True)[0]
         cmds.setAttr(xy_hinge_repr_shape+'.overrideEnabled', 1)
         cmds.setAttr(xy_hinge_repr_shape+'.overrideColor', 14)
-        cmds.rename(xy_hinge_repr_shape, 'IKhingeAxisRepresenation_hingeAxis_Shape')
+        cmds.rename(xy_hinge_repr_shape, 'IKhingeAxisRepresenationShape1')
         addShapes(representationTransform, xy_hinge_repr)
 
     if upFrontAxes == 'XZ':
@@ -690,7 +690,7 @@ def createRawIKhingeAxisRepresenation(upFrontAxes):
         xz_up_repr_shape = cmds.listRelatives(xz_up_repr, children=True, shapes=True)[0]
         cmds.setAttr(xz_up_repr_shape+'.overrideEnabled', 1)
         cmds.setAttr(xz_up_repr_shape+'.overrideColor', 13)
-        cmds.rename(xz_up_repr_shape, 'IKhingeAxisRepresenation_upAxis_Shape')
+        cmds.rename(xz_up_repr_shape, 'IKhingeAxisRepresenationShape')
         addShapes(representationTransform, xz_up_repr)
 
         xz_hinge_repr = cmds.curve(p=[(0.0, 0.0, 0.0),
@@ -713,7 +713,7 @@ def createRawIKhingeAxisRepresenation(upFrontAxes):
         xz_hinge_repr_shape = cmds.listRelatives(xz_up_repr, children=True, shapes=True)[0]
         cmds.setAttr(xz_hinge_repr_shape+'.overrideEnabled', 1)
         cmds.setAttr(xz_hinge_repr_shape+'.overrideColor', 6)
-        cmds.rename(xz_hinge_repr_shape, 'IKhingeAxisRepresenation_hingeAxis_Shape')
+        cmds.rename(xz_hinge_repr_shape, 'IKhingeAxisRepresenationShape1')
         addShapes(representationTransform, xz_hinge_repr)
 
     if upFrontAxes == 'YX':
@@ -737,7 +737,7 @@ def createRawIKhingeAxisRepresenation(upFrontAxes):
         yx_up_repr_shape = cmds.listRelatives(yx_up_repr, children=True, shapes=True)[0]
         cmds.setAttr(yx_up_repr_shape+'.overrideEnabled', 1)
         cmds.setAttr(yx_up_repr_shape+'.overrideColor', 14)
-        cmds.rename(yx_up_repr_shape, 'IKhingeAxisRepresenation_upAxis_Shape')
+        cmds.rename(yx_up_repr_shape, 'IKhingeAxisRepresenationShape')
         addShapes(representationTransform, yx_up_repr)
 
         yx_hinge_repr = cmds.curve(p=[(0.0, 0.0, 0.0),
@@ -760,7 +760,7 @@ def createRawIKhingeAxisRepresenation(upFrontAxes):
         yx_hinge_repr_shape = cmds.listRelatives(yx_up_repr, children=True, shapes=True)[0]
         cmds.setAttr(yx_hinge_repr_shape+'.overrideEnabled', 1)
         cmds.setAttr(yx_hinge_repr_shape+'.overrideColor', 13)
-        cmds.rename(yx_hinge_repr_shape, 'IKhingeAxisRepresenation_hingeAxis_Shape')
+        cmds.rename(yx_hinge_repr_shape, 'IKhingeAxisRepresenationShape1')
         addShapes(representationTransform, yx_hinge_repr)
 
     if upFrontAxes == 'YZ':
@@ -784,7 +784,7 @@ def createRawIKhingeAxisRepresenation(upFrontAxes):
         yz_up_repr_shape = cmds.listRelatives(yz_up_repr, children=True, shapes=True)[0]
         cmds.setAttr(yz_up_repr_shape+'.overrideEnabled', 1)
         cmds.setAttr(yz_up_repr_shape+'.overrideColor', 14)
-        cmds.rename(yz_up_repr_shape, 'IKhingeAxisRepresenation_upAxis_Shape')
+        cmds.rename(yz_up_repr_shape, 'IKhingeAxisRepresenationShape')
         addShapes(representationTransform, yz_up_repr)
 
         yz_hinge_repr = cmds.curve(p=[(0.0, 0.0, 0.0),
@@ -807,7 +807,7 @@ def createRawIKhingeAxisRepresenation(upFrontAxes):
         yz_hinge_repr_shape = cmds.listRelatives(yz_up_repr, children=True, shapes=True)[0]
         cmds.setAttr(yz_hinge_repr_shape+'.overrideEnabled', 1)
         cmds.setAttr(yz_hinge_repr_shape+'.overrideColor', 6)
-        cmds.rename(yz_hinge_repr_shape, 'IKhingeAxisRepresenation_hingeAxis_Shape')
+        cmds.rename(yz_hinge_repr_shape, 'IKhingeAxisRepresenationShape1')
         addShapes(representationTransform, yz_hinge_repr)
 
     if upFrontAxes == 'ZX':
@@ -831,7 +831,7 @@ def createRawIKhingeAxisRepresenation(upFrontAxes):
         zx_up_repr_shape = cmds.listRelatives(zx_up_repr, children=True, shapes=True)[0]
         cmds.setAttr(zx_up_repr_shape+'.overrideEnabled', 1)
         cmds.setAttr(zx_up_repr_shape+'.overrideColor', 6)
-        cmds.rename(zx_up_repr_shape, 'IKhingeAxisRepresenation_upAxis_Shape')
+        cmds.rename(zx_up_repr_shape, 'IKhingeAxisRepresenationShape')
         addShapes(representationTransform, zx_up_repr)
 
         zx_hinge_repr = cmds.curve(p=[(0.0, 0.0, 0.0),
@@ -854,7 +854,7 @@ def createRawIKhingeAxisRepresenation(upFrontAxes):
         zx_hinge_repr_shape = cmds.listRelatives(zx_up_repr, children=True, shapes=True)[0]
         cmds.setAttr(zx_hinge_repr_shape+'.overrideEnabled', 1)
         cmds.setAttr(zx_hinge_repr_shape+'.overrideColor', 13)
-        cmds.rename(zx_hinge_repr_shape, 'IKhingeAxisRepresenation_hingeAxis_Shape')
+        cmds.rename(zx_hinge_repr_shape, 'IKhingeAxisRepresenationShape1')
         addShapes(representationTransform, zx_hinge_repr)
 
     if upFrontAxes == 'ZY':
@@ -878,7 +878,7 @@ def createRawIKhingeAxisRepresenation(upFrontAxes):
         zy_up_repr_shape = cmds.listRelatives(zy_up_repr, children=True, shapes=True)[0]
         cmds.setAttr(zy_up_repr_shape+'.overrideEnabled', 1)
         cmds.setAttr(zy_up_repr_shape+'.overrideColor', 6)
-        cmds.rename(zy_up_repr_shape, 'IKhingeAxisRepresenation_upAxis_Shape')
+        cmds.rename(zy_up_repr_shape, 'IKhingeAxisRepresenationShape')
         addShapes(representationTransform, zy_up_repr)
 
         zy_hinge_repr = cmds.curve(p=[(0.0, 0.0, 0.0),
@@ -901,7 +901,7 @@ def createRawIKhingeAxisRepresenation(upFrontAxes):
         zy_hinge_repr_shape = cmds.listRelatives(zy_up_repr, children=True, shapes=True)[0]
         cmds.setAttr(zy_hinge_repr_shape+'.overrideEnabled', 1)
         cmds.setAttr(zy_hinge_repr_shape+'.overrideColor', 14)
-        cmds.rename(zy_hinge_repr_shape, 'IKhingeAxisRepresenation_hingeAxis_Shape')
+        cmds.rename(zy_hinge_repr_shape, 'IKhingeAxisRepresenationShape1')
         addShapes(representationTransform, zy_hinge_repr)
 
     return representationTransform

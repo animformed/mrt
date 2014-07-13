@@ -860,7 +860,7 @@ class MRT_Module(object):
         cmds.setAttr(startHandle['shape']+'.localScaleZ', 0.4)
         cmds.setAttr(startHandle['shape']+'.drawStyle', 3)
         cmds.setAttr(startHandle['shape']+'.wireframeThickness', 2)
-        mfunc.lockHideChannelAttrs(startHandle['transform'], 'r', 's', 'v', keyable=False)
+        mfunc.lockHideChannelAttrs(startHandle['transform'], 's', 'v', keyable=False)
         self.moduleTransform = startHandle['transform']
         
         # Position the start module transform and constrain the start cluster to it.
@@ -877,12 +877,14 @@ class MRT_Module(object):
         cmds.setAttr(endHandle['shape']+'.drawStyle', 3)
         cmds.setAttr(endHandle['shape']+'.wireframeThickness', 2)
         mfunc.lockHideChannelAttrs(endHandle['transform'], 'r', 's', 'v', keyable=False)
-
+        
         # Position the end module transform and constrain the end cluster to it.
         tempConstraint = cmds.pointConstraint(self.nodeJoints[-1], endHandle['preTransform'], maintainOffset=False)
         cmds.delete(tempConstraint)
         cmds.pointConstraint(endHandle['transform'], endCluster[1], maintainOffset=True, name=endCluster[1]+'_parentConstraint')
-        cmds.parent(endHandle['preTransform'], self.moduleHandleGrp, absolute=True)
+    
+        # Parent the end handle to the start handle.
+        cmds.parent(endHandle['preTransform'], startHandle['transform'], absolute=True)    
         
         # Create the spline module curve adjust control transforms. These are used to modify the 
         # spline curve and hence affect the positions of the module nodes.
@@ -1033,9 +1035,11 @@ class MRT_Module(object):
 
         mfunc.addNodesToContainer(self.moduleContainer, collectedNodes, includeHierarchyBelow=True, includeShapes=True)
         
-        # Publish the translation attributes for the start and end module transforms.
+        # Publish the translation attributes for the start (and rotate) and end module transforms.
         cmds.container(self.moduleContainer, edit=True, publishAndBind=[startHandle['transform']+'.translate',
                                                         mfunc.stripMRTNamespace(startHandle['transform'])[1]+'_translate'])
+        cmds.container(self.moduleContainer, edit=True, publishAndBind=[startHandle['transform']+'.rotate',
+                                                                mfunc.stripMRTNamespace(startHandle['transform'])[1]+'_rotate'])        
         cmds.container(self.moduleContainer, edit=True, publishAndBind=[endHandle['transform']+'.translate',
                                                         mfunc.stripMRTNamespace(endHandle['transform'])[1]+'_translate'])
         for transform in splineAdjustCurveTransformList:
@@ -1047,9 +1051,9 @@ class MRT_Module(object):
         cmds.connectAttr(startHandle['transform']+'.Global_size', startHandle['transform']+'.scaleX')
         cmds.connectAttr(startHandle['transform']+'.Global_size', startHandle['transform']+'.scaleY')
         cmds.connectAttr(startHandle['transform']+'.Global_size', startHandle['transform']+'.scaleZ')
-        cmds.connectAttr(startHandle['transform']+'.Global_size', endHandle['transform']+'.scaleX')
-        cmds.connectAttr(startHandle['transform']+'.Global_size', endHandle['transform']+'.scaleY')
-        cmds.connectAttr(startHandle['transform']+'.Global_size', endHandle['transform']+'.scaleZ')
+        #cmds.connectAttr(startHandle['transform']+'.Global_size', endHandle['transform']+'.scaleX')
+        #cmds.connectAttr(startHandle['transform']+'.Global_size', endHandle['transform']+'.scaleY')
+        #cmds.connectAttr(startHandle['transform']+'.Global_size', endHandle['transform']+'.scaleZ')
         
         # Connect the module global scaling to the spline module curve adjust transforms.
         for i in range(1, 5):
@@ -1059,9 +1063,9 @@ class MRT_Module(object):
         
         # Connect the module global scaling to the module node joints.
         for joint in self.nodeJoints:
-            cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'Shape.localScaleX')
-            cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'Shape.localScaleY')
-            cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'Shape.localScaleZ')
+            cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'.scaleX')
+            cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'.scaleY')
+            cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'.scaleZ')
             cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'_localAxesInfoRepr_preTransform.scaleX')
             cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'_localAxesInfoRepr_preTransform.scaleY')
             cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'_localAxesInfoRepr_preTransform.scaleZ')
@@ -1290,60 +1294,6 @@ class MRT_Module(object):
         cmds.xform(endHandle[0], worldSpace=True, absolute=True, translation=self.initNodePos[2])
         endHandleConstraint = cmds.pointConstraint(endHandle[0], ikHandle, maintainOffset=False, name=ikHandle+'_pointConstraint')
         cmds.parent(endHandle[0], self.moduleIKnodesGrp, absolute=True)
-        
-        # Use the node handle objects to drive the axial distance for the node joints.
-        for startPos, endPos, drivenJoint in [(rootHandle[0], elbowHandle[0], self.nodeJoints[1]),
-                                              (elbowHandle[0], endHandle[0], self.nodeJoints[2])]:
-                                              
-            # Create a distance node to measure the distance between two joint handles, and connect
-            # the worldSpace translate values.
-            segmentDistance = cmds.createNode('distanceBetween', name=drivenJoint+'_distanceNode')
-            
-            # Get the world positions of the "start" and "end" control handles,
-            # and connect them to the distance between nodes.
-            startPosVector = startPos+'_vectorNode'
-            
-            if not cmds.objExists(startPosVector):
-                cmds.createNode('vectorProduct', name=startPosVector)
-                cmds.setAttr(startPosVector+'.operation', 4)
-                cmds.connectAttr(startPos+'Shape.worldMatrix', startPosVector+'.matrix')
-            
-            cmds.connectAttr(startPosVector+'.output', segmentDistance+'.point1')
-            
-            endPosVector = endPos+'_vectorNode'
-            if not cmds.objExists(endPosVector):
-                cmds.createNode('vectorProduct', name=endPosVector)
-                cmds.setAttr(endPosVector+'.operation', 4)
-                cmds.connectAttr(endPos+'Shape.worldMatrix', endPosVector+'.matrix')
-            
-            cmds.connectAttr(endPosVector+'.output', segmentDistance+'.point2')
-            
-            # Normalize the segment length by the "globalScale" attribute on the module transform.
-            normalizeDivide = cmds.createNode('multiplyDivide', name=drivenJoint+'_distanceNormNode')
-            cmds.setAttr(normalizeDivide+'.operation', 2)
-            cmds.connectAttr(segmentDistance+'.distance', normalizeDivide+'.input1X')
-            #cmds.connectAttr(segmentDistance+'.scaleX', normalizeDivide+'.input2X')
-            cmds.setAttr(normalizeDivide+'.input2X', 1)
-            
-            # Get the aim axis, the axis down the module node chain.
-            aimAxis = self.nodeAxes[0]
-            
-            # Get the distance factor to multiply the original length of the node joint length.
-            distanceDivideFactor = cmds.createNode('multiplyDivide', name=drivenJoint+'_distanceDivideFactor')
-            cmds.setAttr(distanceDivideFactor + '.operation', 2)
-            originalLength = cmds.getAttr(drivenJoint+'.translate'+aimAxis)
-            cmds.connectAttr(normalizeDivide+'.outputX', distanceDivideFactor+'.input1'+aimAxis)
-            cmds.setAttr(distanceDivideFactor+'.input2'+aimAxis, originalLength)
-            
-            # Finally, drive the position of node joints using the multiplied distance.
-            drivenJointAimTranslateMultiply = cmds.createNode('multiplyDivide', name=drivenJoint+'_drivenJointAimTranslateMultiply')
-            cmds.connectAttr(distanceDivideFactor+'.output'+aimAxis, drivenJointAimTranslateMultiply+'.input1'+aimAxis)
-            cmds.setAttr(drivenJointAimTranslateMultiply+'.input2'+aimAxis, math.fabs(originalLength))
-            cmds.connectAttr(drivenJointAimTranslateMultiply+'.output'+aimAxis, drivenJoint+'.translate'+aimAxis)
-            
-            containedNodes.extend([segmentDistance, normalizeDivide, distanceDivideFactor, drivenJointAimTranslateMultiply])
-            
-        mfunc.updateAllTransforms()
         
         # Prepare the module node control handle objects for scaling.
         for i, joint in enumerate(self.nodeJoints):
@@ -1592,6 +1542,59 @@ class MRT_Module(object):
             cmds.setAttr(xhandle['shape']+'.localScaleZ', 0.089)
             cmds.setAttr(xhandle['shape']+'.ds', 5)
             cmds.setAttr(handle+'Shape.visibility', 0)
+            
+        # Use the node handle objects to drive the axial distance for the node joints.
+        for startPos, endPos, drivenJoint in [(rootHandle[0], elbowHandle[0], self.nodeJoints[1]),
+                                              (elbowHandle[0], endHandle[0], self.nodeJoints[2])]:
+                                              
+            # Create a distance node to measure the distance between two joint handles, and connect
+            # the worldSpace translate values.
+            segmentDistance = cmds.createNode('distanceBetween', name=drivenJoint+'_distanceNode')
+            
+            # Get the world positions of the "start" and "end" control handles,
+            # and connect them to the distance between nodes.
+            startPosVector = startPos+'_vectorNode'
+            
+            if not cmds.objExists(startPosVector):
+                cmds.createNode('vectorProduct', name=startPosVector)
+                cmds.setAttr(startPosVector+'.operation', 4)
+                cmds.connectAttr(startPos+'Shape.worldMatrix', startPosVector+'.matrix')
+            
+            cmds.connectAttr(startPosVector+'.output', segmentDistance+'.point1')
+            
+            endPosVector = endPos+'_vectorNode'
+            if not cmds.objExists(endPosVector):
+                cmds.createNode('vectorProduct', name=endPosVector)
+                cmds.setAttr(endPosVector+'.operation', 4)
+                cmds.connectAttr(endPos+'Shape.worldMatrix', endPosVector+'.matrix')
+            
+            cmds.connectAttr(endPosVector+'.output', segmentDistance+'.point2')
+            
+            # Normalize the segment length by the "globalScale" attribute on the module transform.
+            normalizeDivide = cmds.createNode('multiplyDivide', name=drivenJoint+'_distanceNormNode')
+            cmds.setAttr(normalizeDivide+'.operation', 2)
+            cmds.connectAttr(segmentDistance+'.distance', normalizeDivide+'.input1X')
+            cmds.connectAttr(self.moduleTransform+'.globalScale', normalizeDivide+'.input2X')
+            
+            # Get the aim axis, the axis down the module node chain.
+            aimAxis = self.nodeAxes[0]
+            
+            # Get the distance factor to multiply the original length of the node joint length.
+            distanceDivideFactor = cmds.createNode('multiplyDivide', name=drivenJoint+'_distanceDivideFactor')
+            cmds.setAttr(distanceDivideFactor + '.operation', 2)
+            originalLength = cmds.getAttr(drivenJoint+'.translate'+aimAxis)
+            cmds.connectAttr(normalizeDivide+'.outputX', distanceDivideFactor+'.input1'+aimAxis)
+            cmds.setAttr(distanceDivideFactor+'.input2'+aimAxis, originalLength)
+            
+            # Finally, drive the position of node joints using the multiplied distance.
+            drivenJointAimTranslateMultiply = cmds.createNode('multiplyDivide', name=drivenJoint+'_drivenJointAimTranslateMultiply')
+            cmds.connectAttr(distanceDivideFactor+'.output'+aimAxis, drivenJointAimTranslateMultiply+'.input1'+aimAxis)
+            cmds.setAttr(drivenJointAimTranslateMultiply+'.input2'+aimAxis, math.fabs(originalLength))
+            cmds.connectAttr(drivenJointAimTranslateMultiply+'.output'+aimAxis, drivenJoint+'.translate'+aimAxis)
+            
+            containedNodes.extend([segmentDistance, normalizeDivide, distanceDivideFactor, drivenJointAimTranslateMultiply])
+            
+        mfunc.updateAllTransforms()        
         
         # Add the orientation representation control for hinge axes.
         # This control cannot be manipulated directly. It shows the current

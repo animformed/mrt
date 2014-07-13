@@ -2199,7 +2199,7 @@ class MRT_UI(object):
         # Get a list of module namespaces in the scene.
         currentNamespace = cmds.namespaceInfo(currentNamespace=True)
         cmds.namespace(setNamespace=':')
-        moduleNamespaces = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
+        moduleNamespaces = mfunc.returnMRT_Namespaces()
         cmds.namespace(setNamespace=currentNamespace)
 
         # If module namespaces exist, get their respective user specified names.
@@ -2355,7 +2355,7 @@ class MRT_UI(object):
         cmds.namespace(setNamespace=':')
 
         # Get all module namespaces in the scene.
-        moduleNamespaces = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
+        moduleNamespaces = mfunc.returnMRT_Namespaces()
 
         # Skip module undo if no module namespace exists in the scene.
         if moduleNamespaces == None:
@@ -2724,8 +2724,8 @@ class MRT_UI(object):
         # Create and set a temporary namespace to work with module installations from collection file.
         currentNamespace = cmds.namespaceInfo(currentNamespace=True)    # Save current namespace
         cmds.namespace(setNamespace=':')
-        cmds.namespace(addNamespace='MRT_tempNamespaceForImport')
-        cmds.namespace(setNamespace='MRT_tempNamespaceForImport')
+        cmds.namespace(addNamespace='MRT_temp__namespaceForImport')
+        cmds.namespace(setNamespace='MRT_temp__namespaceForImport')
 
         # Read the module collection file data.
         mrtmc_fObject_file = open(collectionFile, 'rb')
@@ -2749,7 +2749,7 @@ class MRT_UI(object):
         os.remove(tempFilePath) # Delete the maya scene file after import
 
         # Get the MRT module names in the current temporary namespace.
-        namesInTemp = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
+        namesInTemp = mfunc.returnMRT_Namespaces()
 
         # Filter the module names from the temporary namespace.
         namespacesInTemp = []
@@ -2758,7 +2758,7 @@ class MRT_UI(object):
 
         # Get the module names in the root namespace, if any.
         cmds.namespace(setNamespace=':')
-        moduleNamespaces = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
+        moduleNamespaces = mfunc.returnMRT_Namespaces()
 
         if moduleNamespaces:
 
@@ -2767,7 +2767,7 @@ class MRT_UI(object):
 
             # Get the user specified names of the modules in the temporary namespace.
             userSpecNamesInTemp = mfunc.returnModuleUserSpecNames(namespacesInTemp)
-            cmds.namespace(setNamespace='MRT_tempNamespaceForImport')
+            cmds.namespace(setNamespace='MRT_temp__namespaceForImport')
             allUserSpecNames = set(userSpecNamesInTemp[1] + userSpecNamesForSceneModules)
 
             # If there're existing modules in the scene, check and rename module(s) in the temporary namespace
@@ -2793,32 +2793,32 @@ class MRT_UI(object):
                     cmds.namespace(addNamespace=newNamespace)
 
                     # Rename the module with the temporary namespace, and remove the old namespace.
-                    cmds.namespace(moveNamespace=[':MRT_tempNamespaceForImport:'+namespace,
-                                                                            ':MRT_tempNamespaceForImport:'+newNamespace])
+                    cmds.namespace(moveNamespace=[':MRT_temp__namespaceForImport:'+namespace,
+                                                                            ':MRT_temp__namespaceForImport:'+newNamespace])
                     cmds.namespace(removeNamespace=namespace)
                     allUserSpecNames.add(newUserSpecName)
 
                     # If its mirror module exists, rename it as well.
                     if cmds.attributeQuery('mirrorModuleNamespace',
-                                            node=':MRT_tempNamespaceForImport:'+newNamespace+':moduleGrp', exists=True):
+                                            node=':MRT_temp__namespaceForImport:'+newNamespace+':moduleGrp', exists=True):
 
                         mirrorModuleNamespace = \
-                            cmds.getAttr(':MRT_tempNamespaceForImport:'+newNamespace+':moduleGrp.mirrorModuleNamespace')
+                            cmds.getAttr(':MRT_temp__namespaceForImport:'+newNamespace+':moduleGrp.mirrorModuleNamespace')
 
-                        cmds.lockNode(':MRT_tempNamespaceForImport:'+mirrorModuleNamespace+':module_container',
+                        cmds.lockNode(':MRT_temp__namespaceForImport:'+mirrorModuleNamespace+':module_container',
                                                                                         lock=False, lockUnpublished=False)
 
-                        cmds.setAttr(':MRT_tempNamespaceForImport:'+mirrorModuleNamespace+':moduleGrp.mirrorModuleNamespace',
+                        cmds.setAttr(':MRT_temp__namespaceForImport:'+mirrorModuleNamespace+':moduleGrp.mirrorModuleNamespace',
                                                                                             newNamespace, type='string')
-                        cmds.lockNode(':MRT_tempNamespaceForImport:'+mirrorModuleNamespace+':module_container', lock=True,
+                        cmds.lockNode(':MRT_temp__namespaceForImport:'+mirrorModuleNamespace+':module_container', lock=True,
                                                                                                     lockUnpublished=True)
         # After renaming the new module for the current scene, move them from the
         # temporary namespace into the root namespace.
         cmds.namespace(setNamespace=':')
-        cmds.namespace(moveNamespace=['MRT_tempNamespaceForImport', ':'], force=True)
+        cmds.namespace(moveNamespace=['MRT_temp__namespaceForImport', ':'], force=True)
 
         # Remove the temporary namespace
-        cmds.namespace(removeNamespace='MRT_tempNamespaceForImport')
+        cmds.namespace(removeNamespace='MRT_temp__namespaceForImport')
 
         # Set the saved namespace
         cmds.namespace(setNamespace=currentNamespace)
@@ -3031,8 +3031,7 @@ class MRT_UI(object):
         Resets the height of the scene module list treeView based on the number of modules.
         '''
         # Get the scene modules
-        sceneNamespaces = cmds.namespaceInfo(listOnlyNamespaces=True)
-        MRT_namespaces = mfunc.returnMRT_Namespaces(sceneNamespaces)
+        MRT_namespaces = mfunc.returnMRT_Namespaces()
 
         # Set the height for the treeeView and its parent layout
         if MRT_namespaces != None:
@@ -3055,11 +3054,12 @@ class MRT_UI(object):
         if selection == None:
             self.treeViewSelection_list = {}
 
-        # Get the module(s) in the current scene
+        # Set the namespace to root.
         currentNamespace = cmds.namespaceInfo(currentNamespace=True)
         cmds.namespace(setNamespace=':')
-        sceneNamespaces = cmds.namespaceInfo(listOnlyNamespaces=True)
-        MRT_namespaces = mfunc.returnMRT_Namespaces(sceneNamespaces)
+        
+        # Get the module(s) in the current scene
+        MRT_namespaces = mfunc.returnMRT_Namespaces()
 
         # Clear the scene module treeView list
         cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, removeAll=True)
@@ -3533,7 +3533,7 @@ class MRT_UI(object):
             # Collect all parent module(s) (non-included in 'modulesToBeCollected') for modules to be collected.
             # These modules to be collected will be temporarily "unparented".
             # This is done to select and export the collected module(s) without exporting unnecessary DG items.
-            allModuleNamespaces = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
+            allModuleNamespaces = mfunc.returnMRT_Namespaces()
             for module in modulesToBeCollected:
                 moduleParentNode = cmds.getAttr(module+':moduleGrp.moduleParent')
                 if moduleParentNode != 'None':
@@ -3696,9 +3696,8 @@ class MRT_UI(object):
 
         if allModules:
             # If all modules in the scene are to be included in the collection,
-            namespaces = cmds.namespaceInfo(listOnlyNamespaces=True)
             # Include all module namespaces
-            mrt_namespaces = mfunc.returnMRT_Namespaces(namespaces)
+            mrt_namespaces = mfunc.returnMRT_Namespaces()
             if mrt_namespaces == None:
                 # If no modules exist in the scene.
                 Error('MRT: Module collection error. No module(s) in the scene for making a collection.')
@@ -3794,7 +3793,7 @@ class MRT_UI(object):
             return
 
         # Get all module namespaces in the scene.
-        sceneNamespaces = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
+        sceneNamespaces = mfunc.returnMRT_Namespaces()
 
         currentModuleUserNames = []
 
@@ -4386,7 +4385,7 @@ class MRT_UI(object):
         cmds.namespace(setNamespace=':')
 
         # Get all module namespaces.
-        allModules = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
+        allModules = mfunc.returnMRT_Namespaces()
 
         # Disconnect module parenting connections for all modules.
         for namespace in allModules:
@@ -4447,8 +4446,7 @@ class MRT_UI(object):
         UI callback method to decrement the height of scroll list for scene modules.
         """
         # Get the module namespaces ion the scene.
-        sceneNamespaces = cmds.namespaceInfo(listOnlyNamespaces=True)
-        MRT_namespaces = mfunc.returnMRT_Namespaces(sceneNamespaces)
+        MRT_namespaces = mfunc.returnMRT_Namespaces()
 
         # Set the size of the scroll list based on the number of modules, minus a decrement value.
         if MRT_namespaces != None:
@@ -4599,7 +4597,7 @@ class MRT_UI(object):
         fieldInfo = cmds.textField(self.uiVars['selectedChildModule_textField'], query=True, text=True)
 
         # Get the current scene module namespaces.
-        moduleNamespaces = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
+        moduleNamespaces = mfunc.returnMRT_Namespaces()
 
         # Check for scene and child module namespaces.
         if moduleNamespaces == None:
@@ -4661,7 +4659,7 @@ class MRT_UI(object):
             return
 
         # Get all module namespace.
-        moduleNamespaces = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
+        moduleNamespaces = mfunc.returnMRT_Namespaces()
 
         # If no module(s) in the scene.
         if moduleNamespaces == None:
@@ -4833,7 +4831,7 @@ class MRT_UI(object):
         cmds.namespace(setNamespace=':')
 
         # Get the current scene modules.
-        scene_modules = mfunc.returnMRT_Namespaces(cmds.namespaceInfo(listOnlyNamespaces=True))
+        scene_modules = mfunc.returnMRT_Namespaces()
         if not scene_modules:
             Error('MRT: No modules found in the scene to create a character.')
             return

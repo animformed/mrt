@@ -332,20 +332,29 @@ def stripMRTNamespace(moduleName):
     return None
 
 
-def returnMRT_Namespaces(names):
+def returnMRT_Namespaces():
     """
     Returns all current namespaces in the scene defined by MRT.
     """
+    # Get the current namespace, set the namespace to root.
+    currentNamespace = cmds.namespaceInfo(currentNamespace=True)
+    cmds.namespace(setNamespace=':')    
+    
+    sceneNamespaces = cmds.namespaceInfo(listOnlyNamespaces=True)
+    
     MRT_namespaces = []
 
-    for name in names:
+    for name in sceneNamespaces:
         if re.match('^MRT_\D+__\w+$', name):
             MRT_namespaces.append(str(name))
-
-    if len(MRT_namespaces) > 0:
-        return MRT_namespaces
-
-    return None
+            
+    # Restore the current namespace.
+    cmds.namespace(setNamespace=currentNamespace)
+    
+    if not MRT_namespaces:
+        MRT_namespaces = None 
+    
+    return MRT_namespaces
 
 
 def findHighestNumSuffix(baseName, names):
@@ -1044,6 +1053,8 @@ def lockHideChannelAttrs(node, *attrList, **setAttrs):
     keyable - Keyable & visible in the channel box.
     lock - Lock the attribute.
     """
+    node = str(node)
+    
     if cmds.objExists(node) and not cmds.referenceQuery(node, isNodeReferenced=True):
 
         # Go through the passed-in node attributes.
@@ -1392,7 +1403,7 @@ def returnModuleAttrsFromScene(moduleNamespace):
 
 
             # Get the node translation, world translation, and orientation values
-            node_transform_Grp = moduleNamespace+':moduleJointsGrp'
+            node_transform_Grp = moduleNamespace+':moduleNodesGrp'
             node_transform_Grp_allChildren = cmds.listRelatives(node_transform_Grp, allDescendents=True, type='joint')
 
             node_translations = []
@@ -1456,7 +1467,7 @@ def returnModuleAttrsFromScene(moduleNamespace):
 
         # Get the world translation and rotation values for spline nodes. Used when creating a joint hierarchy from
         # spline module in a character.
-        node_transform_Grp_allChildren = cmds.listRelatives(moduleNamespace+':moduleJointsGrp', allDescendents=True, type='joint')
+        node_transform_Grp_allChildren = cmds.listRelatives(moduleNamespace+':moduleNodesGrp', allDescendents=True, type='joint')
 
         node_world_orientations = []
         node_world_translations = []
@@ -1508,7 +1519,7 @@ def returnModuleAttrsFromScene(moduleNamespace):
         # reset the node rotation orders to their default.
 
         # Get the module node transforms
-        node_transform_Grp_allChildren = cmds.listRelatives(moduleNamespace+':moduleJointsGrp', allDescendents=True, type='joint')
+        node_transform_Grp_allChildren = cmds.listRelatives(moduleNamespace+':moduleNodesGrp', allDescendents=True, type='joint')
 
         # Get the current rotation orders of module nodes (set by the user).
         node_rotationOrder = []
@@ -2918,7 +2929,7 @@ def changeSplineJointOrientationType(moduleNamespace):
     if cmds.getAttr(moduleNamespace+':splineStartHandleTransform.Node_Orientation_Type') == 0:
 
         cmds.setAttr(moduleNamespace+':splineStartHandleTransform.Axis_Rotate', 0, keyable=False)
-        node_transform_Grp = moduleNamespace+':moduleJointsGrp'
+        node_transform_Grp = moduleNamespace+':moduleNodesGrp'
         node_transform_Grp_allChildren = cmds.listRelatives(node_transform_Grp, allDescendents=True, type='joint')
         for transform in node_transform_Grp_allChildren:
             cmds.setAttr(transform+'_pairBlend.rotateMode', 1)
@@ -2927,7 +2938,7 @@ def changeSplineJointOrientationType(moduleNamespace):
     if cmds.getAttr(moduleNamespace+':splineStartHandleTransform.Node_Orientation_Type') == 1:
 
         cmds.setAttr(moduleNamespace+':splineStartHandleTransform.Axis_Rotate', keyable=True)
-        node_transform_Grp = moduleNamespace+':moduleJointsGrp'
+        node_transform_Grp = moduleNamespace+':moduleNodesGrp'
         node_transform_Grp_allChildren = cmds.listRelatives(node_transform_Grp, allDescendents=True, type='joint')
         for transform in node_transform_Grp_allChildren:
             cmds.setAttr(transform+'_pairBlend.rotateMode', 2)
@@ -2952,12 +2963,12 @@ def changeSplineJointOrientationType_forMirror(moduleNamespace, mirrorModuleName
         cmds.setAttr(moduleNamespace+':splineStartHandleTransform.Axis_Rotate', 0, keyable=False)
         cmds.setAttr(mirrorModuleNamespace+':splineStartHandleTransform.Axis_Rotate', 0, keyable=False)
 
-        node_transform_Grp = moduleNamespace+':moduleJointsGrp'
+        node_transform_Grp = moduleNamespace+':moduleNodesGrp'
         node_transform_Grp_allChildren = cmds.listRelatives(node_transform_Grp, allDescendents=True, type='joint')
         for transform in node_transform_Grp_allChildren:
             cmds.setAttr(transform+'_pairBlend.rotateMode', 1)
 
-        node_transform_Grp = mirrorModuleNamespace+':moduleJointsGrp'
+        node_transform_Grp = mirrorModuleNamespace+':moduleNodesGrp'
         node_transform_Grp_allChildren = cmds.listRelatives(node_transform_Grp, allDescendents=True, type='joint')
         for transform in node_transform_Grp_allChildren:
             cmds.setAttr(transform+'_pairBlend.rotateMode', 1)
@@ -2967,12 +2978,12 @@ def changeSplineJointOrientationType_forMirror(moduleNamespace, mirrorModuleName
         cmds.setAttr(moduleNamespace+':splineStartHandleTransform.Axis_Rotate', keyable=True)
         cmds.setAttr(mirrorModuleNamespace+':splineStartHandleTransform.Axis_Rotate', keyable=True)
 
-        node_transform_Grp = moduleNamespace+':moduleJointsGrp'
+        node_transform_Grp = moduleNamespace+':moduleNodesGrp'
         node_transform_Grp_allChildren = cmds.listRelatives(node_transform_Grp, allDescendents=True, type='joint')
         for transform in node_transform_Grp_allChildren:
             cmds.setAttr(transform+'_pairBlend.rotateMode', 2)
 
-        node_transform_Grp = mirrorModuleNamespace+':moduleJointsGrp'
+        node_transform_Grp = mirrorModuleNamespace+':moduleNodesGrp'
         node_transform_Grp_allChildren = cmds.listRelatives(node_transform_Grp, allDescendents=True, type='joint')
         for transform in node_transform_Grp_allChildren:
             cmds.setAttr(transform+'_pairBlend.rotateMode', 2)
