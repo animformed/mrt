@@ -425,7 +425,41 @@ def returnVectorMagnitude(transform_start, transform_end):
 
     return transform_vector_magnitude
 
+    
+def compareTransformPairOrientation(transform1, transform2):
 
+    transform1Pos = cmds.createNode('transform', skipSelect=True)
+    align(transform1, transform1Pos)
+    transform1Dir = cmds.createNode('transform', p=transform1Pos, skipSelect=True)
+    transform1PosValue = cmds.xform(transform1, query=True, worldSpace=True, translation=True)
+    
+    transform2Pos = cmds.createNode('transform', skipSelect=True)
+    align(transform2, transform2Pos)
+    transform2Dir = cmds.createNode('transform', p=transform2Pos, skipSelect=True)
+    transform2PosValue = cmds.xform(transform2, query=True, worldSpace=True, translation=True)
+    
+    directions = {'XYZ':[], 'x':None, 'y':None, 'z':None}
+    
+    for axis, value in zip(('X', 'Y', 'Z'), ((1,0,0), (0,1,0), (0,0,1))):
+    
+        cmds.setAttr(transform1Dir+'.translate', *value, type='double3')
+        transform1DirValue = cmds.xform(transform1Dir, query=True, worldSpace=True, translation=True)
+        cmds.setAttr(transform2Dir+'.translate', *value, type='double3')
+        transform2DirValue = cmds.xform(transform2Dir, query=True, worldSpace=True, translation=True)
+        
+        dir_cosine = returnDotProductDirection(transform1PosValue, transform1DirValue,
+                                               transform2PosValue, transform2DirValue)[0]
+        
+        directions['XYZ'].append(dir_cosine)
+        
+        
+    for 
+    
+    cmds.delete(transform1Pos, transform2Pos)
+
+    return directions
+    
+    
 def returnCrossProductDirection(transform1_start, transform1_end, transform2_start, transform2_end, normalize=False):
     """
     Calculates and returns the cross-product data for two input vectors. It has arguments for,
@@ -853,7 +887,6 @@ def moveSelectionOnIdle(selection, translation_values):
     """
     Useful for selection and moving after a successful DG update by maya.
     """
-    print "MOVESELE", selection, translation_values
     cmds.select(selection, replace=True)
     cmds.move(*translation_values, relative=True, worldSpace=True)
 
@@ -2660,6 +2693,7 @@ def moduleUtilitySwitchScriptJob():      # This definition is to be modified as 
     Included as MRT startup function in userSetup file. Runs a scriptJob to trigger 
     runtime procedures during maya events.
     """
+    print "moduleUtilitySwitchScriptJob", moduleUtilitySwitchScriptJob
     jobNumber = cmds.scriptJob(event=['SelectionChanged', moduleUtilitySwitchFunctions], protected=True)
     return jobNumber
 
@@ -2811,6 +2845,25 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
 
                 if 'translate' in selectionAttrs[0]:
                     
+                    cmds.connectAttr(selection+'.translate', mirrorTranslateMultiplyDivide+'.input1')
+                    
+                    direction_mult = compareTransformPairOrientation(selection, mirrorObject)
+                    
+                    # Find the local axis parallel to the mirror axis.
+                    # Create a temp world transform.
+                    worldTemp = cmds.createNode('transform', skipSelect=True)
+                    world_directions = compareTransformPairOrientation(worldTemp, selection)
+                    world_directions[mirrorAxis]
+                    
+                    direction_mult[mirrorAxis] = direction_mult.get(mirrorAxis) * -1
+                    
+                    cmds.setAttr(mirrorTranslateMultiplyDivide+'.input2X', direction_mult['X'])
+                    cmds.setAttr(mirrorTranslateMultiplyDivide+'.input2Y', direction_mult['Y']) 
+                    cmds.setAttr(mirrorTranslateMultiplyDivide+'.input2Z', direction_mult['Z']) 
+                    
+                    cmds.connectAttr(mirrorTranslateMultiplyDivide+'.output', mirrorObject+'.translate')
+                    
+                    '''
                     selection_mirrorMove_transform = cmds.createNode('transform', skipSelect=True)
                     selection_mirrorMove_src_vector_p = cmds.createNode('vectorProduct', skipSelect=True)
                     selection_mirrorMove_trgt_vector_p = cmds.createNode('vectorProduct', skipSelect=True)
@@ -2838,6 +2891,7 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
                     collected_nodes.extend([selection_mirrorMove_transform, mirror_targetMove_transform,
                                             selection_mirrorMove_src_vector_p, selection_mirrorMove_trgt_vector_p,
                                             mirror_targetMove_src_vector_p, mirror_targetMove_trgt_vector_p])
+                    '''
                     
                     collected_nodes.append(cmds.listConnections(mirrorTranslateMultiplyDivide, source=True, destination=True, \
                                                                                                     type='unitConversion'))                    
