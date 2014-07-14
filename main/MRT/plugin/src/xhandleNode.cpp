@@ -390,20 +390,21 @@ void xhandleShape::draw(M3dView &view, const MDagPath &path, M3dView::DisplaySty
     // Update/Get the node attribute values.
     setInternalAttrs();
     
+    // Save the current GL attribute states (set by maya or by other means).
     glft->glPushAttrib(GL_ALL_ATTRIB_BITS);
     
     // Set the current matrix type.
     glft->glMatrixMode(GL_MODELVIEW);
     
+    // Begin draw operations.
     view.beginGL();
     
-    // Apply local translation (localPosition).
+    // Apply local translation (localPosition) to draw matrix..
     glft->glTranslated(l_positionX, l_positionY, l_positionZ);
         
-    // Apply local scaling (localScale and addScale).
+    // Apply local scaling (localScale and addScale) to draw matrix.
     glft->glScaled(l_scaleX, l_scaleY, l_scaleZ);
 
-    
     // If the draw "ortho" only is enabled for draw operations,
     if (dDrawOrtho) {
 
@@ -411,7 +412,8 @@ void xhandleShape::draw(M3dView &view, const MDagPath &path, M3dView::DisplaySty
         MVector rotateAxis;
         double rotateTheta;
         
-        // Get the path world rotate matrix and inv matrix.
+        // Get the path world rotate inverse matrix and apply it to the current draw matrix.
+        // This is done to negate any rotations applied as a result of maya transformations.
         MMatrix pathInvMatrix = path.inclusiveMatrixInverse();
         MTransformationMatrix pathTransInvMatrix(pathInvMatrix);
         MQuaternion pathRotation = pathTransInvMatrix.rotation();
@@ -463,8 +465,10 @@ void xhandleShape::draw(M3dView &view, const MDagPath &path, M3dView::DisplaySty
         drawShapes(status == M3dView::kActive);
     }
     
+    // End draw operations.
     view.endGL();
     
+    // Restore the states for the saved GL attributes.
     glft->glPopAttrib();
 }
 

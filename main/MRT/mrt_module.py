@@ -463,7 +463,7 @@ class MRT_Module(object):
         # If the current module to be created is a mirror module (on the -ve side of the creation plane).
         if self.mirrorModule:
             cmds.setAttr(self.moduleGrp+'.onPlane', '-'+self.onPlane, type='string')
-            
+        
         # If the module is a part of a mirrored module pair. In other words, if module mirroring is turned on.
         # Add module mirroring attributes to the module group. 
         if self.mirrorModuleStatus == 'On':
@@ -547,36 +547,45 @@ class MRT_Module(object):
 
         # Add the module transform to the module, at the position of the root node.
         # Add custom attributes to it.
-        handle = objects.load_xhandleShape(name=self.moduleTypespace+':module_transform', colour=24)
-        cmds.setAttr(handle['shape']+'.localScaleX', 0.26)
-        cmds.setAttr(handle['shape']+'.localScaleY', 0.26)
-        cmds.setAttr(handle['shape']+'.localScaleZ', 0.26)
-        cmds.setAttr(handle['shape']+'.drawStyle', 8)
-        cmds.setAttr(handle['shape']+'.drawOrtho', 0)
-        cmds.setAttr(handle['shape']+'.wireframeThickness', 2)
+        moduleHandle = objects.load_xhandleShape(name=self.moduleTypespace+':module_transform', colour=24)
+        cmds.setAttr(moduleHandle['shape']+'.localScaleX', 0.26)
+        cmds.setAttr(moduleHandle['shape']+'.localScaleY', 0.26)
+        cmds.setAttr(moduleHandle['shape']+'.localScaleZ', 0.26)
+        cmds.setAttr(moduleHandle['shape']+'.drawStyle', 8)
+        cmds.setAttr(moduleHandle['shape']+'.drawOrtho', 0)
+        cmds.setAttr(moduleHandle['shape']+'.wireframeThickness', 2)
 
-        mfunc.lockHideChannelAttrs(handle['transform'], 's', 'v', keyable=False)
-
-        cmds.addAttr(handle['transform'], attributeType='float', longName='globalScale',
-                                                        hasMinValue=True, minValue=0, defaultValue=1, keyable=True)
-        self.moduleTransform = handle['transform']
-        tempConstraint = cmds.pointConstraint(self.nodeJoints[0], handle['preTransform'], maintainOffset=False)
+        mfunc.lockHideChannelAttrs(moduleHandle['transform'], 's', 'v', keyable=False)
+        
+        # Set the scaling attributes to the module transform.
+        cmds.addAttr(moduleHandle['transform'], attributeType='float', longName='globalScale',
+                                                        hasMinValue=True, minValue=0.01, defaultValue=1, keyable=True)
+        cmds.addAttr(moduleHandle['transform'], attributeType='float', longName='scaleFactor',
+                                                                hasMinValue=True, minValue=0.01, defaultValue=1)
+        cmds.addAttr(moduleHandle['transform'], attributeType='float', longName='finalScale')
+        
+        # Add the scaling factor to be used with "globalScale".
+        scaleFactorMult = cmds.createNode('multDoubleLinear', name=self.moduleTypespace+':moduleScalingFactor_mult')
+        cmds.connectAttr(moduleHandle['transform']+'.globalScale', scaleFactorMult+'.input1')
+        cmds.connectAttr(moduleHandle['transform']+'.scaleFactor', scaleFactorMult+'.input2')
+        cmds.connectAttr(scaleFactorMult+'.output', moduleHandle['transform']+'.finalScale')
+        
+        self.moduleTransform = moduleHandle['transform']
+        tempConstraint = cmds.pointConstraint(self.nodeJoints[0], moduleHandle['transform'], maintainOffset=False)
         cmds.delete(tempConstraint)
 
         # Add the module transform to the module group.
-        cmds.parent(handle['preTransform'], self.moduleGrp, absolute=True)
+        cmds.parent(moduleHandle['preTransform'], self.moduleGrp, absolute=True)
 
         # Set up constraints for the module transform.
         module_node_parentConstraint = cmds.parentConstraint(self.moduleTransform, self.moduleNodesGrp,
                                 maintainOffset=True, name=self.moduleTypespace+':moduleTransform_rootNode_parentConstraint')
         module_node_scaleConstraint = cmds.scaleConstraint(self.moduleTransform, self.moduleNodesGrp,
                                 maintainOffset=False, name=self.moduleTypespace+':moduleTransform_rootNode_scaleConstraint')
-        cmds.connectAttr(self.moduleTransform+'.globalScale', self.moduleTransform+'.scaleX')
-        cmds.connectAttr(self.moduleTransform+'.globalScale', self.moduleTransform+'.scaleY')
-        cmds.connectAttr(self.moduleTransform+'.globalScale', self.moduleTransform+'.scaleZ')
-
-        # Connect the scale attributes to an aliased 'globalScale' attribute (This could've been done on the raw def itself,
-        # but it was issuing a cycle; not sure why. But the DG eval was not cyclic).
+        cmds.connectAttr(self.moduleTransform+'.finalScale', self.moduleTransform+'.scaleX')
+        cmds.connectAttr(self.moduleTransform+'.finalScale', self.moduleTransform+'.scaleY')
+        cmds.connectAttr(self.moduleTransform+'.finalScale', self.moduleTransform+'.scaleZ')
+        
         # Create hierarchy/orientation representation on joint node(s), depending on number of nodes in the module.
         containedNodes = self.createJointNodeControlHandleRepr()
         if len(self.nodeJoints) == 1:
@@ -606,7 +615,7 @@ class MRT_Module(object):
             cmds.setAttr(handle['shape']+'.localScaleY', 0.089)
             cmds.setAttr(handle['shape']+'.localScaleZ', 0.089)
             cmds.setAttr(handle['shape']+'.ds', 5)
-            
+
             nodeHandles.append(handle)
 
         # If there's more than one node, create orientation/hierarchy representations for all joints, except for
@@ -625,10 +634,10 @@ class MRT_Module(object):
         # representation groups, since they're not needed.
         if self.numNodes == 1:
             cmds.delete([self.moduleHandleSegmentGrp, self.moduleOrientationHierarchyReprGrp])
-        
+
         # Create module parenting representation objects.
         containedNodes += self.createHierarchySegmentForModuleParentingRepr()
-        
+
         # Create the proxy geometry for the module if it is enabled.
         if self.proxyGeoStatus:
             if self.proxyGeoElbow:
@@ -663,6 +672,8 @@ class MRT_Module(object):
                                                                         moduleTransformName+'_rotate'])
         cmds.container(self.moduleContainer, edit=True, publishAndBind=[self.moduleTransform+'.globalScale',
                                                                         moduleTransformName+'_globalScale'])
+        cmds.container(self.moduleContainer, edit=True, publishAndBind=[self.moduleTransform+'.scaleFactor',
+                                                                        moduleTransformName+'_scaleFactor'])        
 
         # If the module contains only single node, publish its orientation control.
         if len(self.nodeJoints) == 1:
@@ -676,6 +687,8 @@ class MRT_Module(object):
         # orientation for module proxy geometry.
         if self.numNodes > 1:
             self.connectCustomOrientationReprToModuleProxies()
+        
+        cmds.setAttr(moduleHandle['transform']+'.scaleFactor', 30)
 
 
     def createSplineNodeModule(self, *args):
@@ -743,7 +756,7 @@ class MRT_Module(object):
             cmds.setAttr(self.moduleGrp+'.mirrorModuleNamespace', self.mirror_moduleNamespace, type='string')
             cmds.addAttr(self.moduleGrp, dataType='string', longName='mirrorRotation', keyable=False)
             cmds.setAttr(self.moduleGrp+'.mirrorRotation', self.mirrorRotationFunc, type='string')
-        
+    
         # Create a group for proxy geometry.
         if self.proxyGeoStatus and self.proxyGeoElbow:
             self.proxyGeoGrp = cmds.group(empty=True, name=self.moduleTypespace+':proxyGeometryGrp')
@@ -864,7 +877,7 @@ class MRT_Module(object):
         self.moduleTransform = startHandle['transform']
         
         # Position the start module transform and constrain the start cluster to it.
-        tempConstraint = cmds.pointConstraint(self.nodeJoints[0], startHandle['preTransform'], maintainOffset=False)
+        tempConstraint = cmds.pointConstraint(self.nodeJoints[0], startHandle['transform'], maintainOffset=False)
         cmds.delete(tempConstraint)
         cmds.pointConstraint(startHandle['transform'], startCluster[1], maintainOffset=True, name=startCluster[1]+'_parentConstraint')
         cmds.parent(startHandle['preTransform'], self.moduleHandleGrp, absolute=True)
@@ -1048,33 +1061,30 @@ class MRT_Module(object):
         
         # Add the necessary module attributes on the start module transform.
         self.addCustomAttributesOnModuleTransform()
-        cmds.connectAttr(startHandle['transform']+'.Global_size', startHandle['transform']+'.scaleX')
-        cmds.connectAttr(startHandle['transform']+'.Global_size', startHandle['transform']+'.scaleY')
-        cmds.connectAttr(startHandle['transform']+'.Global_size', startHandle['transform']+'.scaleZ')
-        #cmds.connectAttr(startHandle['transform']+'.Global_size', endHandle['transform']+'.scaleX')
-        #cmds.connectAttr(startHandle['transform']+'.Global_size', endHandle['transform']+'.scaleY')
-        #cmds.connectAttr(startHandle['transform']+'.Global_size', endHandle['transform']+'.scaleZ')
+        cmds.connectAttr(startHandle['transform']+'.finalScale', startHandle['transform']+'.scaleX')
+        cmds.connectAttr(startHandle['transform']+'.finalScale', startHandle['transform']+'.scaleY')
+        cmds.connectAttr(startHandle['transform']+'.finalScale', startHandle['transform']+'.scaleZ')
         
         # Connect the module global scaling to the spline module curve adjust transforms.
         for i in range(1, 5):
             for j in ['X', 'Y', 'Z']:
-                cmds.connectAttr(startHandle['transform']+'.Global_size', '%s:spline_%s_adjustCurve_transform.scale%s' \
+                cmds.connectAttr(startHandle['transform']+'.finalScale', '%s:spline_%s_adjustCurve_transform.scale%s' \
                                                                 % (self.moduleTypespace, i, j))
         
         # Connect the module global scaling to the module node joints.
         for joint in self.nodeJoints:
-            cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'.scaleX')
-            cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'.scaleY')
-            cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'.scaleZ')
-            cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'_localAxesInfoRepr_preTransform.scaleX')
-            cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'_localAxesInfoRepr_preTransform.scaleY')
-            cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'_localAxesInfoRepr_preTransform.scaleZ')
+            cmds.connectAttr(startHandle['transform']+'.finalScale', joint+'.scaleX')
+            cmds.connectAttr(startHandle['transform']+'.finalScale', joint+'.scaleY')
+            cmds.connectAttr(startHandle['transform']+'.finalScale', joint+'.scaleZ')
+            cmds.connectAttr(startHandle['transform']+'.finalScale', joint+'_localAxesInfoRepr_preTransform.scaleX')
+            cmds.connectAttr(startHandle['transform']+'.finalScale', joint+'_localAxesInfoRepr_preTransform.scaleY')
+            cmds.connectAttr(startHandle['transform']+'.finalScale', joint+'_localAxesInfoRepr_preTransform.scaleZ')
             
             # Connect the module global scaling to the proxy elbow transforms. 
             if self.proxyGeoStatus and self.proxyGeoElbow:
-                cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'_proxy_elbow_geo_scaleTransform.scaleX')
-                cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'_proxy_elbow_geo_scaleTransform.scaleY')
-                cmds.connectAttr(startHandle['transform']+'.Global_size', joint+'_proxy_elbow_geo_scaleTransform.scaleZ')
+                cmds.connectAttr(startHandle['transform']+'.finalScale', joint+'_proxy_elbow_geo_scaleTransform.scaleX')
+                cmds.connectAttr(startHandle['transform']+'.finalScale', joint+'_proxy_elbow_geo_scaleTransform.scaleY')
+                cmds.connectAttr(startHandle['transform']+'.finalScale', joint+'_proxy_elbow_geo_scaleTransform.scaleZ')
         
         # Connect the module node orientation attributes on the start module transform.
         cmds.connectAttr(startHandle['transform']+'.Node_Orientation_Info', self.moduleOrientationReprGrp+'.visibility')
@@ -1105,7 +1115,7 @@ class MRT_Module(object):
         # Connect module orientation representation objects to drive 
         # orientation for module proxy geometry.
         self.connectCustomOrientationReprToModuleProxies()
-        
+
 
     def createHingeNodeModule(self):
         '''
@@ -1510,8 +1520,19 @@ class MRT_Module(object):
         cmds.setAttr(moduleTransform['shape']+'.drawOrtho', 0)
         cmds.setAttr(moduleTransform['shape']+'.wireframeThickness', 2)
         mfunc.lockHideChannelAttrs(moduleTransform['transform'], 's', 'v', keyable=False)
+        
         cmds.addAttr(moduleTransform['transform'], attributeType='float', longName='globalScale', 
                                         hasMinValue=True, minValue=0, defaultValue=1, keyable=True)
+        cmds.addAttr(moduleTransform['transform'], attributeType='float', longName='scaleFactor',
+                                                                hasMinValue=True, minValue=0.01, defaultValue=30)
+        cmds.addAttr(moduleTransform['transform'], attributeType='float', longName='finalScale')
+        
+        # Add the scaling factor to be used with "globalScale".
+        scaleFactorMult = cmds.createNode('multDoubleLinear', name=self.moduleTypespace+':moduleScalingFactor_mult')
+        cmds.connectAttr(moduleTransform['transform']+'.globalScale', scaleFactorMult+'.input1')
+        cmds.connectAttr(moduleTransform['transform']+'.scaleFactor', scaleFactorMult+'.input2')
+        cmds.connectAttr(scaleFactorMult+'.output', moduleTransform['transform']+'.finalScale')        
+        
         self.moduleTransform = moduleTransform['transform']
         tempConstraint = cmds.pointConstraint(self.nodeJoints[0], self.moduleTransform, maintainOffset=False)
         cmds.delete(tempConstraint)
@@ -1526,14 +1547,14 @@ class MRT_Module(object):
         cmds.scaleConstraint(self.moduleTransform, rootEndHandleIKsegmentMidLocator, maintainOffset=False, 
                                                 name=self.moduleTransform+'_scaleConstraint')
 
-        # Connect the scale attributes to an aliased 'globalScale' attribute.
+        # Connect the scale attributes to an aliased 'finalScale' attribute.
         # (This could've been done on the raw def itself, but it was issuing a cycle; not sure why. 
         # But the DG eval was not cyclic).
-        cmds.connectAttr(self.moduleTransform+'.globalScale', self.moduleTransform+'.scaleX')
-        cmds.connectAttr(self.moduleTransform+'.globalScale', self.moduleTransform+'.scaleY')
-        cmds.connectAttr(self.moduleTransform+'.globalScale', self.moduleTransform+'.scaleZ')
+        cmds.connectAttr(self.moduleTransform+'.finalScale', self.moduleTransform+'.scaleX')
+        cmds.connectAttr(self.moduleTransform+'.finalScale', self.moduleTransform+'.scaleY')
+        cmds.connectAttr(self.moduleTransform+'.finalScale', self.moduleTransform+'.scaleZ')
 
-        # Connect the globalScale attribute of the module transform to the 
+        # Connect the finalScale attribute of the module transform to the 
         # control handles for the module nodes.
         for handle in [rootHandle[0], elbowHandle[0], endHandle[0]]:
             xhandle = objects.load_xhandleShape(transform=handle, name=handle+'X', colour=self.modHandleColour)
@@ -1570,11 +1591,11 @@ class MRT_Module(object):
             
             cmds.connectAttr(endPosVector+'.output', segmentDistance+'.point2')
             
-            # Normalize the segment length by the "globalScale" attribute on the module transform.
+            # Normalize the segment length by the "finalScale" attribute on the module transform.
             normalizeDivide = cmds.createNode('multiplyDivide', name=drivenJoint+'_distanceNormNode')
             cmds.setAttr(normalizeDivide+'.operation', 2)
             cmds.connectAttr(segmentDistance+'.distance', normalizeDivide+'.input1X')
-            cmds.connectAttr(self.moduleTransform+'.globalScale', normalizeDivide+'.input2X')
+            cmds.connectAttr(self.moduleTransform+'.finalScale', normalizeDivide+'.input2X')
             
             # Get the aim axis, the axis down the module node chain.
             aimAxis = self.nodeAxes[0]
@@ -1677,6 +1698,8 @@ class MRT_Module(object):
                                                                         moduleTransformName+'_rotate'])
         cmds.container(self.moduleContainer, edit=True, publishAndBind=[self.moduleTransform+'.globalScale', 
                                                                         moduleTransformName+'_globalScale'])
+        cmds.container(self.moduleContainer, edit=True, publishAndBind=[self.moduleTransform+'.scaleFactor', 
+                                                                                moduleTransformName+'_scaleFactor'])        
         
         # Publish the module node control handle attributes for the module container.
         for handle in (rootHandle[0], elbowHandle[0], endHandle[0]):
@@ -1883,8 +1906,17 @@ class MRT_Module(object):
             cmds.setAttr(self.moduleTransform+'.Node_Repr', keyable=False, channelBox=True)
             
             # Global size
-            cmds.addAttr(self.moduleTransform, attributeType='float', longName='Global_size', hasMinValue=True,
+            cmds.addAttr(self.moduleTransform, attributeType='float', longName='globalScale', hasMinValue=True,
                                                                         minValue=0, defaultValue=1, keyable=True)
+            cmds.addAttr(self.moduleTransform, attributeType='float', longName='scaleFactor',
+                                                                    hasMinValue=True, minValue=0.01, defaultValue=30)
+            cmds.addAttr(self.moduleTransform, attributeType='float', longName='finalScale')
+            
+            # Add the scaling factor to be used with "globalScale".
+            scaleFactorMult = cmds.createNode('multDoubleLinear', name=self.moduleTypespace+':moduleScalingFactor_mult')
+            cmds.connectAttr(self.moduleTransform+'.globalScale', scaleFactorMult+'.input1')
+            cmds.connectAttr(self.moduleTransform+'.scaleFactor', scaleFactorMult+'.input2')
+            cmds.connectAttr(scaleFactorMult+'.output', self.moduleTransform+'.finalScale')
             
             # Attribute for rotating the axial orientation of nodes along the module spline curve.
             cmds.addAttr(self.moduleTransform, attributeType='float', longName='Axis_Rotate', defaultValue=0, keyable=True)
@@ -1903,7 +1935,9 @@ class MRT_Module(object):
 
             # Publish the spline module attributes.
             cmds.container(self.moduleContainer, edit=True,
-                            publishAndBind=[self.moduleTransform+'.Global_size', 'module_globalRepr_Size'])
+                            publishAndBind=[self.moduleTransform+'.globalScale', 'module_globalscale'])
+            cmds.container(self.moduleContainer, edit=True,
+                            publishAndBind=[self.moduleTransform+'.scaleFactor', 'module_scaleFactor'])            
             cmds.container(self.moduleContainer, edit=True,
                             publishAndBind=[self.moduleTransform+'.Axis_Rotate', 'module_Axis_Rotate'])
             cmds.container(self.moduleContainer, edit=True,

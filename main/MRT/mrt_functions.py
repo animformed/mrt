@@ -2664,6 +2664,28 @@ def moduleUtilitySwitchScriptJob():      # This definition is to be modified as 
     return jobNumber
 
 
+def forceToggleUIScriptJobs(state=True):
+    """
+    Allows you to forcibly kill or start the utility script jobs.
+    """
+    # Toggle undo state
+    cmds.undoInfo(stateWithoutFlush=False)
+    
+    if len(__MRT_utility_tempScriptJob_list) > 0:
+
+        for job in __MRT_utility_tempScriptJob_list:
+            if cmds.scriptJob(exists=job):
+                cmds.scriptJob(kill=job)
+
+    __MRT_utility_tempScriptJob_list = []
+    
+    # If toggle is enabled, restart the utility scriptJobs again. 
+    if state:
+        __MRT_utility_tempScriptJob_list.append(moduleUtilitySwitchScriptJob())
+
+    cmds.undoInfo(stateWithoutFlush=True)
+
+
 def moduleUtilitySwitchFunctions():      # This definition is to be modified as necessary.
     """
     Runtime function called by scriptJob to assist in module operations.
@@ -2758,11 +2780,12 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
             # Create the mirror move container
             if not cmds.objExists('MRT_mirrorMove__Container'):
                 cmds.createNode('container', name='MRT_mirrorMove__Container', skipSelect=True)
-
+            
             # Multiply divide node for translating mirror control objects
             mirrorTranslateMultiplyDivide = 'MRT_mirrorMove_translate__multiplyDivide'+'_'+moduleNamespace
             cmds.createNode('multiplyDivide', name=mirrorTranslateMultiplyDivide, skipSelect=True)
-
+            cmds.setAttr(mirrorTranslateMultiplyDivide+'.input2', 1, 1, 1, type='double3')
+            
             collected_nodes.append(mirrorTranslateMultiplyDivide)
 
             # Get the mirror module namespace and the mirror axis, which is based on the creation plane for the
@@ -2787,11 +2810,38 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
             if len(selectionAttrs) == 3: # A translate / rotate control ?
 
                 if 'translate' in selectionAttrs[0]:
-                    cmds.connectAttr(selection+'.translate', mirrorTranslateMultiplyDivide+'.input1')
-                    cmds.connectAttr(mirrorTranslateMultiplyDivide+'.output', mirrorObject+'.translate')
-                    collected_nodes.append(cmds.listConnections(mirrorTranslateMultiplyDivide, source=True, destination=True, \
-                                                                                                    type='unitConversion'))
+                    
+                    selection_mirrorMove_transform = cmds.createNode('transform', skipSelect=True)
+                    selection_mirrorMove_src_vector_p = cmds.createNode('vectorProduct', skipSelect=True)
+                    selection_mirrorMove_trgt_vector_p = cmds.createNode('vectorProduct', skipSelect=True)
+                    cmds.setAttr(selection_mirrorMove_src_vector_p+'.operation', 4)
+                    cmds.setAttr(selection_mirrorMove_trgt_vector_p+'.operation', 4)
+                    cmds.connectAttr(selection+'.worldMatrix', selection_mirrorMove_src_vector_p+'.matrix')
+                    cmds.connectAttr(selection_mirrorMove_transform+'.parentInverseMatrix', selection_mirrorMove_trgt_vector_p+'.matrix')
+                    cmds.connectAttr(selection_mirrorMove_src_vector_p+'.output', selection_mirrorMove_trgt_vector_p+'.input1')
+                    cmds.connectAttr(selection_mirrorMove_trgt_vector_p+'.output', selection_mirrorMove_transform+'.translate')
+                    
+                    mirror_targetMove_transform = cmds.createNode('transform', skipSelect=True)
+                    mirror_targetMove_src_vector_p = cmds.createNode('vectorProduct', skipSelect=True)
+                    mirror_targetMove_trgt_vector_p = cmds.createNode('vectorProduct', skipSelect=True)
+                    cmds.setAttr(mirror_targetMove_src_vector_p+'.operation', 4)
+                    cmds.setAttr(mirror_targetMove_trgt_vector_p+'.operation', 4)
+                    cmds.connectAttr(mirror_targetMove_transform+'.worldMatrix', mirror_targetMove_src_vector_p+'.matrix')
+                    cmds.connectAttr(mirrorObject+'.parentInverseMatrix', mirror_targetMove_trgt_vector_p+'.matrix')
+                    cmds.connectAttr(mirror_targetMove_src_vector_p+'.output', mirror_targetMove_trgt_vector_p+'.input1')
+                    cmds.connectAttr(mirror_targetMove_trgt_vector_p+'.output', mirrorObject+'.translate')
+                    
+                    cmds.connectAttr(selection_mirrorMove_transform+'.translate', mirrorTranslateMultiplyDivide+'.input1')
                     cmds.setAttr(mirrorTranslateMultiplyDivide+'.input2'+mirrorAxis, -1)
+                    cmds.connectAttr(mirrorTranslateMultiplyDivide+'.output', mirror_targetMove_transform+'.translate')
+                    
+                    collected_nodes.extend([selection_mirrorMove_transform, mirror_targetMove_transform,
+                                            selection_mirrorMove_src_vector_p, selection_mirrorMove_trgt_vector_p,
+                                            mirror_targetMove_src_vector_p, mirror_targetMove_trgt_vector_p])
+                    
+                    collected_nodes.append(cmds.listConnections(mirrorTranslateMultiplyDivide, source=True, destination=True, \
+                                                                                                    type='unitConversion'))                    
+
 
                 if 'rotate' in selectionAttrs[0]:
                     __MRT_utility_tempScriptJob_list.append(cmds.scriptJob(attributeChange=[str(selection+'.'+selectionAttrs[0]), \
@@ -2802,7 +2852,7 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
                                         partial(updateChangedAttributeForMirrorMove, selection, mirrorObject, selectionAttrs[2])]))
 
 
-            if 6 < len(selectionAttrs) <= 8: # A splineStartHandleTransform control ?
+            if re.match('^MRT_\D+__\w+:splineStartHandleTransform$', selection): # A splineStartHandleTransform control ?
 
                 cmds.connectAttr(selection+'.translate', mirrorTranslateMultiplyDivide+'.input1')
                 cmds.connectAttr(mirrorTranslateMultiplyDivide+'.output', mirrorObject+'.translate')
@@ -2825,7 +2875,7 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
                                                         cmds.getAttr(moduleNamespace+':moduleGrp.mirrorModuleNamespace'))]))
 
 
-            if len(selectionAttrs) > 8: # Module transform ?
+            if re.match('^MRT_\D+__\w+:module_transform$', selection): # Module transform ?
 
                 cmds.connectAttr(selection+'.translate', mirrorTranslateMultiplyDivide+'.input1')
                 cmds.connectAttr(mirrorTranslateMultiplyDivide+'.output', mirrorObject+'.translate')

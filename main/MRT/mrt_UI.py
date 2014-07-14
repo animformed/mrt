@@ -1241,7 +1241,7 @@ class MRT_UI(object):
         self.uiVars['modOriginOffset_slider'] = cmds.floatSliderGrp(field=True, label='Offset from creation plane',
                                                                     columnWidth=[(1, 140), (2, 70), (3, 100)],
                                                columnAttach=[(1, 'both', 5), (2, 'both', 5), (3, 'right', 5)],
-                                               minValue=0, maxValue=20, fieldMinValue=0, fieldMaxValue=100, value=1)
+                                               minValue=0, maxValue=1000, fieldMinValue=0, fieldMaxValue=1000, value=30)
         # Create a separator.
         cmds.separator()
 
