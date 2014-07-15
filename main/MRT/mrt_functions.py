@@ -427,7 +427,17 @@ def returnVectorMagnitude(transform_start, transform_end):
 
     
 def compareTransformPairOrientation(transform1, transform2):
-
+    """
+    Compares two input maya transforms for their orientation, by calculating the dot products
+    of each of their respective local axes.
+    
+    For eg., two if two transforms T1 and T2 and passed-in, the function may return as follows:
+    
+    directions = {'X': 1,   <means that the X axes for T1 and T2 are parallel>
+                  'Y': -1,  <means that the Y axes for T1 and T2 are parallel, but opposite in directions,
+                  'Z': -1}  <so on>
+    """
+    # Create two temporary 
     transform1Pos = cmds.createNode('transform', skipSelect=True)
     align(transform1, transform1Pos)
     transform1Dir = cmds.createNode('transform', p=transform1Pos, skipSelect=True)
@@ -438,7 +448,7 @@ def compareTransformPairOrientation(transform1, transform2):
     transform2Dir = cmds.createNode('transform', p=transform2Pos, skipSelect=True)
     transform2PosValue = cmds.xform(transform2, query=True, worldSpace=True, translation=True)
     
-    directions = {'XYZ':[], 'x':None, 'y':None, 'z':None}
+    directions = {}
     
     for axis, value in zip(('X', 'Y', 'Z'), ((1,0,0), (0,1,0), (0,0,1))):
     
@@ -450,10 +460,7 @@ def compareTransformPairOrientation(transform1, transform2):
         dir_cosine = returnDotProductDirection(transform1PosValue, transform1DirValue,
                                                transform2PosValue, transform2DirValue)[0]
         
-        directions['XYZ'].append(dir_cosine)
-        
-        
-    for 
+        directions[axis] = dir_cosine
     
     cmds.delete(transform1Pos, transform2Pos)
 
@@ -2844,54 +2851,19 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
             if len(selectionAttrs) == 3: # A translate / rotate control ?
 
                 if 'translate' in selectionAttrs[0]:
-                    
+
+                    nodeUpAxis = cmds.getAttr(moduleNamespace+':moduleGrp.nodeOrient')[1]
+                    numNodes = cmds.getAttr(moduleNamespace+':moduleGrp.numberOfNodes')
                     cmds.connectAttr(selection+'.translate', mirrorTranslateMultiplyDivide+'.input1')
-                    
                     direction_mult = compareTransformPairOrientation(selection, mirrorObject)
-                    
-                    # Find the local axis parallel to the mirror axis.
-                    # Create a temp world transform.
-                    worldTemp = cmds.createNode('transform', skipSelect=True)
-                    world_directions = compareTransformPairOrientation(worldTemp, selection)
-                    world_directions[mirrorAxis]
-                    
-                    direction_mult[mirrorAxis] = direction_mult.get(mirrorAxis) * -1
-                    
+                    if numNodes > 1:
+                        direction_mult[nodeUpAxis] = direction_mult.get(nodeUpAxis) * -1
+                    else:
+                        direction_mult[mirrorAxis] = direction_mult.get(mirrorAxis) * -1
                     cmds.setAttr(mirrorTranslateMultiplyDivide+'.input2X', direction_mult['X'])
                     cmds.setAttr(mirrorTranslateMultiplyDivide+'.input2Y', direction_mult['Y']) 
                     cmds.setAttr(mirrorTranslateMultiplyDivide+'.input2Z', direction_mult['Z']) 
-                    
                     cmds.connectAttr(mirrorTranslateMultiplyDivide+'.output', mirrorObject+'.translate')
-                    
-                    '''
-                    selection_mirrorMove_transform = cmds.createNode('transform', skipSelect=True)
-                    selection_mirrorMove_src_vector_p = cmds.createNode('vectorProduct', skipSelect=True)
-                    selection_mirrorMove_trgt_vector_p = cmds.createNode('vectorProduct', skipSelect=True)
-                    cmds.setAttr(selection_mirrorMove_src_vector_p+'.operation', 4)
-                    cmds.setAttr(selection_mirrorMove_trgt_vector_p+'.operation', 4)
-                    cmds.connectAttr(selection+'.worldMatrix', selection_mirrorMove_src_vector_p+'.matrix')
-                    cmds.connectAttr(selection_mirrorMove_transform+'.parentInverseMatrix', selection_mirrorMove_trgt_vector_p+'.matrix')
-                    cmds.connectAttr(selection_mirrorMove_src_vector_p+'.output', selection_mirrorMove_trgt_vector_p+'.input1')
-                    cmds.connectAttr(selection_mirrorMove_trgt_vector_p+'.output', selection_mirrorMove_transform+'.translate')
-                    
-                    mirror_targetMove_transform = cmds.createNode('transform', skipSelect=True)
-                    mirror_targetMove_src_vector_p = cmds.createNode('vectorProduct', skipSelect=True)
-                    mirror_targetMove_trgt_vector_p = cmds.createNode('vectorProduct', skipSelect=True)
-                    cmds.setAttr(mirror_targetMove_src_vector_p+'.operation', 4)
-                    cmds.setAttr(mirror_targetMove_trgt_vector_p+'.operation', 4)
-                    cmds.connectAttr(mirror_targetMove_transform+'.worldMatrix', mirror_targetMove_src_vector_p+'.matrix')
-                    cmds.connectAttr(mirrorObject+'.parentInverseMatrix', mirror_targetMove_trgt_vector_p+'.matrix')
-                    cmds.connectAttr(mirror_targetMove_src_vector_p+'.output', mirror_targetMove_trgt_vector_p+'.input1')
-                    cmds.connectAttr(mirror_targetMove_trgt_vector_p+'.output', mirrorObject+'.translate')
-                    
-                    cmds.connectAttr(selection_mirrorMove_transform+'.translate', mirrorTranslateMultiplyDivide+'.input1')
-                    cmds.setAttr(mirrorTranslateMultiplyDivide+'.input2'+mirrorAxis, -1)
-                    cmds.connectAttr(mirrorTranslateMultiplyDivide+'.output', mirror_targetMove_transform+'.translate')
-                    
-                    collected_nodes.extend([selection_mirrorMove_transform, mirror_targetMove_transform,
-                                            selection_mirrorMove_src_vector_p, selection_mirrorMove_trgt_vector_p,
-                                            mirror_targetMove_src_vector_p, mirror_targetMove_trgt_vector_p])
-                    '''
                     
                     collected_nodes.append(cmds.listConnections(mirrorTranslateMultiplyDivide, source=True, destination=True, \
                                                                                                     type='unitConversion'))                    
