@@ -437,7 +437,11 @@ def compareTransformPairOrientation(transform1, transform2):
                   'Y': -1,  <means that the Y axes for T1 and T2 are parallel, but opposite in directions,
                   'Z': -1}  <so on>
     """
-    # Create two temporary 
+    
+    # Create two temporary transform groups for representing transform1 and transform2.
+    # Each group will have the base transform as the input transform and a child transform to
+    # be used as a direction vector.
+    
     transform1Pos = cmds.createNode('transform', skipSelect=True)
     align(transform1, transform1Pos)
     transform1Dir = cmds.createNode('transform', p=transform1Pos, skipSelect=True)
@@ -450,6 +454,9 @@ def compareTransformPairOrientation(transform1, transform2):
     
     directions = {}
     
+    # Set the direction vector for each of the temporary transform groups, 
+    # and calculate their dot alignment, and store it. This is done to check the local axes
+    # for each of the input transforms.
     for axis, value in zip(('X', 'Y', 'Z'), ((1,0,0), (0,1,0), (0,0,1))):
     
         cmds.setAttr(transform1Dir+'.translate', *value, type='double3')
@@ -2851,15 +2858,30 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
             if len(selectionAttrs) == 3: # A translate / rotate control ?
 
                 if 'translate' in selectionAttrs[0]:
-
+                    
+                    # Get the number of nodes in the module, and the node orientation axes.
                     nodeUpAxis = cmds.getAttr(moduleNamespace+':moduleGrp.nodeOrient')[1]
+                    nodeType = cmds.getAttr(moduleNamespace+':moduleGrp.nodeOrient')[1]
                     numNodes = cmds.getAttr(moduleNamespace+':moduleGrp.numberOfNodes')
                     cmds.connectAttr(selection+'.translate', mirrorTranslateMultiplyDivide+'.input1')
+                    
+                    # Compare the local axes for the selection and its mirror. You need this since
+                    # you need the direction values to multiply the translate values from the selection
+                    # to drive the mirror. For instance, if the source and the target Z translate axis 
+                    # are opposite, you need to multiply it by -1, and so on.
                     direction_mult = compareTransformPairOrientation(selection, mirrorObject)
-                    if numNodes > 1:
+                    
+                    # Also, get the local axis for the selection which is aligned with the mirror axis.
+                    # For a module with more than one node, it'll be the node up axis. This is specified
+                    # during module creation (remember?). Multiply the local axis multiplier by -1, since 
+                    # it will have mirror translation.
+                    if numNodes > 1 and 'JointNode' in moduleNamespace:
                         direction_mult[nodeUpAxis] = direction_mult.get(nodeUpAxis) * -1
-                    else:
+                    else: # If the number of nodes in the module is 1, use the mirror axis, since the node
+                          # axes matches the world orientation.
                         direction_mult[mirrorAxis] = direction_mult.get(mirrorAxis) * -1
+                    
+                    # Now set the final multipliers.
                     cmds.setAttr(mirrorTranslateMultiplyDivide+'.input2X', direction_mult['X'])
                     cmds.setAttr(mirrorTranslateMultiplyDivide+'.input2Y', direction_mult['Y']) 
                     cmds.setAttr(mirrorTranslateMultiplyDivide+'.input2Z', direction_mult['Z']) 

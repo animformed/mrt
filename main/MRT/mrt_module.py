@@ -215,24 +215,24 @@ class MRT_Module(object):
             if self.nodeAxes[0] == 'X':
                 arclen = cmds.arclen(joint+'_segmentCurve', constructionHistory=True)
                 cmds.connectAttr(arclen+'.arcLength', orientationReprNodes[0]+'.scaleX')
-                cmds.connectAttr(self.moduleTransform+'.globalScale', orientationReprNodes[0]+'.scaleY')
-                cmds.connectAttr(self.moduleTransform+'.globalScale', orientationReprNodes[0]+'.scaleZ')
+                cmds.connectAttr(self.moduleTransform+'.finalScale', orientationReprNodes[0]+'.scaleY')
+                cmds.connectAttr(self.moduleTransform+'.finalScale', orientationReprNodes[0]+'.scaleZ')
                 cmds.rename(arclen, joint+'_segmentCurve_curveInfo')
                 containedNodes.append(joint+'_segmentCurve_curveInfo')
             
             if self.nodeAxes[0] == 'Y':
                 arclen = cmds.arclen(joint+'_segmentCurve', constructionHistory=True)
                 cmds.connectAttr(arclen+'.arcLength', orientationReprNodes[0]+'.scaleY')
-                cmds.connectAttr(self.moduleTransform+'.globalScale', orientationReprNodes[0]+'.scaleX')
-                cmds.connectAttr(self.moduleTransform+'.globalScale', orientationReprNodes[0]+'.scaleZ')
+                cmds.connectAttr(self.moduleTransform+'.finalScale', orientationReprNodes[0]+'.scaleX')
+                cmds.connectAttr(self.moduleTransform+'.finalScale', orientationReprNodes[0]+'.scaleZ')
                 cmds.rename(arclen, joint+'_segmentCurve_curveInfo')
                 containedNodes.append(joint+'_segmentCurve_curveInfo')
             
             if self.nodeAxes[0] == 'Z':
                 arclen = cmds.arclen(joint+'_segmentCurve', constructionHistory=True)
                 cmds.connectAttr(arclen+'.arcLength', orientationReprNodes[0]+'.scaleZ')
-                cmds.connectAttr(self.moduleTransform+'.globalScale', orientationReprNodes[0]+'.scaleX')
-                cmds.connectAttr(self.moduleTransform+'.globalScale', orientationReprNodes[0]+'.scaleY')
+                cmds.connectAttr(self.moduleTransform+'.finalScale', orientationReprNodes[0]+'.scaleX')
+                cmds.connectAttr(self.moduleTransform+'.finalScale', orientationReprNodes[0]+'.scaleY')
                 cmds.rename(arclen, joint+'_segmentCurve_curveInfo')
                 containedNodes.append(joint+'_segmentCurve_curveInfo')
 
@@ -1081,10 +1081,10 @@ class MRT_Module(object):
             cmds.connectAttr(startHandle['transform']+'.finalScale', joint+'_localAxesInfoRepr_preTransform.scaleZ')
             
             # Connect the module global scaling to the proxy elbow transforms. 
-            if self.proxyGeoStatus and self.proxyGeoElbow:
-                cmds.connectAttr(startHandle['transform']+'.finalScale', joint+'_proxy_elbow_geo_scaleTransform.scaleX')
-                cmds.connectAttr(startHandle['transform']+'.finalScale', joint+'_proxy_elbow_geo_scaleTransform.scaleY')
-                cmds.connectAttr(startHandle['transform']+'.finalScale', joint+'_proxy_elbow_geo_scaleTransform.scaleZ')
+            #if self.proxyGeoStatus and self.proxyGeoElbow:
+                #cmds.connectAttr(startHandle['transform']+'.finalScale', joint+'_proxy_elbow_geo_scaleTransform.scaleX')
+                #cmds.connectAttr(startHandle['transform']+'.finalScale', joint+'_proxy_elbow_geo_scaleTransform.scaleY')
+                #cmds.connectAttr(startHandle['transform']+'.finalScale', joint+'_proxy_elbow_geo_scaleTransform.scaleZ')
         
         # Connect the module node orientation attributes on the start module transform.
         cmds.connectAttr(startHandle['transform']+'.Node_Orientation_Info', self.moduleOrientationReprGrp+'.visibility')
@@ -2260,7 +2260,7 @@ class MRT_Module(object):
             
             # Connect the module transform scaling to the proxy bone geom transform.
             for axis in self.nodeAxes[1:]:
-                cmds.connectAttr(self.moduleTransform+'.globalScale', proxyBoneGeoPreTransform+'.scale'+axis)
+                cmds.connectAttr(self.moduleTransform+'.finalScale', proxyBoneGeoPreTransform+'.scale'+axis)
             
             # Drive the aim scaling for the proxy geo by the node segment length (length between two module nodes).
             curveInfo = joint + '_segmentCurve_curveInfo'
