@@ -1244,6 +1244,7 @@ def setRotationOrderForFootUtilTransform(transform, axesInfo):
     # Set rotation order
     cmds.setAttr(transform+'.rotateOrder', rotateOrder)
 
+
 def align(target, toAlignTransform):
     '''
     Position and sets the orientation of an input "toAlignTransform"
@@ -1251,6 +1252,7 @@ def align(target, toAlignTransform):
     '''
     tempConstraint = cmds.parentConstraint(target, toAlignTransform, maintainOffset=False)
     cmds.delete(tempConstraint)
+
 
 def updateNodeList(nodes):
     """
@@ -2871,14 +2873,15 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
                     # are opposite, you need to multiply it by -1, and so on.
                     direction_mult = compareTransformPairOrientation(selection, mirrorObject)
                     
-                    # Also, get the local axis for the selection which is aligned with the mirror axis.
-                    # For a module with more than one node, it'll be the node up axis. This is specified
-                    # during module creation (remember?). Multiply the local axis multiplier by -1, since 
-                    # it will have mirror translation.
+                    # Get the local axis for the selection which is aligned with the mirror axis.
+                    # For a JointNode module with more than one node, it'll be the node up axis. 
+                    # This is specified during module creation (remember?). Multiply the local axis 
+                    # which aligns with the mirror axis (its multiplier) by -1, since it will have 
+                    # mirror translation values.
                     if numNodes > 1 and 'JointNode' in moduleNamespace:
                         direction_mult[nodeUpAxis] = direction_mult.get(nodeUpAxis) * -1
-                    else: # If the number of nodes in the module is 1, use the mirror axis, since the node
-                          # axes matches the world orientation.
+                        
+                    else: # For SplineNode module, HingeNode module and JointNode module with single node.
                         direction_mult[mirrorAxis] = direction_mult.get(mirrorAxis) * -1
                     
                     # Now set the final multipliers.
