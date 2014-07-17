@@ -521,26 +521,27 @@ class MRT_Module(object):
         secondAxisOrientation = {'XY':'z', 'YZ':'x', 'XZ':'y'}[self.onPlane] + 'up'
         cmds.joint(edit=True, orientJoint=self.nodeAxes.lower(), secondaryAxisOrient=secondAxisOrientation,
                                                                                 zeroScaleOrient=True, children=True)
-                                                                                
-        # Mirror the module node joints (for the mirrored module) if the module mirroring is enabled
-        # and the current module to be created is a mirrored module on the -ve side of the creation plane,
-        # and if the mirror rotation function is set to "Behaviour".
-        if self.mirrorModule and self.mirrorRotationFunc == 'Behaviour':
-            mirrorPlane = {'XY':False, 'YZ':False, 'XZ':False}
-            mirrorPlane[self.onPlane] = True
-            mirroredJoints = cmds.mirrorJoint(self.nodeJoints[0], mirrorXY=mirrorPlane['XY'],
-                                                mirrorYZ=mirrorPlane['YZ'], mirrorXZ=mirrorPlane['XZ'], mirrorBehavior=True)
-            cmds.delete(self.nodeJoints[0])
-            self.nodeJoints = []
-            for joint in mirroredJoints:
-                newJoint = cmds.rename(joint, self.moduleTypespace+':'+joint)
-                self.nodeJoints.append(newJoint)
-
+        
         # Orient the end joint node, if the module contains more than one joint node.
         if self.numNodes > 1:
             cmds.setAttr(self.nodeJoints[-1]+'.jointOrientX', 0)
             cmds.setAttr(self.nodeJoints[-1]+'.jointOrientY', 0)
             cmds.setAttr(self.nodeJoints[-1]+'.jointOrientZ', 0)
+            
+        # Mirror the module node joints (for the mirrored module) if the module mirroring is enabled
+        # and the current module to be created is a mirrored module on the -ve side of the creation plane,
+        # and if the mirror rotation function is set to "Behaviour".
+        if self.mirrorModule:
+            mirrorPlane = {'XY':False, 'YZ':False, 'XZ':False}
+            mirrorPlane[self.onPlane] = True
+            mirroredJoints = cmds.mirrorJoint(self.nodeJoints[0], 
+                                              mirrorXY=mirrorPlane['XY'], mirrorYZ=mirrorPlane['YZ'], mirrorXZ=mirrorPlane['XZ'], 
+                                              mirrorBehavior=True if self.mirrorRotationFunc == 'Behaviour' else False)
+            cmds.delete(self.nodeJoints[0])
+            self.nodeJoints = []
+            for joint in mirroredJoints:
+                newJoint = cmds.rename(joint, self.moduleTypespace+':'+joint)
+                self.nodeJoints.append(newJoint)
 
         # Clear selection after joint orientation.
         cmds.select(clear=True)
@@ -810,25 +811,26 @@ class MRT_Module(object):
         cmds.joint(edit=True, orientJoint=self.nodeAxes.lower(), secondaryAxisOrient=secondAxisOrientation,
                                                                         zeroScaleOrient=True, children=True)
         cmds.parent(self.nodeJoints[0], self.moduleNodesGrp, absolute=True)
-
+        
+        # Orient the end joint node.
+        cmds.setAttr(self.nodeJoints[-1]+'.jointOrientX', 0)
+        cmds.setAttr(self.nodeJoints[-1]+'.jointOrientY', 0)
+        cmds.setAttr(self.nodeJoints[-1]+'.jointOrientZ', 0)
+        
         # Mirror the module node joints (for the mirrored module) if the module mirroring is enabled
         # and the current module to be created is a mirrored module on the -ve side of the creation plane,
         # and if the mirror rotation function is set to "Behaviour".
-        if self.mirrorModule and self.mirrorRotationFunc == 'Behaviour':
+        if self.mirrorModule:
             mirrorPlane = {'XY':False, 'YZ':False, 'XZ':False}
             mirrorPlane[self.onPlane] = True
-            mirroredJoints = cmds.mirrorJoint(self.nodeJoints[0], mirrorXY=mirrorPlane['XY'], mirrorYZ=mirrorPlane['YZ'],
-                                                                        mirrorXZ=mirrorPlane['XZ'], mirrorBehavior=True)
+            mirroredJoints = cmds.mirrorJoint(self.nodeJoints[0], 
+                                              mirrorXY=mirrorPlane['XY'], mirrorYZ=mirrorPlane['YZ'], mirrorXZ=mirrorPlane['XZ'], 
+                                              mirrorBehavior=True if self.mirrorRotationFunc == 'Behaviour' else False)
             cmds.delete(self.nodeJoints[0])
             self.nodeJoints = []
             for joint in mirroredJoints:
                 newJoint = cmds.rename(joint, self.moduleTypespace+':'+joint)
                 self.nodeJoints.append(newJoint)
-
-        # Orient the end joint node.
-        cmds.setAttr(self.nodeJoints[-1]+'.jointOrientX', 0)
-        cmds.setAttr(self.nodeJoints[-1]+'.jointOrientY', 0)
-        cmds.setAttr(self.nodeJoints[-1]+'.jointOrientZ', 0)
 
         # Clear selection after joint orientation.
         cmds.select(clear=True)
@@ -1079,12 +1081,6 @@ class MRT_Module(object):
             cmds.connectAttr(startHandle['transform']+'.finalScale', joint+'_localAxesInfoRepr_preTransform.scaleX')
             cmds.connectAttr(startHandle['transform']+'.finalScale', joint+'_localAxesInfoRepr_preTransform.scaleY')
             cmds.connectAttr(startHandle['transform']+'.finalScale', joint+'_localAxesInfoRepr_preTransform.scaleZ')
-            
-            # Connect the module global scaling to the proxy elbow transforms. 
-            #if self.proxyGeoStatus and self.proxyGeoElbow:
-                #cmds.connectAttr(startHandle['transform']+'.finalScale', joint+'_proxy_elbow_geo_scaleTransform.scaleX')
-                #cmds.connectAttr(startHandle['transform']+'.finalScale', joint+'_proxy_elbow_geo_scaleTransform.scaleY')
-                #cmds.connectAttr(startHandle['transform']+'.finalScale', joint+'_proxy_elbow_geo_scaleTransform.scaleZ')
         
         # Connect the module node orientation attributes on the start module transform.
         cmds.connectAttr(startHandle['transform']+'.Node_Orientation_Info', self.moduleOrientationReprGrp+'.visibility')
@@ -1244,24 +1240,40 @@ class MRT_Module(object):
         cmds.joint(edit=True, orientJoint=self.nodeAxes.lower(), secondaryAxisOrient=secondAxisOrientation,
                                                                             zeroScaleOrient=True, children=True)
         
-        # Mirror the module node joints (for the mirrored module) if the module mirroring is enabled
-        # and the current module to be created is a mirrored module on the -ve side of the creation plane,
-        # and if the mirror rotation function is set to "Behaviour".
-        if self.mirrorModule and self.mirrorRotationFunc == 'Behaviour':
-            mirrorPlane = {'XY':False, 'YZ':False, 'XZ':False}
-            mirrorPlane[self.onPlane] = True
-            mirroredJoints = cmds.mirrorJoint(self.nodeJoints[0], mirrorXY=mirrorPlane['XY'], mirrorYZ=mirrorPlane['YZ'],
-                                                                        mirrorXZ=mirrorPlane['XZ'], mirrorBehavior=True)
-            cmds.delete(self.nodeJoints[0])
-            self.nodeJoints = []
-            for joint in mirroredJoints:
-                newJoint = cmds.rename(joint, self.moduleTypespace+':'+joint)
-                self.nodeJoints.append(newJoint)
-        
         # Orient the end joint node.
         cmds.setAttr(self.nodeJoints[-1]+'.jointOrientX', 0)
         cmds.setAttr(self.nodeJoints[-1]+'.jointOrientY', 0)
         cmds.setAttr(self.nodeJoints[-1]+'.jointOrientZ', 0)
+        
+        # Mirror the module node joints (for the mirrored module) if the module mirroring is enabled
+        # and the current module to be created is a mirrored module on the -ve side of the creation plane,
+        # and if the mirror rotation function is set to "Behaviour".
+        if self.mirrorModule:
+        
+            mirrorPlane = {'XY':False, 'YZ':False, 'XZ':False}
+            mirrorPlane[self.onPlane] = True
+            mirroredJoints = cmds.mirrorJoint(self.nodeJoints[0], 
+                                              mirrorXY=mirrorPlane['XY'], mirrorYZ=mirrorPlane['YZ'], mirrorXZ=mirrorPlane['XZ'], 
+                                              mirrorBehavior=True)
+                                              
+            # While mirroring joints for the hinge module, we want to always mirror in behaviour first. 
+            # This is done since we want to keep the aim axis down the module node hierarchy. The aim translation
+            # channel will be connected later with an input. Mirroring joints using orientation function will provide
+            # incorrect orientation of aim axis down the module nodes. 
+            # The actual orientation of the joints as per the rotation function specified in the module creation
+            # function is applied while creating a character from hinge module(s).
+            
+            # Reorient the joints to aim down the node hierarchy for the hinge module.
+            if self.mirrorRotationFunc == 'Orientation':
+                cmds.joint(mirroredJoints[0], edit=True, orientJoint=self.nodeAxes.lower(), 
+                                                         secondaryAxisOrient=secondAxisOrientation,
+                                                         zeroScaleOrient=True, children=True)
+            cmds.delete(self.nodeJoints[0])
+            self.nodeJoints = []
+            
+            for joint in mirroredJoints:
+                newJoint = cmds.rename(joint, self.moduleTypespace+':'+joint)
+                self.nodeJoints.append(newJoint)
         
         # Clear selection after joint orientation.
         cmds.select(clear=True)
@@ -1273,7 +1285,7 @@ class MRT_Module(object):
         ikHandle = ikNodes[0]
         cmds.parent(ikHandle, self.moduleIKnodesGrp, absolute=True)
         cmds.setAttr(ikHandle + '.visibility', 0)
-        
+            
         # Place the IK handle at the last module node position.
         cmds.xform(ikHandle, worldSpace=True, absolute=True, rotation=cmds.xform(self.nodeJoints[-1], query=True,
                                                                     worldSpace=True, absolute=True, rotation=True))
@@ -1281,7 +1293,7 @@ class MRT_Module(object):
         # Create the node handle objects.
         # For hinge module, the nodes will not be translated directly. They will be driven by
         # control handles on top of them.
-        
+
         # Root node handle.
         rootHandle = objects.createRawControlSurface(self.nodeJoints[0], self.modHandleColour, True)
         mfunc.lockHideChannelAttrs(rootHandle[0], 'r', 's', 'v', keyable=False)
@@ -1306,8 +1318,7 @@ class MRT_Module(object):
         cmds.xform(endHandle[0], worldSpace=True, absolute=True, translation=endHandlePos)
         endHandleConstraint = cmds.pointConstraint(endHandle[0], ikHandle, maintainOffset=False, name=ikHandle+'_pointConstraint')
         cmds.parent(endHandle[0], self.moduleIKnodesGrp, absolute=True)
-        
-
+            
         # Prepare the module node control handle objects for scaling.
         for i, joint in enumerate(self.nodeJoints):
             
@@ -1382,7 +1393,7 @@ class MRT_Module(object):
             
             # Add the created nodes to the module container.
             containedNodes.extend([startClosestPointOnSurface, endClosestPointOnSurface, namedArclen])
-        
+           
         # Create a segment curve between the root and the end node.
         rootEndSegment = objects.createRawSegmentCurve(3)
         
@@ -1566,7 +1577,7 @@ class MRT_Module(object):
             cmds.setAttr(xhandle['shape']+'.localScaleZ', 0.089)
             cmds.setAttr(xhandle['shape']+'.ds', 5)
             cmds.setAttr(handle+'Shape.visibility', 0)
-            
+        
         # Use the node handle objects to drive the axial distance for the node joints.
         for startPos, endPos, drivenJoint in [(rootHandle[0], elbowHandle[0], self.nodeJoints[1]),
                                               (elbowHandle[0], endHandle[0], self.nodeJoints[2])]:
@@ -1617,9 +1628,10 @@ class MRT_Module(object):
             cmds.connectAttr(drivenJointAimTranslateMultiply+'.output'+aimAxis, drivenJoint+'.translate'+aimAxis)
             
             containedNodes.extend([segmentDistance, normalizeDivide, distanceDivideFactor, drivenJointAimTranslateMultiply])
-            
-        mfunc.updateAllTransforms()        
         
+        mfunc.updateAllTransforms()      
+        #if self.mirrorModule:
+           #raise
         # Add the orientation representation control for hinge axes.
         # This control cannot be manipulated directly. It shows the current
         # orientation of the hinge (middle) node.
@@ -1876,6 +1888,14 @@ class MRT_Module(object):
                 cmds.connectAttr(self.moduleTransform+'.'+longName, joint+'_controlShape_scaleClusterHandle.scaleY')
                 cmds.connectAttr(self.moduleTransform+'.'+longName, joint+'_controlShape_scaleClusterHandle.scaleZ')
                 
+                scaleMult = cmds.createNode('multiplyDivide', name=joint+'_shapeScale_mult', skipSelect=True)
+                currentShapeScale = cmds.getAttr(joint+'Shape.localScale')[0]
+                cmds.setAttr(scaleMult+'.input1', *currentShapeScale, type='double3')
+                cmds.connectAttr(self.moduleTransform+'.'+longName, scaleMult+'.input2X')
+                cmds.connectAttr(self.moduleTransform+'.'+longName, scaleMult+'.input2Y')
+                cmds.connectAttr(self.moduleTransform+'.'+longName, scaleMult+'.input2Z')
+                cmds.connectAttr(scaleMult+'.output', joint+'Shape.localScale')
+                
                 # Publish the attribute to the module container.
                 cmds.container(self.moduleContainer, edit=True, publishAndBind=[self.moduleTransform+'.'+longName,
                                                                                     'module_transform_'+longName])
@@ -2091,8 +2111,8 @@ class MRT_Module(object):
                 if self.moduleType != 'HingeNode':
                     scaleFactorAxes = {'XY':[1, 1, -1], 'YZ':[-1, 1, 1], 'XZ':[1, -1, 1]}[self.onPlane]
                 else:
-                    scaleFactorAxes = {'XY':[-1, 1, 1], 'YZ':[1, 1, -1], 'XZ':[1, 1, -1]}[self.onPlane]
-                    
+                    scaleFactorAxes = {'XY':[1, 1, -1], 'YZ':[-1, 1, 1], 'XZ':[1, -1, 1]}[self.onPlane]
+                
                 cmds.setAttr(proxyElbowGeoScaleTransform+'.scale', *scaleFactorAxes)
                 
             # Set the default colour for the vertices for the elbow proxy geo.

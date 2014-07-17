@@ -1479,7 +1479,7 @@ def returnModuleAttrsFromScene(moduleNamespace):
         moduleAttrsDict['node_type'] = 'SplineNode'
 
         # Get the module overall scale
-        moduleAttrsDict['scale'] = cmds.getAttr(moduleNamespace+':splineStartHandleTransform.Global_size')
+        moduleAttrsDict['scale'] = cmds.getAttr(moduleNamespace+':splineStartHandleTransform.finalScale')
 
         # Get the transform values for the start and end spline module transforms
         moduleAttrsDict['splineStartHandleTransform_translation_values'] = \
@@ -2031,22 +2031,23 @@ def createProxyForSkeletonFromModule(characterJointSet, moduleAttrsDict, charact
     for (index, joint) in zip(range(moduleAttrsDict['num_nodes']), jointSet):
         
         # Get the naming prefix for the joint (generated from module node).
-        if index == 0:
-            namePrefix = 'root_node_transform'
-        
         if moduleAttrsDict['num_nodes'] > 1:
             if index == moduleAttrsDict['num_nodes']-1:
                 namePrefix = 'end_node_transform'
+            elif index == 0:
+                namePrefix = 'root_node_transform'
             else:
                 namePrefix = 'node_%s_transform' % index
+        else:
+            namePrefix = 'root_node_transform'
             
         # If elbow proxy geometry exists for the module.
-        if cmds.objExists(moduleAttrsDict['module_Namespace']+':%s_proxy_elbow_geo_preTransform' % namePrefix):
+        elbow_proxy_preTransform = moduleAttrsDict['module_Namespace']+':%s_proxy_elbow_geo_preTransform' % namePrefix
+        if cmds.objExists(elbow_proxy_preTransform):
             
             # Duplicate the module proxy geometry and name it.
-            elbow_proxy = cmds.duplicate(moduleAttrsDict['module_Namespace']+':%s_proxy_elbow_geo_preTransform' % namePrefix, \
-                                        returnRootsOnly=True, renameChildren=True, \
-                                        name='MRT_character%s__%s_%s_proxy_elbow_geo_preTransform' \
+            elbow_proxy = cmds.duplicate(elbow_proxy_preTransform, returnRootsOnly=True, renameChildren=True, \
+                                         name='MRT_character%s__%s_%s_proxy_elbow_geo_preTransform' \
                                             % (characterName, moduleAttrsDict['userSpecName'], namePrefix))[0]
             cmds.makeIdentity(elbow_proxy, scale=True, apply=True)
             
@@ -2058,10 +2059,11 @@ def createProxyForSkeletonFromModule(characterJointSet, moduleAttrsDict, charact
             cmds.parent(elbow_proxy, proxyGrp)
             
         # If bone proxy geometry exists for the module.
-        if cmds.objExists(moduleAttrsDict['module_Namespace']+':%s_proxy_bone_geo_preTransform' % namePrefix):
+        bone_proxy_preTransform = moduleAttrsDict['module_Namespace']+':%s_proxy_bone_geo_preTransform' % namePrefix
+        if cmds.objExists(bone_proxy_preTransform):
             
             # Duplicate the module proxy geometry and name it.
-            bone_proxy = cmds.duplicate(moduleAttrsDict['module_Namespace']+':%s_proxy_bone_geo_preTransform' % namePrefix, \
+            bone_proxy = cmds.duplicate(bone_proxy_preTransform, \
                                         returnRootsOnly=True, renameChildren=True, \
                                         name='MRT_character%s__%s_%s_proxy_bone_geo_preTransform' \
                                             % (characterName, moduleAttrsDict['userSpecName'], namePrefix))[0]
@@ -2106,7 +2108,7 @@ def createProxyForSkeletonFromModule(characterJointSet, moduleAttrsDict, charact
     
     # To collect all the proxy geo transforms under the proxy group.
     proxy_geo_transforms = []
-    
+
     # If proxy transforms are found, proceed.
     if allChildren:
     
