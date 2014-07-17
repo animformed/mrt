@@ -1257,7 +1257,7 @@ class MRT_Module(object):
             for joint in mirroredJoints:
                 newJoint = cmds.rename(joint, self.moduleTypespace+':'+joint)
                 self.nodeJoints.append(newJoint)
-                
+        
         # Orient the end joint node.
         cmds.setAttr(self.nodeJoints[-1]+'.jointOrientX', 0)
         cmds.setAttr(self.nodeJoints[-1]+'.jointOrientY', 0)
@@ -1277,7 +1277,7 @@ class MRT_Module(object):
         # Place the IK handle at the last module node position.
         cmds.xform(ikHandle, worldSpace=True, absolute=True, rotation=cmds.xform(self.nodeJoints[-1], query=True,
                                                                     worldSpace=True, absolute=True, rotation=True))
-        
+       
         # Create the node handle objects.
         # For hinge module, the nodes will not be translated directly. They will be driven by
         # control handles on top of them.
@@ -1285,26 +1285,29 @@ class MRT_Module(object):
         # Root node handle.
         rootHandle = objects.createRawControlSurface(self.nodeJoints[0], self.modHandleColour, True)
         mfunc.lockHideChannelAttrs(rootHandle[0], 'r', 's', 'v', keyable=False)
-        cmds.xform(rootHandle[0], worldSpace=True, absolute=True, translation=self.initNodePos[0])
+        rootHandlePos = cmds.xform(self.nodeJoints[0], query=True, worldSpace=True, translation=True)
+        cmds.xform(rootHandle[0], worldSpace=True, absolute=True, translation=rootHandlePos)
         rootHandleConstraint = cmds.pointConstraint(rootHandle[0], self.nodeJoints[0], maintainOffset=False,
                                                                     name=self.nodeJoints[0]+'_pointConstraint')
         cmds.parent(rootHandle[0], self.moduleIKnodesGrp, absolute=True)
 
         # Mid hinge or elbow node handle.
         elbowHandle = objects.createRawControlSurface(self.nodeJoints[1], self.modHandleColour, True)
-
         mfunc.lockHideChannelAttrs(elbowHandle[0], 'r', 's', 'v', keyable=False)
-        cmds.xform(elbowHandle[0], worldSpace=True, absolute=True, translation=self.initNodePos[1])
+        elbowHandlePos = cmds.xform(self.nodeJoints[1], query=True, worldSpace=True, translation=True)
+        cmds.xform(elbowHandle[0], worldSpace=True, absolute=True, translation=elbowHandlePos)
         elbowHandleConstraint = cmds.poleVectorConstraint(elbowHandle[0], ikHandle, name=ikHandle+'_poleVectorConstraint')
         cmds.parent(elbowHandle[0], self.moduleIKnodesGrp, absolute=True)
 
         # End node handle.
         endHandle = objects.createRawControlSurface(self.nodeJoints[-1], self.modHandleColour, True)
         mfunc.lockHideChannelAttrs(endHandle[0], 'r', 's', 'v', keyable=False)
-        cmds.xform(endHandle[0], worldSpace=True, absolute=True, translation=self.initNodePos[2])
+        endHandlePos = cmds.xform(self.nodeJoints[2], query=True, worldSpace=True, translation=True)
+        cmds.xform(endHandle[0], worldSpace=True, absolute=True, translation=endHandlePos)
         endHandleConstraint = cmds.pointConstraint(endHandle[0], ikHandle, maintainOffset=False, name=ikHandle+'_pointConstraint')
         cmds.parent(endHandle[0], self.moduleIKnodesGrp, absolute=True)
         
+
         # Prepare the module node control handle objects for scaling.
         for i, joint in enumerate(self.nodeJoints):
             

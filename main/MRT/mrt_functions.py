@@ -3,7 +3,7 @@
 #    mrt_functions.py - Source for all utility / scene / runtime functions. 
 #                       Also includes startup functions to verify MRT is correctly installed and supported.
 #
-#    Feel free to modify or copy (or whatever) for your own purpose :)
+#    Feel free to modify or copy for your own purpose :)
 #
 #    Written by Himanish Bhattacharya.
 #
@@ -1389,7 +1389,7 @@ def returnModuleAttrsFromScene(moduleNamespace):
 
         moduleAttrsDict['node_type'] = 'JointNode'
 
-        moduleAttrsDict['globalScale'] = cmds.getAttr(moduleNamespace+':module_transform.globalScale')
+        moduleAttrsDict['scale'] = cmds.getAttr(moduleNamespace+':module_transform.finalScale')
 
         # Get the transform values for the module transform
         moduleAttrsDict['module_translation_values'] = cmds.getAttr(moduleNamespace+':module_transform.translate')[0]
@@ -1478,8 +1478,8 @@ def returnModuleAttrsFromScene(moduleNamespace):
 
         moduleAttrsDict['node_type'] = 'SplineNode'
 
-        # Get the module global scale
-        moduleAttrsDict['globalScale'] = cmds.getAttr(moduleNamespace+':splineStartHandleTransform.Global_size')
+        # Get the module overall scale
+        moduleAttrsDict['scale'] = cmds.getAttr(moduleNamespace+':splineStartHandleTransform.Global_size')
 
         # Get the transform values for the start and end spline module transforms
         moduleAttrsDict['splineStartHandleTransform_translation_values'] = \
@@ -1535,8 +1535,8 @@ def returnModuleAttrsFromScene(moduleNamespace):
 
         moduleAttrsDict['node_type'] = 'HingeNode'
 
-        # Get the module global scale
-        moduleAttrsDict['globalScale'] = cmds.getAttr(moduleNamespace+':module_transform.globalScale')
+        # Get the module overall scale
+        moduleAttrsDict['scale'] = cmds.getAttr(moduleNamespace+':module_transform.finalScale')
 
         # Get the transform values for the module transform
         moduleAttrsDict['module_translation_values'] = cmds.getAttr(moduleNamespace+':module_transform.translate')[0]
@@ -1714,7 +1714,7 @@ def createSkeletonFromModule(moduleAttrsDict, characterName):
                 # Create the joint.
                 jointName = cmds.joint(name=name, position=moduleAttrsDict['node_world_translation_values'][0][1],
                                        orientation=moduleAttrsDict['node_world_orientation_values'][0][1],
-                                       radius=moduleAttrsDict['globalScale']*moduleAttrsDict['node_handle_sizes'][0][1]*0.16)
+                                       radius=moduleAttrsDict['scale']*moduleAttrsDict['node_handle_sizes'][0][1]*0.16)
                 # Set the joint attributes.
                 cmds.addAttr(jointName, dataType='string', longName='inheritedNodeType')
                 cmds.setAttr(jointName+'.inheritedNodeType', 'JointNode', type='string', lock=True)
@@ -1733,7 +1733,7 @@ def createSkeletonFromModule(moduleAttrsDict, characterName):
                     
                     # Create the joint for the module node.
                     jointName = cmds.joint(name=name, position=position[1],
-                                       radius=moduleAttrsDict['globalScale']*moduleAttrsDict['node_handle_sizes'][i][1]*0.16)
+                                       radius=moduleAttrsDict['scale']*moduleAttrsDict['node_handle_sizes'][i][1]*0.16)
                                        
                     # Set the joint attributes.
                     cmds.addAttr(jointName, dataType='string', longName='inheritedNodeType')
@@ -1785,7 +1785,7 @@ def createSkeletonFromModule(moduleAttrsDict, characterName):
                 name = 'MRT_character'+characterName+'__'+moduleAttrsDict['userSpecName']+'_'+position[0]
                 
                 # Create the joint and add attributes
-                jointName = cmds.joint(name=name, position=position[1], radius=moduleAttrsDict['globalScale']*0.17)
+                jointName = cmds.joint(name=name, position=position[1], radius=moduleAttrsDict['scale']*0.17)
                 cmds.addAttr(jointName, dataType='string', longName='inheritedNodeType')
                 cmds.setAttr(jointName+'.inheritedNodeType', 'SplineNode', type='string', lock=True)
                 cmds.addAttr(jointName, dataType='string', longName='splineOrientation')
@@ -1853,7 +1853,7 @@ def createSkeletonFromModule(moduleAttrsDict, characterName):
                 
                 # Create the joint.
                 jointName = cmds.joint(name=name, position=position[1], \
-                                       radius=moduleAttrsDict['globalScale']*moduleAttrsDict['node_handle_sizes'][i][1]*0.16)
+                                       radius=moduleAttrsDict['scale']*moduleAttrsDict['node_handle_sizes'][i][1]*0.16)
                                        
                 # Add / set the joint attributes.
                 cmds.addAttr(jointName, dataType='string', longName='inheritedNodeType')
