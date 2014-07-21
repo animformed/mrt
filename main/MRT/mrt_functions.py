@@ -11,14 +11,14 @@
 
 import maya.cmds as cmds
 import maya.mel as mel
+import pymel.core as pmc
 
 from maya.OpenMaya import MGlobal; Error = MGlobal.displayError; Warning = MGlobal.displayWarning
 
 from functools import partial    # Alternative "from pymel.core.windows import Callback"
 import os, math, sys, re, glob, shutil, platform
 
-
-__MRT_utility_tempScriptJob_list = [] # To store utility script jobs (for module mirroring).
+pmc.melGlobals.initVar('int[]', '_mrt_utilJobList') # To store utility script jobs (eg., for module mirroring).
 
 os_name = platform.uname()[0]  # Get the OS type
 
@@ -43,9 +43,6 @@ def prep_MRTMayaStartupActions():
     userSetupStatus = False     # If userSetup is written or modified, set it to True. 
 
     # Open the userSetup file and check if the string value exists and write if needed.
-
-    #userSetup_return = userSetup_return.lower()
-
     if userSetup_return.endswith('mel'):
         userSetupFile = open(userSetup_return, 'r')
         startString = '//MRT_STARTUP//'
@@ -2706,48 +2703,57 @@ def createModuleFromAttributes(moduleAttrsDict, createFromUI=False):
 #
 # -------------------------------------------------------------------------------------------------------------
 
-def moduleUtilitySwitchScriptJobs():      # This definition is to be modified as necessary.
+def moduleUtilitySwitchScriptJobs():
     """
     Included as MRT startup function in userSetup file. Runs a scriptJob to trigger 
     runtime procedures during maya events.
+    This definition is to be modified as necessary.
     """
-
-    jobNumber = cmds.scriptJob(event=['SelectionChanged', moduleUtilitySwitchFunctions], protected=True)
-    return jobNumber
+    # First, kill all previous jobs.
+    forceToggleUtilScriptJobs(False)
+    
+    # To store the executed script jobs.
+    jobs = []
+    
+    jobs.append(cmds.scriptJob(event=['SelectionChanged', moduleUtilitySwitchFunctions]))
+    
+    pmc.melGlobals['_mrt_utilJobList'] = jobs[:]
 
 
 def forceToggleUtilScriptJobs(state=True):
     """
     Allows you to forcibly kill or start the utility script jobs.
     """
-    # Toggle undo state
-    cmds.undoInfo(stateWithoutFlush=False)
-    
-    if len(__MRT_utility_tempScriptJob_list) > 0:
-
-        for job in __MRT_utility_tempScriptJob_list:
-            if cmds.scriptJob(exists=job):
-                cmds.scriptJob(kill=job)
-
-    __MRT_utility_tempScriptJob_list = []
-    
-    # If toggle is enabled, restart the utility scriptJobs again. 
+    # If toggle is enabled, restart the utility scriptJobs again.
     if state:
-        __MRT_utility_tempScriptJob_list.append(moduleUtilitySwitchScriptJobs())
+        moduleUtilitySwitchScriptJobs()
+    else:
+        utility_jobs = pmc.melGlobals['_mrt_utilJobList']
+                
+        if len(utility_jobs) > 0:
 
-    cmds.undoInfo(stateWithoutFlush=True)
+            for job in utility_jobs:
+                if cmds.scriptJob(exists=job):
+                    cmds.scriptJob(kill=job)
+            
+        pmc.melGlobals['_mrt_utilJobList'] = []
+
+    print "JOBS: ", pmc.melGlobals['_mrt_utilJobList']
 
 
 def moduleUtilitySwitchFunctions():      # This definition is to be modified as necessary.
     """
     Runtime function called by scriptJob to assist in module operations.
     """
+    print "moduleUtilitySwitchFunctionsStart"
     # Disable mirror operations
     deleteMirrorMoveConnections()
-
+    print '0'
+    #forceToggleUtilScriptJobs(False)
+    print '1'
     # Toggle undo state
     cmds.undoInfo(stateWithoutFlush=False)
-
+    print '2'
     # Get the current namespace, and set to root namespace
     currentNamespace = mel.eval('namespaceInfo -currentNamespace')
     cmds.namespace(setNamespace=':')
@@ -2774,7 +2780,7 @@ def moduleUtilitySwitchFunctions():      # This definition is to be modified as 
                 if cmds.attributeQuery('mirrorModuleNamespace', node=namespaceInfo[0]+':moduleGrp', exists=True):
                     selectedMirrorModules.append(sel)
                     selectedMirrorModuleNamespaces.append(namespaceInfo[0])
-
+    print '3'
     # If valid modules are selected, perform operations on them as well.
     if len(selectedModuleNamespaces):
 
@@ -2805,13 +2811,16 @@ def moduleUtilitySwitchFunctions():      # This definition is to be modified as 
             if cmds.objExists(lastSelectionNamespace+':proxyGeometryGrp'):
                 cmds.scriptJob(attributeChange=[lastSelectionNamespace+':module_transform.proxy_geometry_draw', \
                                             partial(changeProxyGeometryDrawStyle, lastSelectionNamespace)], runOnce=True)
-
+    print '4'
     if len(selectedMirrorModules):
         setupMirrorMoveConnections(selectedMirrorModules, selectedMirrorModuleNamespaces)
-
+    print '5'
+    #forceToggleUtilScriptJobs(True)
+    print '6'
     # Set to the original namespace
     cmds.namespace(setNamespace=currentNamespace)
     cmds.undoInfo(stateWithoutFlush=True)
+    print "moduleUtilitySwitchFunctionsEnd"
 
 
 def setupMirrorMoveConnections(selections, moduleNamespaces):
@@ -2819,8 +2828,12 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
     This function is called by moduleUtilitySwitchFunctions() to assist in manipulation of mirrored module pairs
     in the scene. Script jobs are executed for runtime functions to enable mirror movements.
     """
+    print "setupMirrorMoveConnectionsStart"
     # To collect nodes created in this function. They'll be added to the mirror move container.
     collected_nodes = []
+    
+    # To collect the mirroring script jobs that are created
+    jobNums = []
 
     for (selection, moduleNamespace) in zip(selections, moduleNamespaces):
 
@@ -2851,11 +2864,12 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
             # Based on the number of attributes on the selected control, affect the mirror attributes.
             if len(selectionAttrs) == 1: # A Joint module orientation representation control ?
                 if re.match('^MRT_\D+__\w+:[_0-9a-z]*transform_orientation_repr_transform$', selection):
-                    __MRT_utility_tempScriptJob_list.append(cmds.scriptJob(attributeChange=[str(selection+'.'+selectionAttrs[0]), \
+                    
+                    jobNums.append(cmds.scriptJob(attributeChange=[str(selection+'.'+selectionAttrs[0]), \
                     partial(updateOrientationReprTransformForMirrorMove, selection, mirrorObject, selectionAttrs[0], \
                                                                                                             moduleNamespace)]))
                 else:
-                    __MRT_utility_tempScriptJob_list.append(cmds.scriptJob(attributeChange=[str(selection+'.'+selectionAttrs[0]), \
+                    jobNums.append(cmds.scriptJob(attributeChange=[str(selection+'.'+selectionAttrs[0]), \
                                       partial(updateChangedAttributeForMirrorMove, selection, mirrorObject, selectionAttrs[0])]))
 
 
@@ -2897,11 +2911,11 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
 
 
                 if 'rotate' in selectionAttrs[0]:
-                    __MRT_utility_tempScriptJob_list.append(cmds.scriptJob(attributeChange=[str(selection+'.'+selectionAttrs[0]), \
+                    jobNums.append(cmds.scriptJob(attributeChange=[str(selection+'.'+selectionAttrs[0]), \
                                         partial(updateChangedAttributeForMirrorMove, selection, mirrorObject, selectionAttrs[0])]))
-                    __MRT_utility_tempScriptJob_list.append(cmds.scriptJob(attributeChange=[str(selection+'.'+selectionAttrs[1]), \
+                    jobNums.append(cmds.scriptJob(attributeChange=[str(selection+'.'+selectionAttrs[1]), \
                                         partial(updateChangedAttributeForMirrorMove, selection, mirrorObject, selectionAttrs[1])]))
-                    __MRT_utility_tempScriptJob_list.append(cmds.scriptJob(attributeChange=[str(selection+'.'+selectionAttrs[2]), \
+                    jobNums.append(cmds.scriptJob(attributeChange=[str(selection+'.'+selectionAttrs[2]), \
                                         partial(updateChangedAttributeForMirrorMove, selection, mirrorObject, selectionAttrs[2])]))
 
 
@@ -2914,16 +2928,16 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
                 cmds.setAttr(mirrorTranslateMultiplyDivide+'.input2'+mirrorAxis, -1)
 
                 for attr in selectionAttrs[3:]:
-                    __MRT_utility_tempScriptJob_list.append(cmds.scriptJob(attributeChange=[str(selection+'.'+attr), \
+                    jobNums.append(cmds.scriptJob(attributeChange=[str(selection+'.'+attr), \
                                                     partial(updateChangedAttributeForMirrorMove, selection, mirrorObject, attr)]))
                 # Node orientation type on spline module
-                __MRT_utility_tempScriptJob_list.append(cmds.scriptJob(attributeChange=[str(selection+'.Node_Orientation_Type'), \
+                jobNums.append(cmds.scriptJob(attributeChange=[str(selection+'.Node_Orientation_Type'), \
                     partial(changeSplineJointOrientationType_forMirror, moduleNamespace, \
                                                         cmds.getAttr(moduleNamespace+':moduleGrp.mirrorModuleNamespace'))]))
 
                 # Proxy geometry
                 if 'proxy_geometry_draw' in selectionAttrs:
-                    __MRT_utility_tempScriptJob_list.append(cmds.scriptJob(attributeChange=[str(selection+'.proxy_geometry_draw'), \
+                    jobNums.append(cmds.scriptJob(attributeChange=[str(selection+'.proxy_geometry_draw'), \
                         partial(changeSplineProxyGeometryDrawStyleForMirror, moduleNamespace, \
                                                         cmds.getAttr(moduleNamespace+':moduleGrp.mirrorModuleNamespace'))]))
 
@@ -2940,20 +2954,24 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
                 multipliersFromMirrorAxis = {'X':[1, -1, -1], 'Y':[-1, 1, -1], 'Z':[-1, -1, 1]}[mirrorAxis]
 
                 for (i, multiplier) in zip([3, 4, 5], multipliersFromMirrorAxis):
-                    __MRT_utility_tempScriptJob_list.append(cmds.scriptJob(attributeChange=[str(selection+'.'+selectionAttrs[i]), \
+                    jobNums.append(cmds.scriptJob(attributeChange=[str(selection+'.'+selectionAttrs[i]), \
                                 partial(updateChangedAttributeForMirrorMove, selection, mirrorObject, selectionAttrs[i], multiplier)]))
 
                 for attr in selectionAttrs[6:]:
-                    __MRT_utility_tempScriptJob_list.append(cmds.scriptJob(attributeChange=[str(selection+'.'+attr), \
+                    jobNums.append(cmds.scriptJob(attributeChange=[str(selection+'.'+attr), \
                                         partial(updateChangedAttributeForMirrorMove, selection, mirrorObject, attr)]))
                 # Proxy geometry
                 if 'proxy_geometry_draw' in selectionAttrs:
-                    __MRT_utility_tempScriptJob_list.append(cmds.scriptJob(attributeChange=[str(selection+'.proxy_geometry_draw'), \
+                    jobNums.append(cmds.scriptJob(attributeChange=[str(selection+'.proxy_geometry_draw'), \
                         partial(changeProxyGeometryDrawStyleForMirror, moduleNamespace, \
                                                         cmds.getAttr(moduleNamespace+':moduleGrp.mirrorModuleNamespace'))]))
             
             # Update the mirror move container
             addNodesToContainer('MRT_mirrorMove__Container', collected_nodes, includeHierarchyBelow=True)
+            
+            pmc.melGlobals['_mrt_utilJobList'] = pmc.melGlobals['_mrt_utilJobList'] + jobNums
+            print "JOBS_NEW: ", pmc.melGlobals['_mrt_utilJobList']
+    print "setupMirrorMoveConnectionsEnd"
             
 
 def deleteMirrorMoveConnections():
@@ -2963,21 +2981,13 @@ def deleteMirrorMoveConnections():
     """
     # Toggle undo state
     cmds.undoInfo(stateWithoutFlush=False)
-
-    # Kill all mirror utility scriptJobs. 
-    global __MRT_utility_tempScriptJob_list
-
-    if len(__MRT_utility_tempScriptJob_list) > 0:
-
-        for job in __MRT_utility_tempScriptJob_list:
-            if cmds.scriptJob(exists=job):
-                cmds.scriptJob(kill=job)
-
-        __MRT_utility_tempScriptJob_list = []
-
+    
     # Delete mirror nodes
     if cmds.objExists('MRT_mirrorMove__Container'):
         cmds.delete('MRT_mirrorMove__Container')
+        
+    # Kill all mirror utility scriptJobs. 
+    #forceToggleUtilScriptJobs(False)
 
     cmds.undoInfo(stateWithoutFlush=True)
 

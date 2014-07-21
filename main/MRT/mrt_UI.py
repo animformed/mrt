@@ -182,6 +182,7 @@ class MRT_UI(object):
 
         # To store the parent transform for control for parent switching (which is constrained).
         self.controlParentSwitchGrp = None
+        
         # To store the current parent targets.
         self.existingParentSwitchTargets = []
 
@@ -275,7 +276,8 @@ class MRT_UI(object):
         cmds.menuItem(label='Purge auto-collection files on disk', command=self.purgeAutoCollections)
         cmds.menuItem(label='Create parent switch group for selected control handle',
                                 command=self.createParentSwitchGroupforControlHandle)
-        self.uiVars['toggle_sc_mItem'] = cmds.menuItem(label='Toggle utility script jobs', checkBox=True, command=self.toggleUtilScriptJobs)
+        cmds.menuItem(label='Disable utility script jobs', command=lambda *args:mfunc.forceToggleUtilScriptJobs(False))
+        cmds.menuItem(label='Enable utility script jobs', command=lambda *args:mfunc.forceToggleUtilScriptJobs(True))
 
         # The 'Help' menu will have general help options.
         cmds.menu(label='Help', helpMenu=True)
@@ -1049,19 +1051,6 @@ class MRT_UI(object):
             sys.stderr.write('%s file(s) were removed.\n'%(len(autoCollectionFiles)))
         else:
             sys.stderr.write('No auto-collection file(s) found.\n')
-            
-
-    def toggleUtilScriptJobs(self, *args):
-        '''
-        Allows one to manually toggle the utility script jobs used by MRT (non-UI), 
-        executed during maya startup.
-        '''
-        # Get the state of the toggle checkbox.
-        # Maya passes the item state as the second argument (args) as well. Use either one.
-        toggleState = cmds.menuItem(self.uiVars['toggle_sc_mItem'], query=True, checkBox=True)
-        
-        # Force toggling of the script jobs.
-        mfunc.forceToggleUtilScriptJobs(toggleState)
 
 
     def openWebPage(self, urlString, *args):
@@ -2362,7 +2351,10 @@ class MRT_UI(object):
         """
         # Module namespaces to be removed. There's two namespaces if the module is a mirror module.
         namespacesToBeRemoved = []
-
+        
+        # Turn off mirroring script jobs.
+        mfunc.forceToggleUtilScriptJobs(False)
+        
         # Delete mirror move nodes with its connections.
         mfunc.deleteMirrorMoveConnections()
 
@@ -2434,7 +2426,10 @@ class MRT_UI(object):
 
         if cmds.namespace(exists=currentNamespace):
             cmds.namespace(setNamespace=currentNamespace)
-
+        
+        # Turn on mirroring script jobs.
+        mfunc.forceToggleUtilScriptJobs(True)
+        
         # Update UI for the edit module tab.
         self.clearParentModuleField()
         self.clearChildModuleField()
