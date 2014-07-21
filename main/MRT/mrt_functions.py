@@ -49,7 +49,7 @@ def prep_MRTMayaStartupActions():
     if userSetup_return.endswith('mel'):
         userSetupFile = open(userSetup_return, 'r')
         startString = '//MRT_STARTUP//'
-        commandString = '\npython("try:\\n\\timport MRT.mrt_functions as mfunc\\nexcept ImportError:\\n\\tpass\\nelse:\\n\\tmfunc.runDeferredFunction_wrapper(mfunc.moduleUtilitySwitchScriptJob)\\n");'
+        commandString = '\npython("try:\\n\\timport MRT.mrt_functions as mfunc\\nexcept ImportError:\\n\\tpass\\nelse:\\n\\tmfunc.runDeferredFunction_wrapper(mfunc.moduleUtilitySwitchScriptJobs)\\n");'
 
         stringList = [string.strip() for string in userSetupFile.readlines()]
         userSetupFile.close()
@@ -67,7 +67,7 @@ def prep_MRTMayaStartupActions():
     if userSetup_return.endswith('py'):
         userSetupFile = open(userSetup_return, 'r')
         startString = '#MRT_STARTUP#'
-        commandString = '\ntry:\n\timport MRT.mrt_functions as mfunc\nexcept ImportError:\n\tpass\nelse:\n\tmfunc.runDeferredFunction_wrapper(mfunc.moduleUtilitySwitchScriptJob)\n'
+        commandString = '\ntry:\n\timport MRT.mrt_functions as mfunc\nexcept ImportError:\n\tpass\nelse:\n\tmfunc.runDeferredFunction_wrapper(mfunc.moduleUtilitySwitchScriptJobs)\n'
 
         stringList = [string.strip() for string in userSetupFile.readlines()]
         userSetupFile.close()
@@ -85,7 +85,7 @@ def prep_MRTMayaStartupActions():
     # If not userSetup file, create a default with "mel" extension.
     if userSetup_return.endswith('scripts/'):
         userSetupFile = open(userSetup_return+'userSetup.mel', 'w')
-        userSetupFile.write('//MRT_STARTUP//\npython("try:\\n\\timport MRT.mrt_functions as mfunc\\nexcept ImportError:\\n\\tpass\\nelse:\\n\\tmfunc.runDeferredFunction_wrapper(mfunc.moduleUtilitySwitchScriptJob)\\n");')
+        userSetupFile.write('//MRT_STARTUP//\npython("try:\\n\\timport MRT.mrt_functions as mfunc\\nexcept ImportError:\\n\\tpass\\nelse:\\n\\tmfunc.runDeferredFunction_wrapper(mfunc.moduleUtilitySwitchScriptJobs)\\n");')
 
         userSetupStatus = True
 
@@ -2706,17 +2706,17 @@ def createModuleFromAttributes(moduleAttrsDict, createFromUI=False):
 #
 # -------------------------------------------------------------------------------------------------------------
 
-def moduleUtilitySwitchScriptJob():      # This definition is to be modified as necessary.
+def moduleUtilitySwitchScriptJobs():      # This definition is to be modified as necessary.
     """
     Included as MRT startup function in userSetup file. Runs a scriptJob to trigger 
     runtime procedures during maya events.
     """
-    print "moduleUtilitySwitchScriptJob", moduleUtilitySwitchScriptJob
+
     jobNumber = cmds.scriptJob(event=['SelectionChanged', moduleUtilitySwitchFunctions], protected=True)
     return jobNumber
 
 
-def forceToggleUIScriptJobs(state=True):
+def forceToggleUtilScriptJobs(state=True):
     """
     Allows you to forcibly kill or start the utility script jobs.
     """
@@ -2733,7 +2733,7 @@ def forceToggleUIScriptJobs(state=True):
     
     # If toggle is enabled, restart the utility scriptJobs again. 
     if state:
-        __MRT_utility_tempScriptJob_list.append(moduleUtilitySwitchScriptJob())
+        __MRT_utility_tempScriptJob_list.append(moduleUtilitySwitchScriptJobs())
 
     cmds.undoInfo(stateWithoutFlush=True)
 

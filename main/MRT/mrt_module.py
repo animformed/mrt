@@ -2018,6 +2018,15 @@ class MRT_Module(object):
                 cmds.connectAttr(self.moduleTransform+'.'+longName, joint+'_controlShape_scaleClusterHandle.scaleY')
                 cmds.connectAttr(self.moduleTransform+'.'+longName, joint+'_controlShape_scaleClusterHandle.scaleZ')
                 
+                handleShape = joint + '_controlXShape'
+                scaleMult = cmds.createNode('multiplyDivide', name=joint+'_controlScale_mult', skipSelect=True)
+                currentShapeScale = cmds.getAttr(handleShape+'.localScale')[0]
+                cmds.setAttr(scaleMult+'.input1', *currentShapeScale, type='double3')
+                cmds.connectAttr(self.moduleTransform+'.'+longName, scaleMult+'.input2X')
+                cmds.connectAttr(self.moduleTransform+'.'+longName, scaleMult+'.input2Y')
+                cmds.connectAttr(self.moduleTransform+'.'+longName, scaleMult+'.input2Z')
+                cmds.connectAttr(scaleMult+'.output', handleShape+'.localScale')
+                
                 # Publish to module container.
                 cmds.container(self.moduleContainer, edit=True, publishAndBind=[self.moduleTransform+'.'+longName,
                                                                                         'module_transform_'+longName])

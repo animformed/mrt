@@ -265,6 +265,8 @@ class MRT_UI(object):
         cmds.menuItem(label='Expand all frames', command=self.expandAllUIframes)
         cmds.menuItem(divider=True)
         cmds.menuItem(label='Install shelf button', command=self.putShelfButtonForUI)
+        
+        # The 'misc' menu will contains utility operations.
         cmds.menu(label='Misc')
         cmds.menuItem(label='Swap hinge node root and end handle positions', command=self.swapHingeNodeRootEndHandlePos)
         cmds.menuItem(label='Delete selected module proxy geometry', command=self.deleteSelectedProxyGeo)
@@ -273,6 +275,7 @@ class MRT_UI(object):
         cmds.menuItem(label='Purge auto-collection files on disk', command=self.purgeAutoCollections)
         cmds.menuItem(label='Create parent switch group for selected control handle',
                                 command=self.createParentSwitchGroupforControlHandle)
+        self.uiVars['toggle_sc_mItem'] = cmds.menuItem(label='Toggle utility script jobs', checkBox=True, command=self.toggleUtilScriptJobs)
 
         # The 'Help' menu will have general help options.
         cmds.menu(label='Help', helpMenu=True)
@@ -1046,6 +1049,19 @@ class MRT_UI(object):
             sys.stderr.write('%s file(s) were removed.\n'%(len(autoCollectionFiles)))
         else:
             sys.stderr.write('No auto-collection file(s) found.\n')
+            
+
+    def toggleUtilScriptJobs(self, *args):
+        '''
+        Allows one to manually toggle the utility script jobs used by MRT (non-UI), 
+        executed during maya startup.
+        '''
+        # Get the state of the toggle checkbox.
+        # Maya passes the item state as the second argument (args) as well. Use either one.
+        toggleState = cmds.menuItem(self.uiVars['toggle_sc_mItem'], query=True, checkBox=True)
+        
+        # Force toggling of the script jobs.
+        mfunc.forceToggleUtilScriptJobs(toggleState)
 
 
     def openWebPage(self, urlString, *args):
