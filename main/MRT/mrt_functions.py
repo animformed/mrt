@@ -29,7 +29,7 @@ os_name = platform.uname()[0]  # Get the OS type
 # -------------------------------------------------------------------------------------------------------------
 
 def prep_MRTMayaStartupActions():
-    """
+    '''
     Executed as startup utility function to check if MRT is correctly configured with maya startup.
     It checks for maya.env and the valid userSetup file in maya scripts directory. 
 
@@ -37,7 +37,7 @@ def prep_MRTMayaStartupActions():
 
     It also modifies the "MAYA_PLUG_IN_PATH" variable. It appends necessary string value to it if it
     exists.
-    """
+    '''
     # Get the current userSetup.* file path with the extension.
     userSetup_return = find_userSetupFileStatus()
     userSetupStatus = False     # If userSetup is written or modified, set it to True. 
@@ -160,10 +160,10 @@ def prep_MRTMayaStartupActions():
 
 
 def returnEnvPluginPathStatus():
-    """
+    '''
     Checks and returns the plugin path for the 'MAYA_PLUG_IN_PATH' string value in the maya.env file. 
     Can be modified to work with os.getenv('MAYA_PLUG_IN_PATH') as well.
-    """
+    '''
     envPath = str(cmds.internalVar(userScriptDir=True)).rpartition('scripts/')[0] + 'Maya.env'
     envSettings = open(envPath)
 
@@ -188,10 +188,10 @@ def returnEnvPluginPathStatus():
 
 
 def prep_MRTcontrolRig_source():
-    """
+    '''
     Executed at startup to combine the .py sources under "userControlClasses" with "mrt_controlRig_src.py"
     as "mrt_controlRig.py", which is then imported and used.
-    """
+    '''
     # Remove any existing sources
     cleanup_MRT_actions()
 
@@ -250,11 +250,11 @@ def prep_MRTcontrolRig_source():
 
 
 def find_userSetupFileStatus():
-    """
+    '''
     Checks if a 'userSetup' file exists under the user script directory.
     If found, return its full path name with its extension.
     If only 'mel' or 'py' is found, return it. If both, return 'mel'.
-    """
+    '''
     scriptDir = cmds.internalVar(userScriptDir=True)
     userSetupFiles = glob.glob(scriptDir + 'userSetup.*')
 
@@ -298,10 +298,10 @@ def find_userSetupFileStatus():
 # -------------------------------------------------------------------------------------------------------------
 
 def cleanup_MRT_actions(jobNum=None):
-    """
+    '''
     Cleans up any temporary .py or .pyc during startup or scene use.
     Modify as necessary.
-    """
+    '''
     path = cmds.internalVar(userScriptDir=True) + 'MRT/'
 
     # Clean up 'mrt_controlRig.py'. This file is an aggregate of 'mrt_controlRig_src.py' 
@@ -317,10 +317,10 @@ def cleanup_MRT_actions(jobNum=None):
 
 
 def stripMRTNamespace(moduleName):
-    """
+    '''
     Separates an input string name if it has a namespace defined by MRT.
     It returns the namespace and the object name.
-    """
+    '''
     if re.match('^MRT_\D+__\w+:\w+$', moduleName):
         namespaceInfo = str(moduleName).partition(':')
 
@@ -330,9 +330,9 @@ def stripMRTNamespace(moduleName):
 
 
 def returnMRT_Namespaces():
-    """
+    '''
     Returns all current namespaces in the scene defined by MRT.
-    """
+    '''
     # Get the current namespace, set the namespace to root.
     currentNamespace = cmds.namespaceInfo(currentNamespace=True)
     cmds.namespace(setNamespace=':')    
@@ -355,9 +355,9 @@ def returnMRT_Namespaces():
 
 
 def findHighestNumSuffix(baseName, names):
-    """
+    '''
     Find and return the max numerical suffix value separated by underscore(s) for a given string name.
-    """
+    '''
     highestValue = 1
 
     for name in names:
@@ -373,13 +373,13 @@ def findHighestNumSuffix(baseName, names):
 
 
 def findHighestCommonTextScrollListNameSuffix(baseName, names):
-    """
+    '''
     Find and return the max numerical suffix in brackets (num) in textScrollList list names,
     with a common first name. This numerical suffix is added to make them unique.
     Eg:
     Name(2)
     Name(4)
-    """
+    '''
     highestValue = 1    # Start with base value for the num suffix
     
     for name in names:
@@ -395,13 +395,13 @@ def findHighestCommonTextScrollListNameSuffix(baseName, names):
 
 
 def returnModuleUserSpecNames(namespaces):
-    """
+    '''
     Returns a tuple of two lists for a given list of namespaces. 
 
     A module's namespace has two parts,    one defined by MRT and the other defined by the user, 
     separated by an "__". The first list contains substrings for the namespaces defined by MRT 
     and the second list containing substring names defined by user,for the passed-in namespaces.
-    """
+    '''
     userSpecifiedNames = []
     strippedNamespaces = []
 
@@ -413,10 +413,10 @@ def returnModuleUserSpecNames(namespaces):
 
 
 def returnVectorMagnitude(transform_start, transform_end):
-    """
+    '''
     Calculates and returns the magnitude for the input vector, with the arguments for
     start position for input vector and the end position for input vector.
-    """
+    '''
     transform_vector = map(lambda x,y: x-y, transform_start, transform_end)  # transform_start -> transform_end
     transform_vector_magnitude = math.sqrt(reduce(lambda x,y: x+y, [component**2 for component in transform_vector]))
 
@@ -424,7 +424,7 @@ def returnVectorMagnitude(transform_start, transform_end):
 
     
 def compareTransformPairOrientation(transform1, transform2):
-    """
+    '''
     Compares two input maya transforms for their orientation, by calculating the dot products
     of each of their respective local axes.
     
@@ -433,7 +433,7 @@ def compareTransformPairOrientation(transform1, transform2):
     directions = {'X': 1,   <means that the X axes for T1 and T2 are parallel>
                   'Y': -1,  <means that the Y axes for T1 and T2 are parallel, but opposite in directions,
                   'Z': -1}  <so on>
-    """
+    '''
     
     # Create two temporary transform groups for representing transform1 and transform2.
     # Each group will have the base transform as the input transform and a child transform to
@@ -472,7 +472,7 @@ def compareTransformPairOrientation(transform1, transform2):
     
     
 def returnCrossProductDirection(transform1_start, transform1_end, transform2_start, transform2_end, normalize=False):
-    """
+    '''
     Calculates and returns the cross-product data for two input vectors. It has arguments for,
     transform1_start -> Start position for vector 1.
     transform1_end -> End position for vector 1.
@@ -483,7 +483,7 @@ def returnCrossProductDirection(transform1_start, transform1_end, transform2_sta
     It returns a tuple (the sine value between two input vectors <float>, 
                         cross product vector <list(3) with floats>, 
                         magnitude of cross product vector <float>)
-    """
+    '''
     # transform1_start -> transform1_end
     transform1_vector = t1_v = map(lambda x,y: x-y, transform1_start, transform1_end)
     # transform2_start -> transform2_end
@@ -510,7 +510,7 @@ def returnCrossProductDirection(transform1_start, transform1_end, transform2_sta
 
 
 def returnDotProductDirection(transform1_start, transform1_end, transform2_start, transform2_end, normalize=False):
-    """
+    '''
     Calculates and returns the dot-product direction for two input vectors. It has arguments for,
     transform1_start -> Start position for vector 1.
     transform1_end -> End position for vector 1.
@@ -519,7 +519,7 @@ def returnDotProductDirection(transform1_start, transform1_end, transform2_start
     normalize -> Normalize the input vectors to unit vectors.
 
     It returns a tuple (the cosine value between two input vectors <float>, magnitude of dot product vector <float>)
-    """
+    '''
     # transform1_start -> transform1_end
     transform1_vector = map(lambda x,y: x-y, transform1_start, transform1_end)
     # transform2_start -> transform2_end
@@ -543,7 +543,7 @@ def returnDotProductDirection(transform1_start, transform1_end, transform2_start
 
 
 def returnOffsetPositionBetweenTwoVectors(startVector, endVector, parameter=0):
-    """
+    '''
     Calculates and returns a new position with respect to two input vector positions, based on the parameter value.
     It has the following arguments:
     startVector -> Vector position 1.
@@ -551,7 +551,7 @@ def returnOffsetPositionBetweenTwoVectors(startVector, endVector, parameter=0):
     parameter -> If parameter is 0.5, the function returns the mid position between the two input vectors. 
                  If the parameter is 0, the function returns the position of the first input vector, and so on.
     It returns a vector, <list(3) with floats>
-    """
+    '''
     direction_vec = map(lambda x,y:x-y, endVector, startVector)
 
     # Calculate the offset vector on the line represented by the two input vectors.
@@ -561,10 +561,10 @@ def returnOffsetPositionBetweenTwoVectors(startVector, endVector, parameter=0):
 
 
 def returnModuleTypeFromNamespace(namespace):
-    """
+    '''
     Return the type of a module from it namespace.
     Eg., "MRT_HingeNode__module1:" will return "HingeNode" 
-    """
+    '''
     firstPart = namespace.partition('__')[0]
     moduleType = firstPart.partition('_')[2]
 
@@ -572,14 +572,14 @@ def returnModuleTypeFromNamespace(namespace):
 
 
 def loadXhandleShapePlugin():
-    """
+    '''
     Checks and loads the xHandleShape plugin. It finds the correct plugin from the built versions for the 
     current session of maya and os if supported and makes a copy to the plug-in search path.
 
     It returns a bool if it successfully loads the plugin.
 
     To be modified for future updates and add mac support ?
-    """
+    '''
     maya_ver = returnMayaVersion()
 
     if maya_ver > 2014:
@@ -627,9 +627,9 @@ def loadXhandleShapePlugin():
 
 
 def selection_sort_by_length(list_sequence):
-    """
+    '''
     Sorts a given sequence list (list of lists) by their length. In place sort.
-    """
+    '''
     for i in xrange(0, len(list_sequence)):
         min_index = i
         for j in xrange(i+1, len(list_sequence)):
@@ -640,9 +640,9 @@ def selection_sort_by_length(list_sequence):
 
 
 def runDeferredFunction_wrapper(function):
-    """
+    '''
     Execute a given function during CPU idle time.
-    """
+    '''
     # DEPRECATED #
     # global _eval__Function
     # _eval__Function = function
@@ -653,10 +653,10 @@ def runDeferredFunction_wrapper(function):
 
 
 def findLastSubClassForSuperClass(cls):
-    """
+    '''
     Find the leaf child subclass for a given class. Used by the control
     rig class hierarchy.
-    """
+    '''
     klasses = cls.__subclasses__()
     
     if not klasses:
@@ -669,9 +669,9 @@ def findLastSubClassForSuperClass(cls):
 
 
 def returnValidSelectionFlagForModuleTransformObjects(selection):
-    """
+    '''
     Checks a selection for a valid module object created by MRT.
-    """
+    '''
     matchObjects = [re.compile('^MRT_\D+__\w+:module_transform$'),
                     re.compile('^MRT_\D+__\w+:root_node_transform$'),
                     re.compile('^MRT_\D+__\w+:end_node_transform$'),
@@ -696,10 +696,10 @@ def returnValidSelectionFlagForModuleTransformObjects(selection):
 
 
 def concatenateCommonNamesFromHierarchyData(data, commonNames=[]):
-    """
+    '''
     This function works upon the hierarchy data returned by traverseParentModules() or traverseChildrenModules().
     It collects all object names uniquely in a mutable sequence (list) passed-in as an argument. 
-    """
+    '''
     if type(data) == dict:
         for item in data:
             if not item in commonNames:
@@ -724,7 +724,7 @@ def concatenateCommonNamesFromHierarchyData(data, commonNames=[]):
 # -------------------------------------------------------------------------------------------------------------
 
 def returnHierarchyTreeListStringForCustomControlRigging(rootJoint, prefix='', prettyPrint=True):
-    """
+    '''
     Returns a string value depicting the hierarchy tree list of all joints from a given root joint. 
     For more description, see the comments for "CustomLegControl" class in "mrt_controlRig_src.py".
 
@@ -738,7 +738,7 @@ def returnHierarchyTreeListStringForCustomControlRigging(rootJoint, prefix='', p
                 <JointNode>_root_node_transform
                 <JointNode>_root_node_transform
                     <JointNode>_end_node_transform
-    """
+    '''
     if prettyPrint:
         newLine = '\n'
         tabLine = '\t'
@@ -797,10 +797,10 @@ def returnHierarchyTreeListStringForCustomControlRigging(rootJoint, prefix='', p
 
 
 def returnRootForCharacterHierarchy(joint):
-    """
+    '''
     Returns the string name of the root joint of a joint hierarchy in a character for a given joint name, 
     which is part of the hierarchy.
-    """
+    '''
     rootJoint = ''
 
     # The cmds version returned occasional errors stating incorrect boolean value with parent flag, if
@@ -818,7 +818,7 @@ def returnRootForCharacterHierarchy(joint):
 
 
 def returnAxesInfoForFootTransform(transform, foot_vec_dict):
-    """
+    '''
     This function is used to gather data for a transform's orientation for its use 
     with a reverse IK foot/leg configuration.
 
@@ -829,7 +829,7 @@ def returnAxesInfoForFootTransform(transform, foot_vec_dict):
     3) Calculate its nearest axis along the length of the leg.
 
     Also return the cosine between the nearest axis.
-    """
+    '''
     # Get the vector crossing the length of the foot  
     foot_cross_vec = foot_vec_dict['cross']
 
@@ -887,25 +887,25 @@ def returnAxesInfoForFootTransform(transform, foot_vec_dict):
 
 
 def performOnIdle():
-    """
+    '''
     Called during CPU idle time to perform post tasks. Can be modified to include more tasks.
     Useful in iterations.
-    """
+    '''
     cmds.select(clear=True)
 
 
 def moveSelectionOnIdle(selection, translation_values):
-    """
+    '''
     Useful for selection and moving after a successful DG update by maya.
-    """
+    '''
     cmds.select(selection, replace=True)
     cmds.move(*translation_values, relative=True, worldSpace=True)
 
 
 def traverseParentModules(module_namespace):
-    """
+    '''
     Returns a list and number of all parent modules from a given module.
-    """
+    '''
     traverse_length = 0
     traversed_modules = []
 
@@ -930,10 +930,10 @@ def traverseParentModules(module_namespace):
 
 
 def traverseChildrenModules(module_namespace, allChildren=False):
-    """
+    '''
     Search for children modules from all nodes for a module. Also, search recursively
     for all children to return a dict structure depicting the "allChildren" hierarchy.
-    """
+    '''
     childrenModules = []
     allChildrenModules = {}
 
@@ -985,10 +985,10 @@ def traverseChildrenModules(module_namespace, allChildren=False):
 
 
 def traverseConstrainedParentHierarchiesForSkeleton(rootJoint):
-    """
+    '''
     Return a list of all parents (connected using constraints) from a given root joint for 
     a joint hierarchy in a character.
-    """
+    '''
     allParentRootJoints = []
 
     # If the passed-in root joint of a hierarchy in a character has a constrained parent, proceed.
@@ -1014,9 +1014,9 @@ def traverseConstrainedParentHierarchiesForSkeleton(rootJoint):
 
 
 def checkForJointDuplication():
-    """
+    '''
     Checks if a character joint has been manually duplicated in the scene.
-    """
+    '''
     allJoints = cmds.ls(type='joint')
     
     # Get all the mrt joint names in the scene. Only the node name at the end of
@@ -1040,7 +1040,7 @@ def checkForJointDuplication():
 
 
 def returnConstraintWeightIndexForTransform(transform, constraintNode, matchAttr=False):
-    """
+    '''
     Returns the weight suffix and the attribute string for a give transform driving 
     a given constraint.
     Eg., If the transform "transform2" was driving a constraint along with other transforms,
@@ -1063,7 +1063,7 @@ def returnConstraintWeightIndexForTransform(transform, constraintNode, matchAttr
 
     Returns a tuple (index <int>, attributeName <str>) if successful and None if no weight attribute for the
     transform is found.
-    """
+    '''
     # Get a list of all weight attributes for the given constraint node
     constraintWeightAttrs = [attr for attr in cmds.listAttr(constraintNode, keyable=True) \
                             if re.match('^\w+W\d+$', attr)]
@@ -1087,7 +1087,7 @@ def returnConstraintWeightIndexForTransform(transform, constraintNode, matchAttr
 
 
 def lockHideChannelAttrs(node, *attrList, **setAttrs):
-    """
+    '''
     Sets the lock/channelBox/keyable state of passed-in channel attributes for a node.
     attrList - Sequence of node attributes to be set.
     setAttr - Default arguments to be used to set the states of the attributes.
@@ -1096,7 +1096,7 @@ def lockHideChannelAttrs(node, *attrList, **setAttrs):
     visible - Visible in the channel box, but non-keyable.
     keyable - Keyable & visible in the channel box.
     lock - Lock the attribute.
-    """
+    '''
     node = str(node)
     
     if cmds.objExists(node) and not cmds.referenceQuery(node, isNodeReferenced=True):
@@ -1125,15 +1125,15 @@ def lockHideChannelAttrs(node, *attrList, **setAttrs):
 
 
 def returnMayaVersion():
-    """
+    '''
     Returns the current maya version as an integer.
-    """
+    '''
     # return int(eval(mel.eval('$val = $gMayaVersionYear')))    # Alternative
     return int(eval(cmds.about(version=True)))
 
 
 def addNodesToContainer(inputContainer, inputNodes, includeHierarchyBelow=False, includeShapes=False, force=False):
-    """
+    '''
     Add a list of nodes to a given container name. It has the following arguments:
 
     inputContainer -> String name for the container.
@@ -1144,7 +1144,7 @@ def addNodesToContainer(inputContainer, inputNodes, includeHierarchyBelow=False,
              given container.
 
     Returns True if successful and False if otherwise.
-    """
+    '''
     
     # Collect the input node(s) in a list. Make sure they exist.
     if isinstance(inputNodes, list):
@@ -1226,9 +1226,9 @@ def addNodesToContainer(inputContainer, inputNodes, includeHierarchyBelow=False,
 
 
 def setRotationOrderForFootUtilTransform(transform, axesInfo):
-    """
+    '''
     Calculate and set the rotate order for a given transform in a reverse IK leg/foot configuration.
-    """
+    '''
     # Get the axes data from axesInfo using returnAxesInfoForFootTransform() 
     crossAx = axesInfo['cross'][0]
     aimAx = axesInfo['aim'][0]
@@ -1252,9 +1252,9 @@ def align(target, toAlignTransform):
 
 
 def updateNodeList(nodes):
-    """
+    '''
     Updates all DAG nodes in a given node list.
-    """
+    '''
     if not isinstance(nodes, list):
         nodes = [nodes]
 
@@ -1269,9 +1269,9 @@ def updateNodeList(nodes):
 
 
 def updateAllTransforms():
-    """
+    '''
     Updates all transforms created by MRT.
-    """
+    '''
     cmds.setToolTo('moveSuperContext')
 
     nodes = [node for node in cmds.ls(type='dagNode') if \
@@ -1285,9 +1285,9 @@ def updateAllTransforms():
 
 
 def updateContainerNodes(container):
-    """
+    '''
     Updates nodes within a given container.
-    """
+    '''
     nodes = cmds.container(container, query=True, nodeList=True)
     cmds.setToolTo('moveSuperContext')
 
@@ -1300,9 +1300,9 @@ def updateContainerNodes(container):
 
 
 def cleanSceneState():      # This definition is to be modified as necessary.
-    """
+    '''
     Clean-up a scene, with nodes left by maya.
-    """
+    '''
     dg_nodes = cmds.ls()
     extra_nodes = [u'ikSplineSolver', u'ikSCsolver', u'ikRPsolver', u'hikSolver']
 
@@ -1318,11 +1318,11 @@ def cleanSceneState():      # This definition is to be modified as necessary.
 
 
 def returnModuleAttrsFromScene(moduleNamespace):
-    """
+    '''
     Called to return all module specs / attributes. Accepts an existing
     module namespace. The returned data is used by createModuleFromAttributes(), createSkeletonFromModule(),
     and createProxyForSkeletonFromModule().
-    """
+    '''
 
     moduleAttrsDict = {}
 
@@ -1652,10 +1652,10 @@ def returnModuleAttrsFromScene(moduleNamespace):
 
 
 def createSkeletonFromModule(moduleAttrsDict, characterName):
-    """
+    '''
     Converts a module to a joint hierarchy. This method is called during character creation to perform on modules
     in the scene. It uses the module attribute data generated by "returnModuleAttrsFromScene" function.
-    """
+    '''
     # To collect joints created from the module (by using its attributes)
     joints = []
     
@@ -1907,12 +1907,12 @@ def createSkeletonFromModule(moduleAttrsDict, characterName):
 
 
 def setupParentingForRawCharacterParts(characterJointSet, jointsMainGrp, characterName):
-    """
+    '''
     Set up parenting for joint hierarchies while creating a character. The type of parenting
     depends on the module parenting info stored for joints for a hierarchy in "characterJointSet".
 
     "Constrained" parenting uses parent constraint, "DG parenting". "Hierarchical" parenting uses DAG parenting.
-    """
+    '''
     # To collect all "constrained" root joints for joint hierarchies. This is the joint above the root joint
     # for a joint hierarchy and it is used to receive constraints.
     all_root_joints = []
@@ -2007,13 +2007,13 @@ def setupParentingForRawCharacterParts(characterJointSet, jointsMainGrp, charact
 
 
 def createProxyForSkeletonFromModule(characterJointSet, moduleAttrsDict, characterName):
-    """
+    '''
     Set up proxy geometry for joint hierarchies during character creation. It uses the module attribute data generated by 
     "returnModuleAttrsFromScene". It uses the existing module proxy geometry, if it exists.
     
     We'll iterate through joint chain created from its module (nodes), find if the module proxy proxy geometry, bone or elbow
     type exists for the module and hence for the node, duplicate it for the joint and drive it appropriately.
-    """
+    '''
     
     # Get the joint set, which in this case is the last joint set added to the 'characterJointSet' data list.
     # See 'processCharacterFromScene' in mrt_UI.
@@ -2154,10 +2154,10 @@ def createProxyForSkeletonFromModule(characterJointSet, moduleAttrsDict, charact
 
 
 def createFKlayerDriverOnJointHierarchy(*args, **kwargs):
-    """
+    '''
     Creates a joint layer on top of a selected character hierarchy. For description in context, 
     see the "applyFK_Control" method for the "BaseJointControl" class in "mrt_controlRig_src.py"
-    """
+    '''
     
     # Get the input arguments
     
@@ -2377,10 +2377,10 @@ def createFKlayerDriverOnJointHierarchy(*args, **kwargs):
 
 
 def createModuleFromAttributes(moduleAttrsDict, createFromUI=False):
-    """
+    '''
     Called for creating a new module from its attributes / specs. Accepts an existing module data returned by
     returnModuleAttrsFromScene().
-    """
+    '''
     # Get the current namespace, and set to root namespace
     currentNamespace = mel.eval('namespaceInfo -currentNamespace')
     cmds.namespace(setNamespace=':')
@@ -2704,11 +2704,11 @@ def createModuleFromAttributes(moduleAttrsDict, createFromUI=False):
 # -------------------------------------------------------------------------------------------------------------
 
 def moduleUtilitySwitchScriptJobs():
-    """
+    '''
     Included as MRT startup function in userSetup file. Runs a scriptJob to trigger 
     runtime procedures during maya events.
     This definition is to be modified as necessary.
-    """
+    '''
     # First, kill all previous jobs.
     forceToggleUtilScriptJobs(False)
     
@@ -2721,9 +2721,9 @@ def moduleUtilitySwitchScriptJobs():
 
 
 def forceToggleUtilScriptJobs(state=True):
-    """
+    '''
     Allows you to forcibly kill or start the utility script jobs.
-    """
+    '''
     # If toggle is enabled, restart the utility scriptJobs again.
     if state:
         moduleUtilitySwitchScriptJobs()
@@ -2742,9 +2742,9 @@ def forceToggleUtilScriptJobs(state=True):
 
 
 def moduleUtilitySwitchFunctions():      # This definition is to be modified as necessary.
-    """
+    '''
     Runtime function called by scriptJob to assist in module operations.
-    """
+    '''
     print "moduleUtilitySwitchFunctionsStart"
     # Disable mirror operations
     deleteMirrorMoveConnections()
@@ -2824,10 +2824,10 @@ def moduleUtilitySwitchFunctions():      # This definition is to be modified as 
 
 
 def setupMirrorMoveConnections(selections, moduleNamespaces):
-    """
+    '''
     This function is called by moduleUtilitySwitchFunctions() to assist in manipulation of mirrored module pairs
     in the scene. Script jobs are executed for runtime functions to enable mirror movements.
-    """
+    '''
     print "setupMirrorMoveConnectionsStart"
     # To collect nodes created in this function. They'll be added to the mirror move container.
     collected_nodes = []
@@ -2888,6 +2888,14 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
                     # to drive the mirror. For instance, if the source and the target Z translate axis 
                     # are opposite, you need to multiply it by -1, and so on.
                     direction_mult = compareTransformPairOrientation(selection, mirrorObject)
+                    
+                    # compareTransformPairOrientation() returns the scalar products, here we just
+                    # need the sign values.
+                    try:
+                        direction_mult = {key: math.copysign(1, direction_mult[key]) for key in direction_mult}
+                        
+                    except SyntaxError: # If py version < 2.7
+                        direction_mult = dict([(key, math.copysign(1, direction_mult[key])) for key in direction_mult])
                     
                     # Get the local axis for the selection which is aligned with the mirror axis.
                     # For a JointNode module with more than one node, it'll be the node up axis. 
@@ -2975,10 +2983,10 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
             
 
 def deleteMirrorMoveConnections():
-    """
+    '''
     Kills all scriptJobs required for mirror move operations for modules,
     removes container for mirror nodes.
-    """
+    '''
     # Toggle undo state
     cmds.undoInfo(stateWithoutFlush=False)
     
@@ -2993,10 +3001,10 @@ def deleteMirrorMoveConnections():
 
 
 def updateChangedAttributeForMirrorMove(selection, mirrorObject, attribute, multiplier=None):
-    """
+    '''
     This function is called by a scriptJob to affect a control's mirror attributes where the
     control is a part of a mirrored module pair. Used in setupMirrorMoveConnections().
-    """
+    '''
     # Get the value of a control's attribute
     value = cmds.getAttr(selection+'.'+attribute)
 
@@ -3009,11 +3017,11 @@ def updateChangedAttributeForMirrorMove(selection, mirrorObject, attribute, mult
 
 
 def updateOrientationReprTransformForMirrorMove(selection, mirrorObject, attribute, namespace):
-    """
+    '''
     This function is called by a scriptJob when "orientation_repr_transform" control
     for a mirrored joint module is selected. It mirrors the rotation of the aim axis movement
     of the control to its mirror. Used in setupMirrorMoveConnections().
-    """
+    '''
     # Get the value of the "orientation repr transform" control aim axis rotation.
     value = cmds.getAttr(selection+'.'+attribute)
 
@@ -3030,10 +3038,10 @@ def updateOrientationReprTransformForMirrorMove(selection, mirrorObject, attribu
 
 
 def changeSplineJointOrientationType(moduleNamespace):
-    """
+    '''
     Executed by scriptJob to modify the spline node orientation type by modifying the "Node_Orientation_Type"
     attribute on the spline module start transform.
-    """
+    '''
     selection = mel.eval('ls -sl -type dagNode')
 
     cmds.lockNode(moduleNamespace+':module_container', lock=False, lockUnpublished=False)
@@ -3061,11 +3069,11 @@ def changeSplineJointOrientationType(moduleNamespace):
 
 
 def changeSplineJointOrientationType_forMirror(moduleNamespace, mirrorModuleNamespace): 
-    """
+    '''
     Executed when one of the mirrored module pairs of a spline module is modified. 
     Called in setupMirrorMoveConnections() by a scriptJob. Modifies the spline node orientation type 
     on modules in a mirrored module pair for a selected spline module (part of the pair).
-    """
+    '''
     selection = mel.eval('ls -sl -type dagNode')
 
     cmds.lockNode(moduleNamespace+':module_container', lock=False, lockUnpublished=False)
@@ -3107,10 +3115,10 @@ def changeSplineJointOrientationType_forMirror(moduleNamespace, mirrorModuleName
 
 
 def changeProxyGeometryDrawStyle(moduleNamespace):
-    """
+    '''
     Toggle the transparency (vertex) draw style for the module proxy geometry, if it exists.
     This function is executed by a scriptJob. See moduleUtilitySwitchFunctions().
-    """
+    '''
     proxyGeoGrp = moduleNamespace + ':proxyGeometryGrp'
     allChildren = cmds.listRelatives(proxyGeoGrp, allDescendents=True, type='transform')
 
@@ -3130,10 +3138,10 @@ def changeProxyGeometryDrawStyle(moduleNamespace):
 
 
 def changeProxyGeometryDrawStyleForMirror(moduleNamespace, mirrorModuleNamespace):
-    """
+    '''
     Toggle the transparency (vertex) draw style for proxy geometry for a mirrored module pair.
     This function is executed by a scriptJob. See setupMirrorMoveConnections().
-    """
+    '''
     if cmds.getAttr(moduleNamespace+':module_transform.proxy_geometry_draw') == 1:
 
         for namespace in (moduleNamespace, mirrorModuleNamespace):
@@ -3161,10 +3169,10 @@ def changeProxyGeometryDrawStyleForMirror(moduleNamespace, mirrorModuleNamespace
                                                                                             colorDisplayOption=True)
 
 def changeSplineProxyGeometryDrawStyle(moduleNamespace):
-    """
+    '''
     Toggle the transparency (vertex) draw style for a spline module proxy geometry, if it exists.
     This function is executed by a scriptJob. See moduleUtilitySwitchFunctions().
-    """
+    '''
     proxyGeoGrp = moduleNamespace + ':proxyGeometryGrp'
     allChildren = cmds.listRelatives(proxyGeoGrp, allDescendents=True, type='transform')
 
@@ -3186,10 +3194,10 @@ def changeSplineProxyGeometryDrawStyle(moduleNamespace):
 
 
 def changeSplineProxyGeometryDrawStyleForMirror(moduleNamespace, mirrorModuleNamespace):
-    """
+    '''
     Toggle the transparency (vertex) draw style for proxy geometry for a mirrored spline module pair.
     This function is executed by a scriptJob. See setupMirrorMoveConnections().
-    """
+    '''
     if cmds.getAttr(moduleNamespace+':splineStartHandleTransform.proxy_geometry_draw') == 1:
 
         for namespace in (moduleNamespace, mirrorModuleNamespace):
