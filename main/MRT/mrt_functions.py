@@ -2993,9 +2993,6 @@ def deleteMirrorMoveConnections():
     # Delete mirror nodes
     if cmds.objExists('MRT_mirrorMove__Container'):
         cmds.delete('MRT_mirrorMove__Container')
-        
-    # Kill all mirror utility scriptJobs. 
-    #forceToggleUtilScriptJobs(False)
 
     cmds.undoInfo(stateWithoutFlush=True)
 
