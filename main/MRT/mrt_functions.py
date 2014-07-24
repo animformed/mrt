@@ -2877,36 +2877,47 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
 
                 if 'translate' in selectionAttrs[0]:
                     
-                    # Get the number of nodes in the module, and the node orientation axes.
-                    nodeUpAxis = cmds.getAttr(moduleNamespace+':moduleGrp.nodeOrient')[1]
-                    nodeType = cmds.getAttr(moduleNamespace+':moduleGrp.nodeOrient')[1]
+                    # Get the number of nodes in the module.
                     numNodes = cmds.getAttr(moduleNamespace+':moduleGrp.numberOfNodes')
-                    cmds.connectAttr(selection+'.translate', mirrorTranslateMultiplyDivide+'.input1')
                     
-                    # Compare the local axes for the selection and its mirror. You need this since
-                    # you need the direction values to multiply the translate values from the selection
-                    # to drive the mirror. For instance, if the source and the target Z translate axis 
-                    # are opposite, you need to multiply it by -1, and so on.
-                    direction_mult = compareTransformPairOrientation(selection, mirrorObject)
-                    
-                    # compareTransformPairOrientation() returns the scalar products, here we just
-                    # need the sign values.
-                    try:
-                        direction_mult = {key: math.copysign(1, direction_mult[key]) for key in direction_mult}
+                    # For JointNode module.
+                    if 'JointNode' in moduleNamespace:
                         
-                    except SyntaxError: # If py version < 2.7
-                        direction_mult = dict([(key, math.copysign(1, direction_mult[key])) for key in direction_mult])
-                    
-                    # Get the local axis for the selection which is aligned with the mirror axis.
-                    # For a JointNode module with more than one node, it'll be the node up axis. 
-                    # This is specified during module creation (remember?). Multiply the local axis 
-                    # which aligns with the mirror axis (its multiplier) by -1, since it will have 
-                    # mirror translation values.
-                    if numNodes > 1 and 'JointNode' in moduleNamespace:
-                        direction_mult[nodeUpAxis] = direction_mult.get(nodeUpAxis) * -1
+                        # Get the mirror rotation function.
+                        orient_func = cmds.getAttr(moduleNamespace+':moduleGrp.mirrorRotation')
                         
-                    else: # For SplineNode module, HingeNode module and JointNode module with single node.
+                        if orient_func == 'Behaviour':
+                            # All the axes are opposite, except the one which is mirror axis.
+                            # Set the multipliers for all axes by -1. The mirror axis will be set to
+                            # mirror the translation as well.
+                            direction_mult = {'X':-1, 'Y':-1, 'Z':-1}
+                            
+                        else: # If orient_func is 'Local_Orientation'.
+                            direction_mult = {'X':1, 'Y':1, 'Z':1}
+                            
+                            # Get the local axis for the selection which is aligned with the mirror axis.
+                            # For a JointNode module with more than one node, it'll be the node up axis. 
+                            # This is specified during module creation (remember?). Multiply the local axis 
+                            # which aligns with the mirror axis (its multiplier) by -1, since it will have 
+                            # mirror translation values.
+                            if numNodes > 1:
+                                nodeUpAxis = cmds.getAttr(moduleNamespace+':moduleGrp.nodeOrient')[1]
+                                direction_mult[nodeUpAxis] = direction_mult.get(nodeUpAxis) * -1
+                            else:
+                                # For a JointNode module with a single node, the node has world orientation.
+                                # Just multiply the world axis by -1 which is the mirror axis.
+                                direction_mult[mirrorAxis] = direction_mult.get(mirrorAxis) * -1
+                            
+                    else: # For SplineNode module and HingeNode module.
+
+                        # Get the default multipliers for mirror translation.
+                        direction_mult = {'X':1, 'Y':1, 'Z':1}
+                    
+                        # Multiply the translate axis along the mirror axis by -1 to get mirror translation.
                         direction_mult[mirrorAxis] = direction_mult.get(mirrorAxis) * -1
+                    
+                    # Connect the source translation with the mirror multiplier node.
+                    cmds.connectAttr(selection+'.translate', mirrorTranslateMultiplyDivide+'.input1')
                     
                     # Now set the final multipliers.
                     cmds.setAttr(mirrorTranslateMultiplyDivide+'.input2X', direction_mult['X'])

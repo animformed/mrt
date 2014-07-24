@@ -277,7 +277,7 @@ class MRT_UI(object):
         cmds.menuItem(label='Create parent switch group for selected control handle',
                                 command=self.createParentSwitchGroupforControlHandle)
         cmds.menuItem(label='Disable utility script jobs', command=lambda *args:mfunc.forceToggleUtilScriptJobs(False))
-        cmds.menuItem(label='Enable utility script jobs', command=lambda *args:mfunc.forceToggleUtilScriptJobs(True))
+        cmds.menuItem(label='Enable utility script jobs', command=lambda *args:mfunc.moduleUtilitySwitchScriptJobs())
 
         # The 'Help' menu will have general help options.
         cmds.menu(label='Help', helpMenu=True)
