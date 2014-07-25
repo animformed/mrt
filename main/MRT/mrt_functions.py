@@ -1374,8 +1374,8 @@ def returnModuleAttrsFromScene(moduleNamespace):
     # True for creation of proxy geometry (set as False as default)]
     moduleAttrsDict['node_compnts'] = [True, False, False]
 
-    # Get the default length of the module.
-    moduleAttrsDict['module_length'] = 2.0
+    # Get the default (initial) length of the module.
+    moduleAttrsDict['module_length'] = cmds.getAttr(moduleNamespace+':moduleGrp.moduleLength')
 
     # Get the default value of offset of module from its creation plane.
     moduleAttrsDict['module_offset'] = 1.0
@@ -2738,22 +2738,17 @@ def forceToggleUtilScriptJobs(state=True):
             
         pmc.melGlobals['_mrt_utilJobList'] = []
 
-    print "JOBS: ", pmc.melGlobals['_mrt_utilJobList']
-
 
 def moduleUtilitySwitchFunctions():      # This definition is to be modified as necessary.
     '''
     Runtime function called by scriptJob to assist in module operations.
     '''
-    print "moduleUtilitySwitchFunctionsStart"
     # Disable mirror operations
     deleteMirrorMoveConnections()
-    print '0'
-    #forceToggleUtilScriptJobs(False)
-    print '1'
+
     # Toggle undo state
     cmds.undoInfo(stateWithoutFlush=False)
-    print '2'
+
     # Get the current namespace, and set to root namespace
     currentNamespace = mel.eval('namespaceInfo -currentNamespace')
     cmds.namespace(setNamespace=':')
@@ -2780,7 +2775,7 @@ def moduleUtilitySwitchFunctions():      # This definition is to be modified as 
                 if cmds.attributeQuery('mirrorModuleNamespace', node=namespaceInfo[0]+':moduleGrp', exists=True):
                     selectedMirrorModules.append(sel)
                     selectedMirrorModuleNamespaces.append(namespaceInfo[0])
-    print '3'
+
     # If valid modules are selected, perform operations on them as well.
     if len(selectedModuleNamespaces):
 
@@ -2811,16 +2806,13 @@ def moduleUtilitySwitchFunctions():      # This definition is to be modified as 
             if cmds.objExists(lastSelectionNamespace+':proxyGeometryGrp'):
                 cmds.scriptJob(attributeChange=[lastSelectionNamespace+':module_transform.proxy_geometry_draw', \
                                             partial(changeProxyGeometryDrawStyle, lastSelectionNamespace)], runOnce=True)
-    print '4'
+
     if len(selectedMirrorModules):
         setupMirrorMoveConnections(selectedMirrorModules, selectedMirrorModuleNamespaces)
-    print '5'
-    #forceToggleUtilScriptJobs(True)
-    print '6'
+
     # Set to the original namespace
     cmds.namespace(setNamespace=currentNamespace)
     cmds.undoInfo(stateWithoutFlush=True)
-    print "moduleUtilitySwitchFunctionsEnd"
 
 
 def setupMirrorMoveConnections(selections, moduleNamespaces):
@@ -2828,7 +2820,6 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
     This function is called by moduleUtilitySwitchFunctions() to assist in manipulation of mirrored module pairs
     in the scene. Script jobs are executed for runtime functions to enable mirror movements.
     '''
-    print "setupMirrorMoveConnectionsStart"
     # To collect nodes created in this function. They'll be added to the mirror move container.
     collected_nodes = []
     
@@ -2989,8 +2980,6 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
             addNodesToContainer('MRT_mirrorMove__Container', collected_nodes, includeHierarchyBelow=True)
             
             pmc.melGlobals['_mrt_utilJobList'] = pmc.melGlobals['_mrt_utilJobList'] + jobNums
-            print "JOBS_NEW: ", pmc.melGlobals['_mrt_utilJobList']
-    print "setupMirrorMoveConnectionsEnd"
             
 
 def deleteMirrorMoveConnections():

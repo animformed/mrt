@@ -451,6 +451,7 @@ class MRT_Module(object):
         
         # Add a custom attributes to the module group to store module creation attributes.
         cmds.addAttr(self.moduleGrp, attributeType='short', longName='numberOfNodes', defaultValue=self.numNodes, k=False)
+        cmds.addAttr(self.moduleGrp, attributeType='float', longName='moduleLength', defaultValue=self.moduleLen, k=False)
         cmds.addAttr(self.moduleGrp, dataType='string', longName='nodeOrient', keyable=False)
         cmds.setAttr(self.moduleGrp+'.nodeOrient', self.nodeAxes, type='string')
         cmds.addAttr(self.moduleGrp, dataType='string', longName='moduleParent', keyable=False)
@@ -735,6 +736,7 @@ class MRT_Module(object):
         
         # Add a custom attributes to the module group to store module creation attributes.
         cmds.addAttr(self.moduleGrp, attributeType='short', longName='numberOfNodes', defaultValue=self.numNodes, keyable=False)
+        cmds.addAttr(self.moduleGrp, attributeType='float', longName='moduleLength', defaultValue=self.moduleLen, keyable=False)
         cmds.addAttr(self.moduleGrp, dataType='string', longName='nodeOrient', keyable=False)
         cmds.setAttr(self.moduleGrp+'.nodeOrient', self.nodeAxes, type='string')
         cmds.addAttr(self.moduleGrp, dataType='string', longName='moduleParent', keyable=False)
@@ -1106,7 +1108,7 @@ class MRT_Module(object):
         # If orientation representation is turned off for modules, turn off 
         # node orientation representation objects.
         if not self.showOrientation:
-            cmds.setAttr(startHandle+'.Node_Orientation_Info', 0)
+            cmds.setAttr(startHandle['transform']+'.Node_Orientation_Info', 0)
             
         # Connect module orientation representation objects to drive 
         # orientation for module proxy geometry.
@@ -1164,6 +1166,7 @@ class MRT_Module(object):
 
         # Add a custom attributes to the module group to store module creation attributes.
         cmds.addAttr(self.moduleGrp, attributeType='short', longName='numberOfNodes', defaultValue=self.numNodes, keyable=False)
+        cmds.addAttr(self.moduleGrp, attributeType='float', longName='moduleLength', defaultValue=self.moduleLen, keyable=False)
         cmds.addAttr(self.moduleGrp, dataType='string', longName='nodeOrient', keyable=False)
         cmds.setAttr(self.moduleGrp+'.nodeOrient', self.nodeAxes, type='string')
         cmds.addAttr(self.moduleGrp, dataType='string', longName='moduleParent', keyable=False)

@@ -3586,7 +3586,10 @@ class MRT_UI(object):
             # Select the module containers and module proxy geometry (see above) to be included in the collection.
             cmds.select(moduleObjectsToBeCollected, replace=True)
 
-            # Disable / remove module mirror move connections
+            # Turn off mirroring script jobs.
+            mfunc.forceToggleUtilScriptJobs(False)
+
+            # Disable / remove module mirror move connections.
             mfunc.deleteMirrorMoveConnections()
 
             # Create a temporary maya scene to export module collection data.
@@ -3630,6 +3633,9 @@ class MRT_UI(object):
                     mfunc.addNodesToContainer(module+':module_container', [pointConstraint])
                     cmds.setAttr(module+':moduleGrp.moduleParent', modulesToBeUnparented[module], type='string')
                     cmds.lockNode(module+':module_container', lock=True, lockUnpublished=True)
+
+            # Turn on mirroring script jobs.
+            mfunc.forceToggleUtilScriptJobs(True)
 
 
         # NESTED_DEF_2 #
@@ -3782,6 +3788,9 @@ class MRT_UI(object):
         currentNamespace = cmds.namespaceInfo(currentNamespace=True)
         cmds.namespace(setNamespace=':')
 
+        # Turn off mirroring script jobs.
+        mfunc.forceToggleUtilScriptJobs(False)
+
         # Disable / delete all mirror move nodes and connections for mirror module nodes.
         mfunc.deleteMirrorMoveConnections()
 
@@ -3866,10 +3875,6 @@ class MRT_UI(object):
         # Lock the module container after re-naming.
         cmds.lockNode(newNamespace+':module_container', lock=True, lockUnpublished=True)
 
-        # Select the re-named module.
-        selection = newNamespace+':'+mfunc.stripMRTNamespace(selectedModule)[1]
-        cmds.select(selection, replace=True)
-
         # Update the scene module list
         self.updateListForSceneModulesInUI()
 
@@ -3877,9 +3882,16 @@ class MRT_UI(object):
         self.clearParentModuleField()
         self.clearChildModuleField()
 
+        # Turn on mirroring script jobs.
+        mfunc.forceToggleUtilScriptJobs(True)
+
         # Reset the current namespace.
         if cmds.namespace(exists=currentNamespace):
             cmds.namespace(setNamespace=currentNamespace)
+
+        # Select the re-named module.
+        selection = newNamespace+':'+mfunc.stripMRTNamespace(selectedModule)[1]
+        cmds.select(selection, replace=True)
 
 
     def performModuleDuplicate_UI_wrapper(self, *args):
@@ -3911,7 +3923,7 @@ class MRT_UI(object):
         cmds.text('Enter relative offset for duplication (translation)', align='center', font='boldLabelFont')
         self.uiVars['duplicateActionWindowFloatfieldGrp'] = cmds.floatFieldGrp(numberOfFields=3,
                                                                                label='Offset (world units)',
-                                                                               value1=1.0, value2=1.0, value3=1.0,
+                                                                               value1=10.0, value2=10.0, value3=10.0,
                                                                                columnAttach=([1, 'left', 15],
                                                                                              [2, 'left', 1],
                                                                                              [3, 'left', 1],
@@ -3947,6 +3959,12 @@ class MRT_UI(object):
                                                     'Please select a module to perform duplication.')
             return
 
+        # Turn off mirroring script jobs.
+        mfunc.forceToggleUtilScriptJobs(False)
+
+        # Disable / delete all mirror move nodes and connections for mirror module nodes.
+        mfunc.deleteMirrorMoveConnections()
+
         # Get last item in selection.
         selection = selection[-1]
 
@@ -3958,6 +3976,7 @@ class MRT_UI(object):
         # Get module namespace and its current attributes.
         moduleNamespace = mfunc.stripMRTNamespace(selection)[0]
         moduleAttrsDict = mfunc.returnModuleAttrsFromScene(moduleNamespace)
+
 
         # Create a new copy of the module using the attributes.
         mfunc.createModuleFromAttributes(moduleAttrsDict)
@@ -4270,6 +4289,9 @@ class MRT_UI(object):
         # Update the scene module treeView list with the new duplicated module.
         self.updateListForSceneModulesInUI()
 
+        # Turn on mirroring script jobs.
+        mfunc.forceToggleUtilScriptJobs(True)
+
         # Get the translation offset to be applied to the new duplicated module.
         offset = cmds.floatFieldGrp(self.uiVars['duplicateActionWindowFloatfieldGrp'], query=True, value=True)
 
@@ -4338,7 +4360,10 @@ class MRT_UI(object):
         if not len(self.modules):
             cmds.button(self.uiVars['moduleUndoCreate_button'], edit=True, enable=False)
 
-        # Delete the connections/nodes for moving mirror modules.
+        # Turn off mirroring script jobs.
+        mfunc.forceToggleUtilScriptJobs(False)
+
+        # Delete the connections/nodes for moving the mirror modules.
         mfunc.deleteMirrorMoveConnections()
 
         # Perform deletions.
@@ -4377,6 +4402,9 @@ class MRT_UI(object):
         # Reset current namespace.
         if cmds.namespace(exists=currentNamespace):
             cmds.namespace(setNamespace=currentNamespace)
+
+        # Turn on mirroring script jobs.
+        mfunc.forceToggleUtilScriptJobs(True)
 
         # Perform cleanup.
         mfunc.cleanSceneState()
@@ -4543,7 +4571,7 @@ class MRT_UI(object):
 
     def insertParentModuleNodeIntoField(self, *args):
         '''
-        Inserts a selected scene module node nto the parent module textfield for module parenting.
+        Inserts a selected scene module node into the parent module textfield for module parenting.
         '''
         # Get selection, and get the selection module namespace, if valid.
         selection = cmds.ls(selection=True)
