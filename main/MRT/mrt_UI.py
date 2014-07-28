@@ -866,15 +866,16 @@ class MRT_UI(object):
 
     def closeWindow(self, windowName, *args):
         '''
-        I know, but this way it's just a one word callback.
+        To close a UI window and to perform any cleanup as necessary.
+        To be modified as needed.
         '''
         cmds.deleteUI(windowName)
 
 
     def collapseAllUIframes(self, *args):
-        """
+        '''
         Called as a menu item under windows to collapse all frames under UI tabs.
-        """
+        '''
         for element in self.uiVars:
 
             try:
@@ -887,9 +888,9 @@ class MRT_UI(object):
 
 
     def expandAllUIframes(self, *args):
-        """
+        '''
         Called as a menu item under windows to expand frames under the current UI tab.
-        """
+        '''
         currentTabIndex = cmds.tabLayout(self.uiVars['tabs'], query=True, selectTabIndex=True)
 
         if currentTabIndex == 1:
@@ -910,7 +911,7 @@ class MRT_UI(object):
 
     def putShelfButtonForUI(self, *args):
         '''
-        Puts a shelf button for MRT on the current maya shelf
+        Puts a shelf button for MRT on the current maya shelf.
         '''
         # Get the current tab under maya shelf
         currentTab = cmds.tabLayout('ShelfLayout', query=True, selectTab=True)
@@ -1062,8 +1063,7 @@ class MRT_UI(object):
 
     def display_mrt_issues(self, *args):
         '''
-        First things first. Keep a record of current issues with MRT, displayable to the user.
-        Not sure why I didn't use a txt source :)
+        To keep a record of current issues with MRT, displayable to the user.
         '''
         printString1 = ' Known Issues with Modular Rigging Tools for Maya' \
                        '\n ------------------------------------------------'
@@ -1139,7 +1139,7 @@ class MRT_UI(object):
 
     def display_mrt_about(self, *args):
         '''
-        Display MRT dev stats
+        Display MRT dev stats.
         '''
         printString1 = '\n\t\t\tModular Rigging Tools v1.0\n\t\t\tfor Maya 2011 and above'
         printString2 = '\n\n\tOriginally written by Himanish Bhattacharya' \
@@ -1169,10 +1169,10 @@ class MRT_UI(object):
     # -------------------------------------------------------------------------------------------------------------
 
     def makeCreateTabControls(self):
-        """
+        '''
         Create the tab layout contents for creating scene modules. Contains options for specifying module type,
         module length, module node attributes and components, module proxy geometry, module mirroring and module naming.
-        """
+        '''
         # Create the main column for the 'Create' tab.
         self.uiVars['modules_Column'] = cmds.columnLayout(adjustableColumn=True, rowSpacing=3)
 
@@ -1407,11 +1407,11 @@ class MRT_UI(object):
 
 
     def makeEditTabControls(self):
-        """
+        '''
         Create the tab layout contents for editing or working with scene modules. These include selecting and loading
         module collections, viewing scene module list (sorted or by hierarchy), saving module(s) as module collections,
         module renaming, deletion, duplication and module parenting operations.
-        """
+        '''
 
         scrollWidth = self.width_Height[0] - 20
 
@@ -1623,10 +1623,10 @@ class MRT_UI(object):
 
 
     def makeRigTabControls(self):
-        """
+        '''
         Create the tab layout contents for rig controls. These functions will create character from scene module(s)
         and then modify it by applying control rigging and space switching.
-        """
+        '''
         scrollWidth = self.width_Height[0] - 20
 
         self.uiVars['rig_Column'] = cmds.columnLayout(adjustableColumn=True, rowSpacing=3)
@@ -1991,9 +1991,9 @@ class MRT_UI(object):
     # -------------------------------------------------------------------------------------------------------------
 
     def checkAndReturnNodeAxes(self):
-        """
+        '''
         Checks the "node axes" field values in the create UI tab.
-        """
+        '''
         # Get the field values.
         node_aim_axis = cmds.optionMenu(self.uiVars['aimAxis_menu'], query=True, value=True)
         node_up_axis = cmds.optionMenu(self.uiVars['upAxis_menu'], query=True, value=True)
@@ -2009,9 +2009,9 @@ class MRT_UI(object):
 
 
     def checkNodeNumWithLength(self):
-        """
+        '''
         Checks the module length with its number of nodes for creation.
-        """
+        '''
         # Get the field values.
         module_length = cmds.floatSliderGrp(self.uiVars['lenNodes_sliderGrp'], query=True, value=True)
         num_nodes = cmds.intSliderGrp(self.uiVars['numNodes_sliderGrp'], query=True, value=True)
@@ -2033,10 +2033,10 @@ class MRT_UI(object):
 
 
     def updateModuleLengthValue(self, *args):
-        """
+        '''
         Updates the module length value in the UI based on the number of module nodes and the type of
         module node type set in the create UI tab. UI callback method.
-        """
+        '''
         num_nodes = cmds.intSliderGrp(self.uiVars['numNodes_sliderGrp'], query=True, value=True)
         length_module = cmds.floatSliderGrp(self.uiVars['lenNodes_sliderGrp'], query=True, value=True)
         node_type = cmds.radioCollection(self.uiVars['moduleType_radioColl'], query=True, select=True)
@@ -2069,10 +2069,10 @@ class MRT_UI(object):
 
 
     def updateNumNodesValue(self, *args):
-        """
+        '''
         Updates the number of module nodes in the UI based on the number of module nodes and the type of
         module node type set in the create UI tab. UI callback method.
-        """
+        '''
         length_module = cmds.floatSliderGrp(self.uiVars['lenNodes_sliderGrp'], query=True, value=True)
         num_nodes = cmds.intSliderGrp(self.uiVars['numNodes_sliderGrp'], query=True, value=True)
         node_type = cmds.radioCollection(self.uiVars['moduleType_radioColl'], query=True, select=True)
@@ -2108,10 +2108,10 @@ class MRT_UI(object):
 
 
     def modifyModuleCreationOptions(self, *args):
-        """
+        '''
         Sets the UI attributes for module creation, based on the selected module type for creation.
         This is a UI callback method when the module type radio button is selected.
-        """
+        '''
         # Get the module node type
         node_type = cmds.radioCollection(self.uiVars['moduleType_radioColl'], query=True, select=True)
 
@@ -2147,16 +2147,16 @@ class MRT_UI(object):
 
 
     def enableProxyGeoOptions(self, *args):
-        """
+        '''
         Enables the Proxy Geo UI options. UI callback method.
-        """
+        '''
         cmds.frameLayout(self.uiVars['proxyGeo_fLayout'], edit=True, enable=True)
 
 
     def disableProxyGeoOptions(self, *args):
-        """
+        '''
         Disables the Proxy Geo UI options. UI callback method.
-        """
+        '''
         cmds.frameLayout(self.uiVars['proxyGeo_fLayout'], edit=True, enable=False, collapse=True)
 
 
@@ -2172,18 +2172,18 @@ class MRT_UI(object):
 
 
     def enableMirrorFunctions(self, *args):
-        """
+        '''
         Enable the module mirroring options in the create UI tab. UI callback method.
-        """
+        '''
         cmds.radioButton(self.uiVars['mirrorRot_radioButton_behaviour'], edit=True, enable=True)
         cmds.radioButton(self.uiVars['mirrorRot_radioButton_ori'], edit=True, enable=True)
         cmds.rowLayout(self.uiVars['proxyGeoFrame_secondRow'], edit=True, enable=True)
 
 
     def disableMirrorFunctions(self, *args):
-        """
+        '''
         Disables the module mirroring options in the create UI tab. UI callback method.
-        """
+        '''
         cmds.radioButton(self.uiVars['mirrorRot_radioButton_behaviour'], edit=True, enable=False)
         cmds.radioButton(self.uiVars['mirrorRot_radioButton_ori'], edit=True, enable=False)
         cmds.rowLayout(self.uiVars['proxyGeoFrame_secondRow'], edit=True, enable=False)
@@ -2192,10 +2192,10 @@ class MRT_UI(object):
 
 
     def updateDefaultUserSpecifiedNameField(self):
-        """
+        '''
         Update the user specified module name field. This checks if the current module name exists in the scene
         and update the value with a numerical suffix.
-        """
+        '''
 
         # Get the current user specified name.
         userSpecifiedName = cmds.textField(self.uiVars['userSpecName_textField'], query=True, text=True)
@@ -2242,10 +2242,10 @@ class MRT_UI(object):
 
 
     def createModuleFromUI(self, *args):
-        """
+        '''
         This method collects all the information from the 'Create' UI tab, and uses the "createModuleFromAttributes"
         from 'mrt_functions' to create a module.
-        """
+        '''
         # Check if a character exists in the scene. A module can't be created with a character in the scene.
         characterStatus = self.checkMRTcharacter()
 
@@ -2346,9 +2346,9 @@ class MRT_UI(object):
 
 
     def undoCreateModuleTool(self, *args):
-        """
+        '''
         Undo a module creation, if the module is stored in self.modules.
-        """
+        '''
         # Module namespaces to be removed. There's two namespaces if the module is a mirror module.
         namespacesToBeRemoved = []
         
@@ -4472,18 +4472,18 @@ class MRT_UI(object):
 
 
     def increaseModuleListHeight(self, *args):
-        """
+        '''
         UI callback method to increment the height of scroll list for scene modules.
-        """
+        '''
         height = cmds.frameLayout(self.uiVars['moduleList_fLayout'], query=True, height=True)
         cmds.frameLayout(self.uiVars['moduleList_fLayout'], edit=True, height=height+40)
         cmds.scrollLayout(self.uiVars['moduleList_Scroll'], edit=True, height=height+48)
 
 
     def decreaseModuleListHeight(self, *args):
-        """
+        '''
         UI callback method to decrement the height of scroll list for scene modules.
-        """
+        '''
         # Get the module namespaces ion the scene.
         MRT_namespaces = mfunc.returnMRT_Namespaces()
 
@@ -6830,10 +6830,10 @@ class MRT_UI(object):
 
 
     def create_update_parentSwitchTargetsForControl(self, *args):
-        """
+        '''
         This method applies the changes to parent switch space options in the UI. It adds or removes the parent
         targets for a selected / inserted control object.
-        """
+        '''
         # Get all the current parent targets
         allItems = cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], query=True, allItems=True)
         
