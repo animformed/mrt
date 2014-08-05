@@ -96,6 +96,7 @@ def processItemRenameForTreeViewList(itemName, newName):
     #TO_BE_MODIFIED_FOR_FUTURE_RELEASE#
     #cmds.treeView('__MRT_treeView_SceneModulesUI', edit=True, clearSelection=True)
     Error('MRT: Please use the \"Rename Selected Module\" feature below')
+    #MRT_JointNode__module_mirror | module_mirror
     return ""
 
 

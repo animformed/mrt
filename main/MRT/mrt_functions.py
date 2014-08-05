@@ -11,14 +11,14 @@
 
 import maya.cmds as cmds
 import maya.mel as mel
-import pymel.core as pmc
+from pymel.core import melGlobals
 
 from maya.OpenMaya import MGlobal; Error = MGlobal.displayError; Warning = MGlobal.displayWarning
 
 from functools import partial    # Alternative "from pymel.core.windows import Callback"
 import os, math, sys, re, glob, shutil, platform
 
-pmc.melGlobals.initVar('int[]', '_mrt_utilJobList') # To store utility script jobs (eg., for module mirroring).
+melGlobals.initVar('int[]', '_mrt_utilJobList') # To store utility script jobs (eg., for module mirroring).
 
 os_name = platform.uname()[0]  # Get the OS type
 
@@ -2717,7 +2717,7 @@ def moduleUtilitySwitchScriptJobs():
     
     jobs.append(cmds.scriptJob(event=['SelectionChanged', moduleUtilitySwitchFunctions]))
     
-    pmc.melGlobals['_mrt_utilJobList'] = jobs[:]
+    melGlobals['_mrt_utilJobList'] = jobs[:]
 
 
 def forceToggleUtilScriptJobs(state=True):
@@ -2728,7 +2728,7 @@ def forceToggleUtilScriptJobs(state=True):
     if state:
         moduleUtilitySwitchScriptJobs()
     else:
-        utility_jobs = pmc.melGlobals['_mrt_utilJobList']
+        utility_jobs = melGlobals['_mrt_utilJobList']
                 
         if len(utility_jobs) > 0:
 
@@ -2736,7 +2736,7 @@ def forceToggleUtilScriptJobs(state=True):
                 if cmds.scriptJob(exists=job):
                     cmds.scriptJob(kill=job)
             
-        pmc.melGlobals['_mrt_utilJobList'] = []
+        melGlobals['_mrt_utilJobList'] = []
 
 
 def moduleUtilitySwitchFunctions():      # This definition is to be modified as necessary.
@@ -2979,7 +2979,7 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
             # Update the mirror move container
             addNodesToContainer('MRT_mirrorMove__Container', collected_nodes, includeHierarchyBelow=True)
             
-            pmc.melGlobals['_mrt_utilJobList'] = pmc.melGlobals['_mrt_utilJobList'] + jobNums
+            melGlobals['_mrt_utilJobList'] = melGlobals['_mrt_utilJobList'] + jobNums
             
 
 def deleteMirrorMoveConnections():
