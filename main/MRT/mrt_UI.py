@@ -92,11 +92,12 @@ def processItemRenameForTreeViewList(itemName, newName):
     Called when a user edits a module item's name in the scene module list treeView.
     To be implemented.
     '''
-    #---USE_THE_UI_FUNCTIONALITY_IN_EDIT_TAB_FOR_RENAMING---#
-    #TO_BE_MODIFIED_FOR_FUTURE_RELEASE#
-    #cmds.treeView('__MRT_treeView_SceneModulesUI', edit=True, clearSelection=True)
-    Error('MRT: Please use the \"Rename Selected Module\" feature below')
-    #MRT_JointNode__module_mirror | module_mirror
+    # Deselect the treeView item first.
+    cmds.treeView('__MRT_treeView_SceneModulesUI', edit=True, clearSelection=True)
+    
+    # Perform rename with current UI instance.
+    MRT_UI.INSTANCE.performModuleRename(newName)
+    
     return ""
 
 
@@ -134,7 +135,6 @@ if _maya_version >= 2013:
     def treeViewButton_3_ActionCallback(item, state):
         treeViewButton_3_Action(item, state)
     def processItemRenameForTreeViewListCallback(itemName, newName):
-        Error('MRT: Please use the \"Rename Selected Module\" feature below')
         returnStr = processItemRenameForTreeViewList(itemName, newName)
         return returnStr
 else:
@@ -155,8 +155,14 @@ class MRT_UI(object):
     '''
     Main UI class
     '''
+    # To store current instance
+    INSTANCE = None
+    
     def __init__(self):
-
+        
+        # Store the instance.
+        self.__class__.INSTANCE = self
+        
         # Save the current selection
         selection = cmds.ls(selection=True)
 
@@ -3794,11 +3800,14 @@ class MRT_UI(object):
 
         # Disable / delete all mirror move nodes and connections for mirror module nodes.
         mfunc.deleteMirrorMoveConnections()
-
+        
         # Get the new user specified name for renaming the module.
-        newUserSpecifiedName = cmds.textField(self.uiVars['moduleRename_textField'], query=True, text=True)
+        if isinstance(args[0], (str, unicode)):
+            newUserSpecifiedName = args[0]
+        else:
+            newUserSpecifiedName = cmds.textField(self.uiVars['moduleRename_textField'], query=True, text=True)
         newUserSpecifiedName = newUserSpecifiedName.lower()
-
+        
         # Get the last selected module.
         selectedModule = cmds.ls(selection=True)
         selectedModule = selectedModule[-1]
@@ -3836,7 +3845,7 @@ class MRT_UI(object):
                     if item == currentNamespaceForSelectedModule:
                         self.modules[key][i] = newNamespace
                         break
-
+        
         # If the module has children (modules), modify their "moduleParent" attribute, to
         # match the new parent module namespace.
         children = mfunc.traverseChildrenModules(currentNamespaceForSelectedModule)
@@ -3872,24 +3881,24 @@ class MRT_UI(object):
             cmds.lockNode(mirrorModuleNamespace+':module_container', lock=False, lockUnpublished=False)
             cmds.setAttr(mirrorModuleNamespace+':moduleGrp.mirrorModuleNamespace', newNamespace, type='string')
             cmds.lockNode(mirrorModuleNamespace+':module_container', lock=True, lockUnpublished=True)
-
+        
         # Lock the module container after re-naming.
         cmds.lockNode(newNamespace+':module_container', lock=True, lockUnpublished=True)
 
         # Update the scene module list
         self.updateListForSceneModulesInUI()
-
+        
         # Clear module parenting fields.
         self.clearParentModuleField()
         self.clearChildModuleField()
-
+        
         # Turn on mirroring script jobs.
         mfunc.forceToggleUtilScriptJobs(True)
-
+        
         # Reset the current namespace.
         if cmds.namespace(exists=currentNamespace):
             cmds.namespace(setNamespace=currentNamespace)
-
+        
         # Select the re-named module.
         selection = newNamespace+':'+mfunc.stripMRTNamespace(selectedModule)[1]
         cmds.select(selection, replace=True)
