@@ -297,6 +297,38 @@ def find_userSetupFileStatus():
 #
 # -------------------------------------------------------------------------------------------------------------
 
+def runProgressWindow(title='', message='', progress=0, step=0, totalProgress=100, init=False, end=False):
+    '''
+    Helper function which creates/updates the progress window with messages and progress.
+    '''
+    # Store the progress window message for re-use, if no new message is passed-in.
+    
+    if not cmds.optionVar(exists='rProgressWindowMsg'):
+        cmds.optionVar(stringValue=('rProgressWindowMsg', message))
+    
+    if not message:
+        message = cmds.optionVar(query='rProgressWindowMsg')
+    else:
+        cmds.optionVar(stringValue=('rProgressWindowMsg', message))
+
+    # If the progress window is to be continued, update the message and the progress as necessary.
+    if (init + end) == 0:
+        if progress:
+            cmds.progressWindow(edit=True, progress=progress, status=message)
+        if step:
+            cmds.progressWindow(edit=True, step=step, status=message)
+        if (progress + step) == 0:
+            currentProgress = cmds.progressWindow(query=True, progress=True)
+            cmds.progressWindow(edit=True, progress=currentProgress, status=message)
+         
+    # Create or end the progress window, based on the parameters.
+    if (init + end) == 1:
+        if init:
+            cmds.progressWindow(title=title, progress=0, status=message, isInterruptable=False, maxValue=totalProgress)
+        if end:
+            cmds.progressWindow(endProgress=True)
+            
+            
 def cleanup_MRT_actions(jobNum=None):
     '''
     Cleans up any temporary .py or .pyc during startup or scene use.
@@ -354,6 +386,25 @@ def returnMRT_Namespaces():
     return MRT_namespaces
 
 
+def validateSceneModules():
+    '''
+    Checks all scene modules for an older module type. These module(s) if found,
+    are incompatible with the latest version of MRT. Returns False if such module is found.
+    Returns True in every other case, even with no modules. Modify as necesary.
+    '''
+    modules = returnMRT_Namespaces()
+    
+    olderModules = []
+    
+    # Check if any module group doesn't have the 'moduleLength' attribute.
+    for module in modules:
+        moduleGrp = '%s:moduleGrp.' % module
+        if not cmds.objExists(moduleGrp+'.moduleLength'):
+            olderModules.append(module)
+            
+    return olderModules
+
+    
 def findHighestNumSuffix(baseName, names):
     '''
     Find and return the max numerical suffix value separated by underscore(s) for a given string name.

@@ -17,6 +17,7 @@ import mrt_module
 import mrt_objects as objects
 import mrt_functions as mfunc
 import mrt_controlRig
+from mrt_functions import runProgressWindow
 
 from maya.OpenMaya import MGlobal; Error = MGlobal.displayError
 
@@ -420,7 +421,12 @@ class MRT_UI(object):
             charTemplateList_file = open(self.charTemplateList_path, 'wb')
             cPickle.dump(charTemplateList, charTemplateList_file, cPickle.HIGHEST_PROTOCOL)
             charTemplateList_file.close()
-
+            
+        # Check the scene for older module type, and warn.
+        invalidModules = mfunc.validateSceneModules()
+        if invalidModules:
+            cmds.warning('MRT: Incompatible, %s older module type(s) found in the scene, '\
+                         'please re-create these module(s):\n%s\n' % (len(invalidModules), '\n'.join(invalidModules))) 
         # Re-select
         if selection:
             cmds.select(selection)
@@ -4860,29 +4866,63 @@ class MRT_UI(object):
         '''
         Main procedure for creating character from scene module(s).
         '''
+        # Init the creation progress window.
+        runProgressWindow(title='Creating charcater', init=True)
+        runProgressWindow(message='Checking scene...', progress=1)
+        
         # Check if a character exists in the scene.
         characterStatus = self.checkMRTcharacter()
         if characterStatus[0]:
             characterName = re.findall('^MRT_character(\D+)__mainGrp$', characterStatus[0])
             Error('MRT: Character "%s" exists in the scene, aborting.'%(characterName[0]))
+            
+            # Update progress.
+            runProgressWindow(message='Error', progress=0)
+            runProgressWindow(end=True)            
+            
             return
 
+        # Check the scene for any older module type.
+        invalidModules = mfunc.validateSceneModules()
+        if invalidModules:
+            Error('MRT: Incompatible, %s module type(s) found in the scene, aborting.%s\n' % (len(invalidModules), '\n'.join(invalidModules)))
+            
+            # Update progress.
+            runProgressWindow(message='Error', progress=0)
+            runProgressWindow(end=True)                        
+            
+            return
+        
         # Check for valid character name entered by the user.
         characterName = cmds.textField(self.uiVars['characterName_textField'], query=True, text=True)
         if not str(characterName).isalnum():
             Error('MRT: Please enter a valid name for creating a character.')
+            
+            # Update progress.
+            runProgressWindow(message='Error', progress=0)
+            runProgressWindow(end=True)
+            
             return
+        
         # Or
         characterName = characterName.title()
 
         # Save current namespace, set to root.
         currentNamespace = cmds.namespaceInfo(currentNamespace=True)
         cmds.namespace(setNamespace=':')
-
+        
+        # Update progress.
+        runProgressWindow(message='Finding modules...', progress=2)
+        
         # Get the current scene modules.
         scene_modules = mfunc.returnMRT_Namespaces()
         if not scene_modules:
             Error('MRT: No modules found in the scene to create a character.')
+            
+            # Update progress.
+            runProgressWindow(message='Error', progress=0)
+            runProgressWindow(end=True)   
+            
             return
 
         # Sort modules by their mirror namespaces (Mirrored namespaces are appended at the end).
@@ -4893,6 +4933,9 @@ class MRT_UI(object):
                 index = scene_modules.index(module)
                 scene_modules.pop(index)
         mrt_modules.extend(scene_modules)
+        
+        # Update progress.
+        runProgressWindow(message='Creating main groups...', progress=5)        
 
         # Create the main character group.
         mainGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__mainGrp')
@@ -4938,9 +4981,19 @@ class MRT_UI(object):
         self.makeCollectionFromSceneTreeViewModulesUI(allModules=True, auto=autoCharacterFile)
 
         characterJointSet = []
+        
+        # Update progress.
+        runProgressWindow(message='Processing modules...', progress=10)
+        increment = 75.0/len(mrt_modules)
+        progress = 10.0
 
         # Go through each scene module,
         for module in mrt_modules:
+            
+            # Update progress.
+            moduleUserName = re.findall('__(\w+)', module)[0]
+            runProgressWindow(message='Processing module: %s' % moduleUserName, progress=int(progress))
+            progress += increment
 
             # Get the module attributes/properties.
             moduleAttrsDict = mfunc.returnModuleAttrsFromScene(module)
@@ -4981,6 +5034,9 @@ class MRT_UI(object):
 
         # Delete all scene modules (not needed further).
         self.deleteAllSceneModules()
+        
+        # Update progress.
+        runProgressWindow(message='Parenting/constraining hierarchies...', progress=85)        
 
         # Set up parenting among discrete joint hierarchies generated from scene modules. This parenting
         # is either constrained or DAG type. This depends on the module parenting relationships set-up
@@ -4996,7 +5052,7 @@ class MRT_UI(object):
                 characterJoints.append(joint)
                 parent = cmds.listRelatives(joint, parent=True)
                 if parent == None:
-                    cmds.parent(joint, jointsGrp)
+                    cmds.parent(joint, jointsGrp)            
 
         # Set the string list attribute for storing character joints
         characterJointsAttr = ','.join(characterJoints)
@@ -5006,6 +5062,9 @@ class MRT_UI(object):
         proxyGrpChildren = cmds.listRelatives(proxyMainGrp, allDescendents=True)
         if proxyGrpChildren == None:
             cmds.delete(proxyMainGrp)
+        
+        # Update progress.
+        runProgressWindow(message='Creating main controls...', progress=90)                            
 
         # Create the character world and root transform controls.
         # "createRawCharacterTransformControl" returns [<root transform>, <world transform>]
@@ -5060,6 +5119,9 @@ class MRT_UI(object):
         cmds.connectAttr(transforms[0]+'.globalScale', 'MRT_character'+characterName+'__jointsMainGrp.scaleZ')
 
         cmds.select(clear=True)
+        
+        # Update progress.
+        runProgressWindow(message='Preparing rig layers...', progress=95)          
 
         # Add the "rigLayers" attribute to all root joints for all character joint hierachies.
         # This attribute is used for parent/space switching operations.
@@ -5099,6 +5161,9 @@ class MRT_UI(object):
         mel.eval('editDisplayLayerMembers -noRecurse MRT_character'+characterName+'_control_rig `ls -selection`;')
 
         cmds.select(clear=True)
+        
+        # Update progress.
+        runProgressWindow(message='Almost...', progress=99)         
 
         # Create a set for all character joints.
         cmds.select(characterJoints, replace=True)
@@ -5113,6 +5178,9 @@ class MRT_UI(object):
         self.clearChildModuleField()
 
         cmds.select(clear=True)
+        
+        runProgressWindow(message='Done', progress=100)
+        runProgressWindow(end=True)        
 
 
     def revertModulesFromCharacter(self, *args):
