@@ -21,6 +21,35 @@ def runMRTstartup(__debug = 0):
     Does startup checks, to see MRT is supported for the current maya version.
     Set the __debug to 1 to refresh all /MRT .pyc files.
     """
+    # IN-SCOPE DEF
+    def postInstallDialog():
+        '''
+        Displays a dialog window to confirm the installation for MRT.
+        '''
+
+        dialogWin = cmds.window(title='MRT Start Up', resizeToFitChildren=True, 
+                                        maximizeButton=False, minimizeButton=False, sizeable=False)
+        
+        mainCol = cmds.columnLayout(width=500, rowSpacing=15)
+        
+        cmds.separator(style='none')
+        cmds.text(label='Modular rigging tools has been installed.', align='center', width=400)
+        cmds.text(label='Please restart maya.', font='boldLabelFont', align='center', width=400)
+        
+        cmds.rowLayout(numberOfColumns=2, columnWidth=[(1, 150), (2, 100)])
+        
+        cmds.separator(style='none')
+        cmds.button(label='OK', command=('cmds.deleteUI(\"'+dialogWin+'\")'), width=100, align='center')
+        
+        cmds.setParent(mainCol)
+        cmds.separator(style='none')
+        cmds.showWindow(dialogWin)
+        
+        try: cmds.windowPref(dialogWin, remove=True) 
+        except: pass
+
+
+    # MAIN DEF BEGINS
     
     # Working MRT scripts directory.
     workingDir = cmds.internalVar(userScriptDir=True) + 'mrt/'
@@ -56,8 +85,7 @@ def runMRTstartup(__debug = 0):
             import mrt_UI
             mrt_UI.MRT_UI()
         else:
-            cmds.confirmDialog(title='MRT Start Up', message='Modular rigging tools has been installed.' \
-            ' Please restart maya.', button=['OK'], defaultButton='OK', messageAlign='center')
+            postInstallDialog()
     
     # If scripts/MRT directory not found, warn if it doesn't exist. 
     else:

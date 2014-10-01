@@ -1005,6 +1005,57 @@ def createRawCharacterTransformControl():
     return [rootTransform, worldTransform]
 
 
+def createModuleTransform(**kwargs):
+    '''
+    Creates the module transform control with standard attributes.
+    Accepts attribute parameters if necessary.
+    '''
+    # Get the attribute values.
+    namespace = kwargs['namespace'] if 'namespace' in kwargs else 'namespace'
+    name = kwargs['name'] if 'name' in kwargs else 'module_transform'
+    colour = kwargs['colour'] if 'colour' in kwargs else 10
+    scale = kwargs['scale'] if 'scale' in kwargs else 0.26
+    drawStyle = kwargs['drawStyle'] if 'drawStyle' in kwargs else 8
+    drawOrtho = kwargs['drawOrtho'] if 'drawOrtho' in kwargs else 0
+    drawThickness = kwargs['drawThickness'] if 'drawThickness' in kwargs else 2
+    isOnlyControl = kwargs['isOnlyControl'] if 'isOnlyControl' in kwargs else False
+    
+    # Create the raw module transform.
+    moduleHandle = load_xhandleShape(name='%s:%s' % (namespace, name), colour=24)
+    cmds.setAttr(moduleHandle['shape']+'.localScaleX', scale)
+    cmds.setAttr(moduleHandle['shape']+'.localScaleY', scale)
+    cmds.setAttr(moduleHandle['shape']+'.localScaleZ', scale)
+    cmds.setAttr(moduleHandle['shape']+'.drawStyle', drawStyle)
+    cmds.setAttr(moduleHandle['shape']+'.drawOrtho', drawOrtho)
+    cmds.setAttr(moduleHandle['shape']+'.wireframeThickness', drawThickness)
+    
+    # If the transform is to be created as a module transform control and not a simple control,
+    if not isOnlyControl:
+        
+        # Add the scaling attributes to the module transform.
+        cmds.addAttr(moduleHandle['transform'], attributeType='float', longName='globalScale',
+                                                        hasMinValue=True, minValue=0.01, defaultValue=1, keyable=True)
+        cmds.addAttr(moduleHandle['transform'], attributeType='float', longName='scaleFactor',
+                                                                hasMinValue=True, minValue=0.01, defaultValue=1)
+        # The 'finalScale' attribute outputs the result scale.
+        cmds.addAttr(moduleHandle['transform'], attributeType='float', longName='finalScale')
+        
+        # Add the scaling factor to be used with "globalScale".
+        moduleHandle['scaleFactor'] = cmds.createNode('multDoubleLinear', name='%s:moduleScalingFactor_mult' % namespace)
+        cmds.connectAttr(moduleHandle['transform']+'.globalScale', moduleHandle['scaleFactor']+'.input1')
+        cmds.connectAttr(moduleHandle['transform']+'.scaleFactor', moduleHandle['scaleFactor']+'.input2')
+        cmds.connectAttr(moduleHandle['scaleFactor']+'.output', moduleHandle['transform']+'.finalScale')
+        
+        # Connect the size for the transform.
+        cmds.connectAttr(moduleHandle['transform']+'.finalScale', moduleHandle['transform']+'.scaleX')
+        cmds.connectAttr(moduleHandle['transform']+'.finalScale', moduleHandle['transform']+'.scaleY')
+        cmds.connectAttr(moduleHandle['transform']+'.finalScale', moduleHandle['transform']+'.scaleZ')
+    
+    lockHideChannelAttrs(moduleHandle['transform'], 's', 'v', keyable=False)
+    
+    return moduleHandle
+    
+    
 def load_xhandleShape(*args, **kwargs):
     '''
     Creates a custom locator control shape. This shape can be parented to an input transform
@@ -1025,6 +1076,9 @@ def load_xhandleShape(*args, **kwargs):
         name = transform
     else:
         name = 'xhandle'
+        
+    if not cmds.objExists(transform or ''):     # If transform is set to None, there'll be an error.
+        transform = None
         
     if 'colour' in kwargs:
         colour = kwargs['colour']

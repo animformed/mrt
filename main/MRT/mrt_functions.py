@@ -12,6 +12,7 @@
 import maya.cmds as cmds
 import maya.mel as mel
 from pymel.core import melGlobals
+from pymel.core.datatypes import Point
 
 from maya.OpenMaya import MGlobal; Error = MGlobal.displayError; Warning = MGlobal.displayWarning
 
@@ -302,7 +303,6 @@ def runProgressWindow(title='', message='', progress=0, step=0, totalProgress=10
     Helper function which creates/updates the progress window with messages and progress.
     '''
     # Store the progress window message for re-use, if no new message is passed-in.
-    
     if not cmds.optionVar(exists='rProgressWindowMsg'):
         cmds.optionVar(stringValue=('rProgressWindowMsg', message))
     
@@ -324,6 +324,7 @@ def runProgressWindow(title='', message='', progress=0, step=0, totalProgress=10
     # Create or end the progress window, based on the parameters.
     if (init + end) == 1:
         if init:
+            cmds.progressWindow(endProgress=True)
             cmds.progressWindow(title=title, progress=0, status=message, isInterruptable=False, maxValue=totalProgress)
         if end:
             cmds.progressWindow(endProgress=True)
@@ -367,7 +368,7 @@ def returnMRT_Namespaces():
     '''
     # Get the current namespace, set the namespace to root.
     currentNamespace = cmds.namespaceInfo(currentNamespace=True)
-    cmds.namespace(setNamespace=':')    
+    cmds.namespace(setNamespace=':')
     
     sceneNamespaces = cmds.namespaceInfo(listOnlyNamespaces=True)
     
@@ -392,16 +393,27 @@ def validateSceneModules():
     are incompatible with the latest version of MRT. Returns False if such module is found.
     Returns True in every other case, even with no modules. Modify as necesary.
     '''
-    modules = returnMRT_Namespaces()
+    # Get the current namespace, set the namespace to root.
+    currentNamespace = cmds.namespaceInfo(currentNamespace=True)
+    cmds.namespace(setNamespace=':')
+    
+    modules = returnMRT_Namespaces() or []
     
     olderModules = []
     
     # Check if any module group doesn't have the 'moduleLength' attribute.
     for module in modules:
-        moduleGrp = '%s:moduleGrp.' % module
+        moduleGrp = '%s:moduleGrp' % module
+        
         if not cmds.objExists(moduleGrp+'.moduleLength'):
             olderModules.append(module)
-            
+
+    if olderModules:
+        Error('MRT: Incompatible, %s module type(s) found in the scene.\n%s' % (len(olderModules), '\n'.join(olderModules)))
+    
+    # Restore the current namespace.
+    cmds.namespace(setNamespace=currentNamespace)    
+
     return olderModules
 
     
@@ -611,6 +623,28 @@ def returnOffsetPositionBetweenTwoVectors(startVector, endVector, parameter=0):
     return off_vec
 
 
+def comparePositionsForVectors(*args, **kwargs):
+    '''
+    Returns boolean if an array of positions are equivalent or 
+    occupy the same position within tolerance.
+    '''
+    tolerance = kwargs['tolerance'] if 'tolerance' in kwargs else 0.01
+    isEquivalent = False
+    
+    try:
+        if len(args) > 1:
+            mainPos = Point(args[0])
+            
+            for pos in args[1:]:
+                pos = Point(pos)
+                isEquivalent = mainPos.isEquivalent(pos, tol=tolerance)
+        
+    except TypeError, NameError:
+        return False
+    
+    return isEquivalent
+    
+    
 def returnModuleTypeFromNamespace(namespace):
     '''
     Return the type of a module from it namespace.
@@ -1458,10 +1492,7 @@ def returnModuleAttrsFromScene(moduleNamespace):
 
             moduleAttrsDict['orientation_repr_values'] = [('root_node_transform', \
                                   cmds.getAttr(moduleNamespace+':single_orient_repr_transform.rotate')[0])]
-
-            moduleAttrsDict['node_translation_values'] = [('root_node_transform', \
-                                                       cmds.getAttr(moduleNamespace+':root_node_transform.translate')[0])]
-
+            
             moduleAttrsDict['node_world_translation_values'] = [('root_node_transform', \
                     cmds.xform(moduleNamespace+':root_node_transform', query=True, worldSpace=True, translation=True))]
 
@@ -1476,7 +1507,7 @@ def returnModuleAttrsFromScene(moduleNamespace):
             node_orientation_Grp = moduleNamespace+':moduleOrientationHierarchyReprGrp'
             node_orientation_Grp_allChildren = \
                 cmds.listRelatives(node_orientation_Grp, allDescendents=True, type='transform')
-            all_node_orientation_transforms = filter(lambda transform:transform.endswith('orientation_repr_transform'), \
+            all_node_orientation_transforms = filter(lambda transform:transform.endswith('orient_repr_transform'), \
                                                                                         node_orientation_Grp_allChildren)
 
             node_orientation_repr_values = []
@@ -1486,18 +1517,17 @@ def returnModuleAttrsFromScene(moduleNamespace):
                 node_orientation_repr_values.append((stripMRTNamespace(transform)[1], \
                                                                                 cmds.getAttr(transform+'.'+orientationAttr)))
 
-            moduleAttrsDict['orientation_repr_values'] = node_orientation_repr_values ##
+            moduleAttrsDict['orientation_repr_values'] = node_orientation_repr_values
 
             # Get the world orientation values for the module nodes.
             node_world_orientations = []
 
             for transform in all_node_orientation_transforms:
-                node_world_orientations.append((stripMRTNamespace(transform)[1].partition('_orientation')[0], \
+                node_world_orientations.append((stripMRTNamespace(transform)[1].partition('_orient')[0], \
                                           cmds.xform(transform, query=True, worldSpace=True, rotation=True)))
             node_world_orientations.append(('end_node_transform', [0.0, 0.0, 0.0]))
-
+            
             moduleAttrsDict['node_world_orientation_values'] = node_world_orientations
-
 
             # Get the node translation, world translation, and orientation values
             node_transform_Grp = moduleNamespace+':moduleNodesGrp'
@@ -1509,15 +1539,13 @@ def returnModuleAttrsFromScene(moduleNamespace):
             node_handle_sizes = []
 
             for transform in node_transform_Grp_allChildren:
-                node_translations.append((stripMRTNamespace(transform)[1], cmds.getAttr(transform+'.translate')[0]))
                 node_world_translations.append((stripMRTNamespace(transform)[1], cmds.xform(transform, query=True, worldSpace=True, \
                                                                                                             translation=True)))
                 node_rotationOrders.append((stripMRTNamespace(transform)[1], cmds.getAttr(transform+'.rotateOrder')))
                 node_handle_sizes.append((stripMRTNamespace(transform)[1], \
                             cmds.getAttr(moduleNamespace+':module_transform.'+stripMRTNamespace(transform)[1]+'_handle_size')))
 
-            moduleAttrsDict['node_translation_values'] = node_translations ##
-            moduleAttrsDict['node_world_translation_values'] = node_world_translations ##
+            moduleAttrsDict['node_world_translation_values'] = node_world_translations
             moduleAttrsDict['node_rotationOrder_values'] = node_rotationOrders
             moduleAttrsDict['node_handle_sizes'] = node_handle_sizes
 
@@ -1558,7 +1586,8 @@ def returnModuleAttrsFromScene(moduleNamespace):
         splineAdjustCurveTransformValues = []
 
         for transform in moduleSplineAdjustCurveGrp_allTransforms:
-            splineAdjustCurveTransformValues.append((stripMRTNamespace(transform)[1], cmds.getAttr(transform+'.translate')[0]))
+            splineAdjustCurveTransformValues.append((stripMRTNamespace(transform)[1], 
+                                                     cmds.xform(transform, query=True, worldSpace=True, translation=True)))
 
         moduleAttrsDict['splineAdjustCurveTransformValues'] = splineAdjustCurveTransformValues
 
@@ -1598,24 +1627,11 @@ def returnModuleAttrsFromScene(moduleNamespace):
         for attr in otherAttrs:
             moduleAttrsDict[attr] = cmds.getAttr(moduleNamespace+':module_transform'+'.'+attr)
 
-        # Get the module node transform values (required for creating a duplicate hinge module)
-        moduleIKnodesGrp = moduleNamespace+':moduleIKnodesGrp'
-        moduleIKnodesGrp_allChildren = cmds.listRelatives(moduleIKnodesGrp, allDescendents=True, type='transform')
+        # Get the world translation and rotation values for hinge module nodes. This is used when creating a joint hierarchy 
+        # from hinge module in a character and when duplicating a hinge module. First, in order to get the correct rotation 
+        # values of the module nodes, we have to reset the node rotation orders to their default.
 
-        moduleIKnodesGrp_transforms = filter(lambda transform:transform.endswith('_control'), moduleIKnodesGrp_allChildren)
-
-        node_translations = []
-
-        for transform in moduleIKnodesGrp_transforms:
-            node_translations.append((stripMRTNamespace(transform)[1], cmds.getAttr(transform+'.translate')[0]))
-
-        moduleAttrsDict['node_translation_values'] = node_translations
-
-        # Get the world translation and rotation values for hinge module nodes (used when creating a joint hierarchy from
-        # hinge module in a character). First, in order to get the correct rotation values of the module nodes, we have to
-        # reset the node rotation orders to their default.
-
-        # Get the module node transforms
+        # Get the module node transforms.
         node_transform_Grp_allChildren = cmds.listRelatives(moduleNamespace+':moduleNodesGrp', allDescendents=True, type='joint')
 
         # Get the current rotation orders of module nodes (set by the user).
@@ -2040,7 +2056,7 @@ def setupParentingForRawCharacterParts(characterJointSet, jointsMainGrp, charact
                 cmds.setAttr(item[1][0]+'.constrainedParent', parentInfo[0], type='string', lock=True)
                 
                 # Constrain this joint with its parent.
-                cmds.parentConstraint(parentInfo[0], d_joint, maintainOffset=True, name=parentInfo[0]+'__parentConstraint')
+                cmds.parentConstraint(parentInfo[0], d_joint, maintainOffset=True, name=parentInfo[0]+'_parentConstraint')
                 
             # Parent the root joint to it.
             cmds.parent(item[1][0], d_joint, absolute=True)
@@ -2637,20 +2653,20 @@ def createModuleFromAttributes(moduleAttrsDict, createFromUI=False):
             if moduleAttrsDict['num_nodes'] > 1:
 
                 # Set values for node translations.
-                for (node_translation, node_translation_value) in moduleAttrsDict['node_translation_values']:
+                for (node_translation, node_translation_value) in moduleAttrsDict['node_world_translation_values']:
                     node = moduleAttrsDict['module_Namespace']+':'+node_translation
                     selectionNodes.append(node)
-                    cmds.setAttr(node+'.translate', *node_translation_value)
+                    cmds.xform(node, worldSpace=True, translation=node_translation_value)
 
                 # Set values for orientation representations.
                 for (orientation_node, node_orientation_value) in moduleAttrsDict['orientation_repr_values']:
-                    node = moduleAttrsDict['module_Namespace']+':'+orientation_node
+                    node = '%s:%s' % (moduleAttrsDict['module_Namespace'], orientation_node)
                     attr = cmds.listAttr(node, keyable=True, visible=True, unlocked=True)[0]
                     cmds.setAttr(node+'.'+attr, node_orientation_value)
 
                     # Set the value for its mirror node separately.
                     if moduleAttrsDict['mirror_options'][0] == 'On':
-                        mirrorNode = moduleAttrsDict['mirror_module_Namespace']+':'+orientation_node
+                        mirrorNode = '%s:%s' % (moduleAttrsDict['mirror_module_Namespace'], orientation_node)
                         cmds.setAttr(mirrorNode+'.'+attr, node_orientation_value)
 
             if moduleAttrsDict['num_nodes'] == 1:   # Joint module with a single node
@@ -2661,7 +2677,7 @@ def createModuleFromAttributes(moduleAttrsDict, createFromUI=False):
                 selectionNodes.append(node)
                 
                 # Set the node translation
-                cmds.setAttr(node+'.translate', *moduleAttrsDict['node_translation_values'][0][1])
+                cmds.xform(node, worldSpace=True, translation=moduleAttrsDict['node_world_translation_values'][0][1])
                 
                 # Set it's orientation
                 cmds.setAttr(orientation_repr+'.rotate', *moduleAttrsDict['orientation_repr_values'][0][1])
@@ -2682,23 +2698,30 @@ def createModuleFromAttributes(moduleAttrsDict, createFromUI=False):
             # Set their translations
             cmds.setAttr(splineStartHandleTransform+'.translate', *moduleAttrsDict['splineStartHandleTransform_translation_values'])
             cmds.setAttr(splineEndHandleTransform+'.translate', *moduleAttrsDict['splineEndHandleTransform_translation_values'])
-
+            
             # Set the start module transform attributes
             splineStartHandleTransform_attrs = cmds.listAttr(splineStartHandleTransform, keyable=True, visible=True, unlocked=True)[3:]
             for attr in splineStartHandleTransform_attrs:
-                cmds.setAttr(splineStartHandleTransform+'.'+attr, moduleAttrsDict[str(attr)])
+                try:cmds.setAttr(splineStartHandleTransform+'.'+attr, moduleAttrsDict[str(attr)])
+                except: pass
+            
+            changeSplineJointOrientationType(moduleAttrsDict['module_Namespace'])
 
             # Set the mirror start module attributes
             if moduleAttrsDict['mirror_options'][0] == 'On':
+
                 mirror_splineStartHandleTransform = moduleAttrsDict['mirror_module_Namespace']+':splineStartHandleTransform'
                 for attr in splineStartHandleTransform_attrs:
-                    cmds.setAttr(mirror_splineStartHandleTransform+'.'+attr, moduleAttrsDict[str(attr)])
+                    try:cmds.setAttr(mirror_splineStartHandleTransform+'.'+attr, moduleAttrsDict[str(attr)])
+                    except: pass
+                
+                changeSplineJointOrientationType(moduleAttrsDict['mirror_module_Namespace'])
 
             # Set the translations for spline curve adjust transforms.
             for (splineAdjustCurve_transform, transform_value) in moduleAttrsDict['splineAdjustCurveTransformValues']:
                 node = moduleAttrsDict['module_Namespace']+':'+splineAdjustCurve_transform
                 selectionNodes.append(node)
-                cmds.setAttr(node+'.translate', *transform_value)
+                cmds.xform(node, worldSpace=True, translation=transform_value)
 
 
         if moduleAttrsDict['node_type'] == 'HingeNode':
@@ -2732,10 +2755,10 @@ def createModuleFromAttributes(moduleAttrsDict, createFromUI=False):
                     cmds.setAttr(mirror_module_transform+'.'+attr, moduleAttrsDict[str(attr)])
 
             # Set attributes for node translations.
-            for (translation_node, node_translation_value) in moduleAttrsDict['node_translation_values']:
-                node = moduleAttrsDict['module_Namespace']+':'+translation_node
+            for (translation_node, node_translation_value) in moduleAttrsDict['node_world_translation_values']:
+                node = '%s:%s_control' % (moduleAttrsDict['module_Namespace'], translation_node)
                 selectionNodes.append(node)
-                cmds.setAttr(node+'.translate', *node_translation_value)
+                cmds.xform(node, worldSpace=True, translation=node_translation_value)
 
         # Select the control to be updated (in order for their mirror controls to be updated).
         if moduleAttrsDict['mirror_options'][0] == 'On':

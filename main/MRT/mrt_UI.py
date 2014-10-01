@@ -156,7 +156,7 @@ class MRT_UI(object):
     '''
     Main UI class
     '''
-    # To store current instance
+    # To store current/latest UI instance.
     INSTANCE = None
     
     def __init__(self):
@@ -265,7 +265,6 @@ class MRT_UI(object):
         cmds.menuItem(label='Load saved character template(s)', command=self.loadSavedCharTemplates)
         cmds.menuItem(optionBox=True, command=self.changeLoadSettingsForCharTemplates)
         cmds.menuItem(divider=True)
-        # cmds.menuItem(label='Exit', command=('cmds.deleteUI(\"'+self.uiVars['window']+'\")')) # OR
         cmds.menuItem(label='Exit', command=partial(self.closeWindow, self.uiVars['window']))
 
         # The 'window' menu will contains basic UI window operations.
@@ -284,6 +283,7 @@ class MRT_UI(object):
         cmds.menuItem(label='Purge auto-collection files on disk', command=self.purgeAutoCollections)
         cmds.menuItem(label='Create parent switch group for selected control handle',
                                 command=self.createParentSwitchGroupforControlHandle)
+        cmds.menuItem(divider=True)
         cmds.menuItem(label='Disable utility script jobs', command=lambda *args:mfunc.forceToggleUtilScriptJobs(False))
         cmds.menuItem(label='Enable utility script jobs', command=lambda *args:mfunc.moduleUtilitySwitchScriptJobs())
 
@@ -423,10 +423,8 @@ class MRT_UI(object):
             charTemplateList_file.close()
             
         # Check the scene for older module type, and warn.
-        invalidModules = mfunc.validateSceneModules()
-        if invalidModules:
-            cmds.warning('MRT: Incompatible, %s older module type(s) found in the scene, '\
-                         'please re-create these module(s):\n%s\n' % (len(invalidModules), '\n'.join(invalidModules))) 
+        mfunc.validateSceneModules()
+            
         # Re-select
         if selection:
             cmds.select(selection)
@@ -1902,6 +1900,7 @@ class MRT_UI(object):
         cmds.scriptJob(event=['deleteAll', self.updateListForSceneModulesInUI], parent=mainWin)
         cmds.scriptJob(event=['SceneOpened', self.updateListForSceneModulesInUI], parent=mainWin)
         cmds.scriptJob(event=['SceneOpened', self.clearParentSwitchControlField], parent=mainWin)
+        cmds.scriptJob(event=['SceneOpened', mfunc.validateSceneModules], parent=mainWin)
         cmds.scriptJob(event=['deleteAll', self.clearParentSwitchControlField], parent=mainWin)
         cmds.scriptJob(event=['DagObjectCreated', self.clearParentSwitchControlField], parent=mainWin)
         cmds.scriptJob(event=['Undo', self.updateListForSceneModulesInUI], parent=mainWin)
@@ -1945,7 +1944,7 @@ class MRT_UI(object):
         cmds.button(self.uiVars['moduleDuplicate_button'], edit=True, enable=False)
         cmds.textField(self.uiVars['moduleRename_textField'], edit=True, text=None)
 
-
+        
     def checkMRTcharacter(self):
         '''
         Checks for a character in the current scene. If found, it returns the name
@@ -3698,8 +3697,6 @@ class MRT_UI(object):
                     cmds.button(label='Continue', width=90, command=partial(saveModuleCollectionFromDescription,
                                                                             collectionDescription,
                                                                             treeViewSelection))
-                    # cmds.button(label='Revert', width=90,
-                    #                   command=('cmds.deleteUI(\"'+self.uiVars['collectionNoDescpErrorWindow']+'\")'))
 
                     cmds.button(label='Revert', width=90, command=partial(self.closeWindow,
                                                                         self.uiVars['collectionNoDescpErrorWindow']))
@@ -3774,7 +3771,6 @@ class MRT_UI(object):
             # Parent layout for buttons
             cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 28], [2, 'left', 20]))
             cmds.button(label='Save collection', width=130, command=saveModuleCollectionFromDescriptionProcessInputUI)
-            # cmds.button(label='Cancel', width=90, command=('cmds.deleteUI(\"'+self.uiVars['collectionDescpWindow']+'\")'))
             cmds.button(label='Cancel', width=90, command=partial(self.closeWindow, self.uiVars['collectionDescpWindow']))
 
             cmds.setParent(self.uiVars['collectionDescpWindowColumn'])
@@ -4867,8 +4863,7 @@ class MRT_UI(object):
         Main procedure for creating character from scene module(s).
         '''
         # Init the creation progress window.
-        runProgressWindow(title='Creating charcater', init=True)
-        runProgressWindow(message='Checking scene...', progress=1)
+        runProgressWindow(title='Creating character', message='Checking scene...', init=True)
         
         # Check if a character exists in the scene.
         characterStatus = self.checkMRTcharacter()
@@ -4885,14 +4880,13 @@ class MRT_UI(object):
         # Check the scene for any older module type.
         invalidModules = mfunc.validateSceneModules()
         if invalidModules:
-            Error('MRT: Incompatible, %s module type(s) found in the scene, aborting.%s\n' % (len(invalidModules), '\n'.join(invalidModules)))
             
             # Update progress.
             runProgressWindow(message='Error', progress=0)
-            runProgressWindow(end=True)                        
+            runProgressWindow(end=True)
             
             return
-        
+
         # Check for valid character name entered by the user.
         characterName = cmds.textField(self.uiVars['characterName_textField'], query=True, text=True)
         if not str(characterName).isalnum():
@@ -4952,10 +4946,10 @@ class MRT_UI(object):
         geoMainGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__geometryMainGrp', parent=mainGrp)
         skinGeoGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__skinGeometryGrp', parent=geoMainGrp)
         cntlGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__controlGrp', parent=mainGrp)
-        miscGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__MiscGrp', parent=mainGrp)
-        defGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__DeformersGrp', parent=miscGrp)
+        miscGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__miscGrp', parent=mainGrp)
+        defGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__deformersGrp', parent=miscGrp)
         cmds.setAttr(defGrp+'.visibility', 0)
-
+        
         # Create a group for character proxy geometry under the "geometry" main group.
         proxyMainGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__proxyAllGeometryGrp', parent=geoMainGrp)
 
@@ -5037,7 +5031,7 @@ class MRT_UI(object):
         
         # Update progress.
         runProgressWindow(message='Parenting/constraining hierarchies...', progress=85)        
-
+        
         # Set up parenting among discrete joint hierarchies generated from scene modules. This parenting
         # is either constrained or DAG type. This depends on the module parenting relationships set-up
         # earlier among scene modules ("Constrained" or "Hierarchical" module parenting).
@@ -5090,11 +5084,11 @@ class MRT_UI(object):
         cmds.makeIdentity(transforms[1], scale=True, translate=True, apply=True)
 
         # Put the "globalScale" on the character root transform control.
-        cmds.connectAttr(transforms[0]+'.scaleY', transforms[0]+'.scaleX')
-        cmds.connectAttr(transforms[0]+'.scaleY', transforms[0]+'.scaleZ')
-        cmds.aliasAttr('globalScale', transforms[0]+'.scaleY')
-        cmds.setAttr(transforms[0]+'.scaleX', lock=True, keyable=False, channelBox=False)
-        cmds.setAttr(transforms[0]+'.scaleZ', lock=True, keyable=False, channelBox=False)
+        cmds.addAttr(transforms[0], longName='globalScale', attributeType='float', min=0.01, defaultValue=1, keyable=True)
+        cmds.connectAttr(transforms[0]+'.globalScale', transforms[0]+'.scaleX')
+        cmds.connectAttr(transforms[0]+'.globalScale', transforms[0]+'.scaleY')
+        cmds.connectAttr(transforms[0]+'.globalScale', transforms[0]+'.scaleZ')
+        mfunc.lockHideChannelAttrs(transforms[0], 's', keyable=False, lock=True)
 
         # Hide the scale attributes on the character world transform control.
         cmds.setAttr(transforms[1]+'.scaleX', keyable=False, lock=True)
@@ -5216,7 +5210,7 @@ class MRT_UI(object):
                     allChildren = cmds.listRelatives(obj, children=True) or []
                     if allChildren:
                         for child in allChildren:
-                            if not re.match('^MRT_character\w+(DeformersGrp|skinGeometryGrp|proxyAllGeometryGrp|proxyGeoGrp)$', child):
+                            if not re.match('^MRT_character\w+(deformersGrp|skinGeometryGrp|proxyAllGeometryGrp|proxyGeoGrp)$', child):
                                 cmds.parent(child, world=True)
 
             # Delete the main character group.
@@ -6303,7 +6297,7 @@ class MRT_UI(object):
                     for attr in ctrlAttrs:
                         if re.search('(translate|rotate){1}', attr):
                             cmds.setAttr(node+'.'+attr, 0)
-                        if re.search('scale', attr):
+                        if re.search('scale|globalScale', attr):
                             cmds.setAttr(node+'.'+attr, 1)
 
         # Get all character joints.
