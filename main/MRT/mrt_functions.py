@@ -817,12 +817,12 @@ def returnHierarchyTreeListStringForCustomControlRigging(rootJoint, prefix='', p
 
     Each child joint is indented with a tab space.
 
-    <HingeNode>_root_node_transform
-        <HingeNode>_node_1_transform
-            <HingeNode>_end_node_transform
-                <JointNode>_root_node_transform
-                <JointNode>_root_node_transform
-                    <JointNode>_end_node_transform
+    <HingeNode>_root_node_joint
+        <HingeNode>_node_1_joint
+            <HingeNode>_end_node_joint
+                <JointNode>_root_node_joint
+                <JointNode>_root_node_joint
+                    <JointNode>_end_node_joint
     '''
     if prettyPrint:
         newLine = '\n'
@@ -833,7 +833,7 @@ def returnHierarchyTreeListStringForCustomControlRigging(rootJoint, prefix='', p
 
     # Stores the string attributes for the passed-in joint name
     jh_string = '%s<%s>%s%s'%(prefix, cmds.getAttr(rootJoint+'.inheritedNodeType'), \
-                re.split('(_root_node_transform|_end_node_transform|_node_\d+_transform)', rootJoint)[1], newLine)
+                re.split('(_root_node_joint|_end_node_joint|_node_\d+_joint)', rootJoint)[1], newLine)
 
     # Check the joint for multiple children. If they have further descendents, search recursively and collect 
     # their joint name attributes if the passed-in joint has only a single child joint.
@@ -848,7 +848,7 @@ def returnHierarchyTreeListStringForCustomControlRigging(rootJoint, prefix='', p
 
             # Append the child joint name attributes.
             jh_string += '%s<%s>%s%s'%(prefix, cmds.getAttr(children[0]+'.inheritedNodeType'), \
-                re.split('(_root_node_transform|_end_node_transform|_node_\d+_transform)', children[0])[1], newLine)
+                re.split('(_root_node_joint|_end_node_joint|_node_\d+_joint)', children[0])[1], newLine)
 
             children = cmds.listRelatives(children[0], children=True, type='joint') 
 
@@ -894,7 +894,7 @@ def returnRootForCharacterHierarchy(joint):
 
     parentJoint = mel.eval('listRelatives -parent -type joint '+joint)
 
-    if parentJoint and parentJoint[0].endswith('_transform'):
+    if parentJoint and parentJoint[0].endswith('_joint'):
         rootJoint = returnRootForCharacterHierarchy(parentJoint[0])
     else:
         rootJoint = joint
@@ -1025,7 +1025,7 @@ def traverseChildrenModules(module_namespace, allChildren=False):
     # Get a list of all node names for the given module (without namespaces).
     numNodes = cmds.getAttr(module_namespace+':moduleGrp.numberOfNodes')
 
-    nodeNameList = ['node_%s_transform'%i for i in range(numNodes)]
+    nodeNameList = ['node_%s_transform' % i for i in range(numNodes)]
     nodeNameList[0] = 'root_node_transform'
 
     if numNodes > 1:            # If the module consists of more than one node.
@@ -1085,7 +1085,7 @@ def traverseConstrainedParentHierarchiesForSkeleton(rootJoint):
 
         # With a joint name in the 'constraining' parent hierarchy, get the name of its root joint.
         while jointIt:
-            if jointIt[0].endswith('root_node_transform'):
+            if jointIt[0].endswith('root_node_joint'):
                 rootParent = jointIt[0]        
             jointIt = cmds.listRelatives(jointIt, parent=True, type='joint')
 
@@ -1107,7 +1107,7 @@ def checkForJointDuplication():
     # Get all the mrt joint names in the scene. Only the node name at the end of
     # a DAG path.
     mrt_joints = [item.split('|')[-1] for item in allJoints if \
-                  re.match('^MRT_character\w+_transform$', item.split('|')[-1])]
+                  cmds.attributeQuery('mrtJoint', node=item, exists=True)]
     check = True
 
     if mrt_joints:
@@ -1332,8 +1332,7 @@ def align(target, toAlignTransform):
     Position and sets the orientation of an input "toAlignTransform"
     with respect to a "target" object in the scene.
     '''
-    tempConstraint = cmds.parentConstraint(target, toAlignTransform, maintainOffset=False)
-    cmds.delete(tempConstraint)
+    cmds.delete(cmds.parentConstraint(target, toAlignTransform, maintainOffset=False))
 
 
 def updateNodeList(nodes):
@@ -1688,21 +1687,25 @@ def returnModuleAttrsFromScene(moduleNamespace):
         proxyGrpTransforms = filter(lambda transform:transform.endswith('_geo'), proxyGrpTransforms)
 
         for transform in proxyGrpTransforms:
-            if re.match(moduleNamespace+':(root_node_transform|end_node_transform|node_\d+_transform)_proxy_bone_geo', \
-                                                                                                            transform):
+            if re.match(moduleNamespace+':(root_node|end_node|node_\d+)_proxy_bone_geo', transform):
+                
                 # Set proxy geo options for bone to be True
                 moduleAttrsDict['proxy_geo_options'][0] = True
-            if re.match(moduleNamespace+':(root_node_transform|end_node_transform|node_\d+_transform)_proxy_elbow_geo', \
-                                                                                                            transform):
+                
+            if re.match(moduleNamespace+':(root_node|end_node|node_\d+)_proxy_elbow_geo', transform):
+                
                 # Set proxy geo options for elbow to be True
                 moduleAttrsDict['proxy_geo_options'][1] = True
+                
                 # Set the elbow proxy geo type
                 moduleAttrsDict['proxy_geo_options'][2] = cmds.getAttr(moduleNamespace+':proxyGeometryGrp.elbowType')
 
     # If a mirrored module pair exists, get the required attributes.
     if cmds.attributeQuery('mirrorModuleNamespace', node=moduleNamespace+':moduleGrp', exists=True):
+        
         # Namespace for the mirrored module
         moduleAttrsDict['mirror_module_Namespace'] = cmds.getAttr(moduleNamespace+':moduleGrp.mirrorModuleNamespace')
+        
         # Mirrored module parent info
         moduleAttrsDict['moduleParentInfo'][1] =[moduleAttrsDict['mirror_module_Namespace'], \
                                      cmds.getAttr(moduleAttrsDict['mirror_module_Namespace']+':moduleGrp.moduleParent')]
@@ -1718,11 +1721,29 @@ def returnModuleAttrsFromScene(moduleNamespace):
     return moduleAttrsDict
 
 
-def createSkeletonFromModule(moduleAttrsDict, characterName):
+def createSkeletonFromModule(moduleAttrsDict):
     '''
     Converts a module to a joint hierarchy. This method is called during character creation to perform on modules
     in the scene. It uses the module attribute data generated by "returnModuleAttrsFromScene" function.
     '''
+    # IN-SCOPE DEF, to be used internally.
+    def joint(*args, **kwargs):
+        '''
+        Wrapper function for creating joint(s) to be used by character/control rigs (not for modules). 
+        Creates a custom attribute which can be used to identify the joint(s).
+        '''
+        # Create the joint with the passed-in parameters.
+        jnt = cmds.joint(*args, **kwargs)
+        
+        if not kwargs.has_key('edit') or kwargs.has_key('query'):
+            
+            # Create an attribute for identification.
+            cmds.addAttr(jnt, attributeType='bool', longName='mrtJoint', dv=1)
+        
+        return jnt
+    
+    # MAIN DEF BEGINS
+    
     # To collect joints created from the module (by using its attributes)
     joints = []
     
@@ -1731,11 +1752,11 @@ def createSkeletonFromModule(moduleAttrsDict, characterName):
     # module pair, and then mirror the joint set hierarchy for its mirrored module.
     if moduleAttrsDict.get('mirror_module_Namespace') != None and moduleAttrsDict['creation_plane'][0] == '-':
     
-        # Get the namespace for the modoule in a mirrored pair (the one created on the + side of creation plane).
+        # Get the namespace for the module in a mirrored pair (the one created on the + side of creation plane).
         origUserSpecName = moduleAttrsDict['mirror_module_Namespace'].partition(':')[0].partition('__')[2]
         
         # Get the name of the root joint from the joint set hierarchy created from that module.
-        origRootJointName = 'MRT_character'+characterName+'__'+origUserSpecName+'_root_node_transform'
+        origRootJointName = origUserSpecName+'_root_node_joint'
 
         # Set the rotation function for joint hierarchy mirroring. The value found is set to true.
         rotationFunc = {'behaviour':False, 'orientation':False}
@@ -1750,15 +1771,18 @@ def createSkeletonFromModule(moduleAttrsDict, characterName):
                                                                                                  mirrorXZ=mirrorAxis['XZ'], \
                                                                                                  mirrorYZ=mirrorAxis['YZ'])
         # Set the attributes on the mirrored joints.
-        for joint in r_joints:
-            cmds.setAttr(joint+'.plane', lock=False)
-            # Creation plane
-            cmds.setAttr(joint+'.plane', '-'+moduleAttrsDict['creation_plane'][1:], type='string', lock=True)
+        for jnt in r_joints:
+            cmds.setAttr(jnt+'.plane', lock=False)
+            
+            # Creation plane.
+            cmds.setAttr(jnt+'.plane', '-'+moduleAttrsDict['creation_plane'][1:], type='string', lock=True)
+            
             # Get the new name for the joint, and rename it.
-            name = re.split(origUserSpecName, joint)[0] + moduleAttrsDict['userSpecName'] + re.split(origUserSpecName, joint)[1]
-            name = re.split('\d+$', name)[0]
-            joint = cmds.rename(joint, name)
-            joints.append(joint)
+            #name = re.split(origUserSpecName, joint)[0] + moduleAttrsDict['userSpecName'] + re.split(origUserSpecName, joint)[1]
+            name = moduleAttrsDict['userSpecName'] + re.split(origUserSpecName, jnt)[1]
+            name = re.split('\d+$', name)[0]    # Remove any num suffix added by maya during mirroring
+            jnt = cmds.rename(jnt, name)
+            joints.append(jnt)
         
         # Set the 'Mid pos for the ik segment' attribute, if the mirror module pair is of HingeNode type.
         if moduleAttrsDict['node_type'] == 'HingeNode':
@@ -1774,11 +1798,13 @@ def createSkeletonFromModule(moduleAttrsDict, characterName):
             if moduleAttrsDict['num_nodes'] == 1:
             
                 # Get the name of the joint to be created from the module node.
-                name = 'MRT_character'+characterName+'__'+moduleAttrsDict['userSpecName']+'_root_node_transform'
+                name = moduleAttrsDict['userSpecName']+'_root_node_joint'
+                
                 # Create the joint.
-                jointName = cmds.joint(name=name, position=moduleAttrsDict['node_world_translation_values'][0][1],
+                jointName = joint(name=name, position=moduleAttrsDict['node_world_translation_values'][0][1],
                                        orientation=moduleAttrsDict['node_world_orientation_values'][0][1],
                                        radius=moduleAttrsDict['scale']*moduleAttrsDict['node_handle_sizes'][0][1]*0.16)
+                
                 # Set the joint attributes.
                 cmds.addAttr(jointName, dataType='string', longName='inheritedNodeType')
                 cmds.setAttr(jointName+'.inheritedNodeType', 'JointNode', type='string', lock=True)
@@ -1793,10 +1819,10 @@ def createSkeletonFromModule(moduleAttrsDict, characterName):
                 for i, position in enumerate(moduleAttrsDict['node_world_translation_values']):
                 
                     # Get the name of the joint to be created from the module node.
-                    name = 'MRT_character'+characterName+'__'+moduleAttrsDict['userSpecName']+'_'+position[0]
+                    name = '%s_%s' % (moduleAttrsDict['userSpecName'], position[0].replace('transform', 'joint'))
                     
                     # Create the joint for the module node.
-                    jointName = cmds.joint(name=name, position=position[1],
+                    jointName = joint(name=name, position=position[1],
                                        radius=moduleAttrsDict['scale']*moduleAttrsDict['node_handle_sizes'][i][1]*0.16)
                                        
                     # Set the joint attributes.
@@ -1805,7 +1831,7 @@ def createSkeletonFromModule(moduleAttrsDict, characterName):
                     cmds.setAttr(jointName+'.overrideEnabled', 1)
                     cmds.setAttr(jointName+'.overrideColor', moduleAttrsDict['handle_colour'])                
                     joints.append(jointName)
-                
+
                 # Orient the joint rotation axes. First orient the root joint with children to align the aim axis.
                 
                 # Get the up axis for joint orientation from creation plane axes.
@@ -1815,29 +1841,29 @@ def createSkeletonFromModule(moduleAttrsDict, characterName):
                 cmds.select(joints[0], replace=True)
                 
                 # Perform joint orientation, this is done to align the aim axis down the joint hierarchy.
-                cmds.joint(edit=True, orientJoint=moduleAttrsDict['node_axes'].lower(), secondaryAxisOrient=s_axis,     \
+                joint(edit=True, orientJoint=moduleAttrsDict['node_axes'].lower(), secondaryAxisOrient=s_axis,     \
                                                                                          zeroScaleOrient=True, children=True)
                 cmds.select(clear=True)
                 
                 # Unparent the child joints for further orientation.
-                for joint in joints[1:]:
-                    cmds.parent(joint, absolute=True, world=True)
+                for jnt in joints[1:]:
+                    cmds.parent(jnt, absolute=True, world=True)
                 
                 # Orient the joints using the orientation data.
-                for (joint, orientation) in zip(joints, moduleAttrsDict['node_world_orientation_values']):
-                    cmds.joint(joint, edit=True, orientation=orientation[1])
+                for (jnt, orientation) in zip(joints, moduleAttrsDict['node_world_orientation_values']):
+                    joint(jnt, edit=True, orientation=orientation[1])
 
                 # Reparent the child joints.
-                for i, joint in enumerate(joints[1:]):
-                    cmds.parent(joint, joints[i], absolute=True)
+                for i, jnt in enumerate(joints[1:]):
+                    cmds.parent(jnt, joints[i], absolute=True)
                 
                 # Reset the orientation for last joint.
                 cmds.setAttr(joints[-1]+'.jointOrient', 0, 0, 0, type='double3')
                 cmds.select(clear=True)
                 
                 # Set the joint rotation orders.
-                for joint, rotOrder in zip(joints, moduleAttrsDict['node_rotationOrder_values']):
-                    cmds.setAttr(joint+'.rotateOrder', rotOrder[1])
+                for jnt, rotOrder in zip(joints, moduleAttrsDict['node_rotationOrder_values']):
+                    cmds.setAttr(jnt+'.rotateOrder', rotOrder[1])
 
         # If the module type is SplineNode.
         if moduleAttrsDict['node_type'] == 'SplineNode':
@@ -1846,10 +1872,10 @@ def createSkeletonFromModule(moduleAttrsDict, characterName):
             for position in moduleAttrsDict['node_world_translation_values']:
             
                 # Get the name for the joint.
-                name = 'MRT_character'+characterName+'__'+moduleAttrsDict['userSpecName']+'_'+position[0]
+                name = '%s_%s' % (moduleAttrsDict['userSpecName'], position[0].replace('transform', 'joint'))
                 
                 # Create the joint and add attributes
-                jointName = cmds.joint(name=name, position=position[1], radius=moduleAttrsDict['scale']*0.17)
+                jointName = joint(name=name, position=position[1], radius=moduleAttrsDict['scale']*0.17)
                 cmds.addAttr(jointName, dataType='string', longName='inheritedNodeType')
                 cmds.setAttr(jointName+'.inheritedNodeType', 'SplineNode', type='string', lock=True)
                 cmds.addAttr(jointName, dataType='string', longName='splineOrientation')
@@ -1861,15 +1887,15 @@ def createSkeletonFromModule(moduleAttrsDict, characterName):
             # Get the up axis for joint orientation from creation plane axes for the spline module.
             s_axis = {'XY':'zup', 'YZ':'xup', 'XZ':'yup'}[moduleAttrsDict['creation_plane'][1:]]
             
-            # Orient the joint chain along the aim axis
+            # Orient the joint chain along the aim axis.
             cmds.select(joints[0], replace=True)
-            cmds.joint(edit=True, orientJoint=moduleAttrsDict['node_axes'].lower(), secondaryAxisOrient=s_axis, \
+            joint(edit=True, orientJoint=moduleAttrsDict['node_axes'].lower(), secondaryAxisOrient=s_axis, \
                                                                                         zeroScaleOrient=True, children=True)
             cmds.select(clear=True)
             
-            # Unparent the child joints in the joint chain
-            for joint in joints[1:]:
-                cmds.parent(joint, absolute=True, world=True)
+            # Unparent the child joints in the joint chain.
+            for jnt in joints[1:]:
+                cmds.parent(jnt, absolute=True, world=True)
             
             # If the spline module node orinetatioh type is set to 'object', orient the joints individually.
             if moduleAttrsDict['node_objectOrientation'] == 1:
@@ -1887,21 +1913,21 @@ def createSkeletonFromModule(moduleAttrsDict, characterName):
                         cmds.makeIdentity(joints[i], rotate=True, apply=True)        
             
                 # Add the 'axis rotate' value to the joint orientations.
-                for (joint, orientation) in zip(joints, moduleAttrsDict['node_world_orientation_values']):
+                for (jnt, orientation) in zip(joints, moduleAttrsDict['node_world_orientation_values']):
                     axes_mult = {'x':[1, 0, 0], 'y':[0, 1, 0], 'z':[0, 0, 1]}[moduleAttrsDict['node_axes'][0].lower()]
                     addOrientation = [moduleAttrsDict['splineOrientation_value']*item for item in axes_mult]
-                    jointOrientation = list(cmds.getAttr(joint+'.jointOrient')[0])
+                    jointOrientation = list(cmds.getAttr(jnt+'.jointOrient')[0])
                     newOrientation = map(lambda x, y:x+y, addOrientation, jointOrientation)
-                    cmds.setAttr(joint+'.jointOrient', newOrientation[0], newOrientation[1], newOrientation[2], type='double3')  
+                    cmds.setAttr(jnt+'.jointOrient', newOrientation[0], newOrientation[1], newOrientation[2], type='double3')  
 
             # If the spline node orientation type is set to 'world'.
             else:
-                for joint in joints:
-                    cmds.setAttr(joint+'.jointOrient', 0, 0, 0, type='double3')
+                for jnt in joints:
+                    cmds.setAttr(jnt+'.jointOrient', 0, 0, 0, type='double3')
 
             # Re-parent the child joints in the spline joint chain.
-            for i, joint in enumerate(joints[1:]):
-                cmds.parent(joint, joints[i], absolute=True)
+            for i, jnt in enumerate(joints[1:]):
+                cmds.parent(jnt, joints[i], absolute=True)
 
             # Set orientation for the last joint.
             cmds.setAttr(joints[-1]+'.jointOrient', 0, 0, 0, type='double3')
@@ -1913,12 +1939,12 @@ def createSkeletonFromModule(moduleAttrsDict, characterName):
             for i, position in enumerate(moduleAttrsDict['node_world_translation_values']):
             
                 # Get the name of the joint
-                name = 'MRT_character'+characterName+'__'+moduleAttrsDict['userSpecName']+'_'+position[0]
+                name = '%s_%s' % (moduleAttrsDict['userSpecName'], position[0].replace('transform', 'joint'))
                 
                 # Create the joint.
-                jointName = cmds.joint(name=name, position=position[1], \
+                jointName = joint(name=name, position=position[1], \
                                        radius=moduleAttrsDict['scale']*moduleAttrsDict['node_handle_sizes'][i][1]*0.16)
-                                       
+            
                 # Add / set the joint attributes.
                 cmds.addAttr(jointName, dataType='string', longName='inheritedNodeType')
                 cmds.setAttr(jointName+'.inheritedNodeType', 'HingeNode', type='string', lock=True)
@@ -1929,26 +1955,27 @@ def createSkeletonFromModule(moduleAttrsDict, characterName):
             # Get the secondary / up axis for joint orientation from module creation plane.
             s_axis = {'XY':'zup', 'YZ':'xup', 'XZ':'yup'}[moduleAttrsDict['creation_plane'][1:]]
             cmds.select(joints[0], replace=True)
+            
             # Orient the joint chain along their aim axis.
-            cmds.joint(edit=True, orientJoint=moduleAttrsDict['node_axes'].lower(), secondaryAxisOrient=s_axis, \
+            joint(edit=True, orientJoint=moduleAttrsDict['node_axes'].lower(), secondaryAxisOrient=s_axis, \
                                                                                          zeroScaleOrient=True, children=True)
             cmds.select(clear=True)
             
             # Unparent the child joints.
-            for joint in joints[1:]:
-                cmds.parent(joint, absolute=True, world=True)
+            for jnt in joints[1:]:
+                cmds.parent(jnt, absolute=True, world=True)
             
             # Apply the orientation to joints from the module attribute data.
-            for (joint, orientation) in zip(joints, moduleAttrsDict['node_world_orientation_values']):
-                cmds.joint(joint, edit=True, orientation=orientation[1])
+            for (jnt, orientation) in zip(joints, moduleAttrsDict['node_world_orientation_values']):
+                joint(jnt, edit=True, orientation=orientation[1])
             
             # Reparent the child joints.
-            for i, joint in enumerate(joints[1:]):
-                cmds.parent(joint, joints[i], absolute=True)
+            for i, jnt in enumerate(joints[1:]):
+                cmds.parent(jnt, joints[i], absolute=True)
             
             # Apply the joint rotation orders.
-            for joint, rotOrder in zip(joints, moduleAttrsDict['node_rotationOrder_values']):
-                cmds.setAttr(joint+'.rotateOrder', rotOrder[1])
+            for jnt, rotOrder in zip(joints, moduleAttrsDict['node_rotationOrder_values']):
+                cmds.setAttr(jnt+'.rotateOrder', rotOrder[1])
             
             # Add / set the 'ikSegmentModPos' attribute to the root joint (It's the position of the middle/hinge joint in the
             # joint chain in a straight line).
@@ -1956,24 +1983,24 @@ def createSkeletonFromModule(moduleAttrsDict, characterName):
             cmds.setAttr(joints[0]+'.ikSegmentMidPos', moduleAttrsDict['ikSegmentMidPos'], type='string', lock=True)
 
         # Add additional joint attributes common to all module types.
-        for joint in joints:
-            cmds.addAttr(joint, longName='numNodes')
-            cmds.setAttr(joint+'.numNodes', moduleAttrsDict['num_nodes'], lock=True)
-            cmds.addAttr(joint, dataType='string', longName='nodeAxes')
-            cmds.setAttr(joint+'.nodeAxes', moduleAttrsDict['node_axes'], type='string', lock=True)
-            cmds.addAttr(joint, dataType='string', longName='plane')
-            cmds.setAttr(joint+'.plane', moduleAttrsDict['creation_plane'], type='string', lock=True)
-            cmds.addAttr(joint, dataType='string', longName='translationFunction')
-            cmds.setAttr(joint+'.translationFunction', moduleAttrsDict['mirror_options'][1].lower(), type='string', lock=True)
-            cmds.addAttr(joint, dataType='string', longName='rotationFunction')
-            cmds.setAttr(joint+'.rotationFunction', moduleAttrsDict['mirror_options'][2].lower(), type='string', lock=True)
+        for jnt in joints:
+            cmds.addAttr(jnt, longName='numNodes')
+            cmds.setAttr(jnt+'.numNodes', moduleAttrsDict['num_nodes'], lock=True)
+            cmds.addAttr(jnt, dataType='string', longName='nodeAxes')
+            cmds.setAttr(jnt+'.nodeAxes', moduleAttrsDict['node_axes'], type='string', lock=True)
+            cmds.addAttr(jnt, dataType='string', longName='plane')
+            cmds.setAttr(jnt+'.plane', moduleAttrsDict['creation_plane'], type='string', lock=True)
+            cmds.addAttr(jnt, dataType='string', longName='translationFunction')
+            cmds.setAttr(jnt+'.translationFunction', moduleAttrsDict['mirror_options'][1].lower(), type='string', lock=True)
+            cmds.addAttr(jnt, dataType='string', longName='rotationFunction')
+            cmds.setAttr(jnt+'.rotationFunction', moduleAttrsDict['mirror_options'][2].lower(), type='string', lock=True)
 
         cmds.select(clear=True)
 
     return joints
 
 
-def setupParentingForRawCharacterParts(characterJointSet, jointsMainGrp, characterName):
+def setupParentingForRawCharacterParts(characterJointSet, jointsMainGrp):
     '''
     Set up parenting for joint hierarchies while creating a character. The type of parenting
     depends on the module parenting info stored for joints for a hierarchy in "characterJointSet".
@@ -1990,18 +2017,18 @@ def setupParentingForRawCharacterParts(characterJointSet, jointsMainGrp, charact
         # Each "item", contains the following data:
         # ("<parent module node>,<parent type>", ["<child hierarchy root joint>", ..., "<child hierarchy end joint>"])
         # As an example:
-        # ("MRT_JointNode__r_clavicle:root_node_transform,Constrained", ["MRT_characterNew__r_arm_root_node_transform",
-        #                                                                "MRT_characterNew__r_arm_node_1_transform",
-        #                                                                "MRT_characterNew__r_arm_end_node_transform"])
+        # ("MRT_JointNode__r_clavicle:root_node_transform,Constrained", ["r_arm_root_node_joint",
+        #                                                                "r_arm_node_1_joint",
+        #                                                                "r_arm_end_node_joint"])
         #
         # The module parenting info is stored as string. Eg., if the node "MRT_HingeNode__l_leg:end_node_transform",
         # is a hierarchical parent, it will stored as:
         # "MRT_HingeNode__l_leg:end_node_transform,Hierarchical" or "...,Constrained" if constrained parent.
             
         # If there's no parent info for a joint hierarchy, the "item" contains:
-        # ("None", ["MRT_characterNew__module_root_node_transform",
-        #           "MRT_characterNew__module_node_1_transform",
-        #           "MRT_characterNew__module_node_2_transform"])
+        # ("None", ["module_root_node_joint",
+        #           "module_node_1_joint",
+        #           "module_node_2_joint"])
         #
         # The first index of the "item" list contains the parent info. Here's it's "None".
         
@@ -2016,11 +2043,10 @@ def setupParentingForRawCharacterParts(characterJointSet, jointsMainGrp, charact
             # This parent module node name needs to be converted to its current joint name in the scene, which will be used.
             # This is needed since "setupParentingForRawCharacterParts" is called after all module nodes in the scene
             # are converted to joints.
-            # Eg., "MRT_HingeNode__l_leg:end_node_transform" is renamed as
-            #      "MRT_characterNew__l_leg_end_node_transform" (New is character name)
-            parentInfo[0] = 'MRT_character%s__%s_%s' % (characterName,
-                                                        parentInfo[0].partition(':')[0].partition('__')[2],
-                                                        parentInfo[0].partition(':')[2])
+            # Eg., "MRT_HingeNode__l_leg:end_node_transform" is renamed as "l_leg_end_node_joint".
+            userSpecName = parentInfo[0].partition(':')[0].partition('__')[2]
+            jointName = parentInfo[0].partition(':')[2].replace('transform', 'joint')
+            parentInfo[0] = '%s_%s' % (userSpecName, jointName)
 
         # If the parent type is "Hierarchical".
         if parentType == 'Hierarchical':
@@ -2029,13 +2055,13 @@ def setupParentingForRawCharacterParts(characterJointSet, jointsMainGrp, charact
         if parentType == 'None' or parentType == 'Constrained':
 
             # Else, the parent type is either "constrained" or it's main root joint hierarchy for the
-            # character, driven by the character root transform (<MRT_character*__root_transform>).
+            # character, driven by the character root control (ROOT_CNTL).
         
             # Create the joint group for joint hierarchy in "characterJointSet".
             # Get its name from the root joint of the joint hierarchy.
-            # Eg., if its name is "MRT_characterNew__r_arm_root_node_transform",
-            # the name of the joint group is "MRT_characterNew__r_arm_jointsGrp".
-            name = re.split('_(?:root_node|node_\d+|end_node)_transform', item[1][0])[0] + '_jointsGrp'
+            # Eg., if its name is "r_arm_root_node_joint",
+            # the name of the joint group is "r_arm_joints".
+            name = re.split('_(?:root_node|node_\d+|end_node)_joint', item[1][0])[0] + '_joints'
             jointGrp = cmds.group(empty=True, name=name, parent=jointsMainGrp)
             # The joint group is not needed for a root joint of a joint hierarchy with a hierarchical parent,
             # since it'll be parented under a joint.
@@ -2064,7 +2090,7 @@ def setupParentingForRawCharacterParts(characterJointSet, jointsMainGrp, charact
             cmds.parent(d_joint, jointGrp, absolute=True)
 
             # If a joint hierarchy has no parent type, it's the main root joint hierarchy (or one of) for the character.
-            # Later, this joint hierarchy will be constrained under the character root transform,
+            # Later, this joint hierarchy will be constrained under the character root control,
             # under "processCharacterFromScene" in mrt_UI.
             if parentType == 'None':
                 # Collect it.
@@ -2089,53 +2115,52 @@ def createProxyForSkeletonFromModule(characterJointSet, moduleAttrsDict, charact
     jointSet = characterJointSet[-1][1]
     
     # Create the group to contain the joint proxy geometry.
-    proxyGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__'+moduleAttrsDict['userSpecName']+'_proxyGeoGrp')
+    proxyGrp = cmds.group(empty=True, name=moduleAttrsDict['userSpecName']+'_proxyGeoGrp')
 
-    
     for (index, joint) in zip(range(moduleAttrsDict['num_nodes']), jointSet):
         
         # Get the naming prefix for the joint (generated from module node).
         if moduleAttrsDict['num_nodes'] > 1:
             if index == moduleAttrsDict['num_nodes']-1:
-                namePrefix = 'end_node_transform'
+                namePrefix = 'end_node'
             elif index == 0:
-                namePrefix = 'root_node_transform'
+                namePrefix = 'root_node'
             else:
-                namePrefix = 'node_%s_transform' % index
+                namePrefix = 'node_%s' % index
         else:
-            namePrefix = 'root_node_transform'
+            namePrefix = 'root_node'
             
         # If elbow proxy geometry exists for the module.
-        elbow_proxy_preTransform = moduleAttrsDict['module_Namespace']+':%s_proxy_elbow_geo_preTransform' % namePrefix
+        elbow_proxy_preTransform = moduleAttrsDict['module_Namespace']+':%s_proxy_elbow_preTransform' % namePrefix
         if cmds.objExists(elbow_proxy_preTransform):
             
             # Duplicate the module proxy geometry and name it.
             elbow_proxy = cmds.duplicate(elbow_proxy_preTransform, returnRootsOnly=True, renameChildren=True, \
-                                         name='MRT_character%s__%s_%s_proxy_elbow_geo_preTransform' \
-                                            % (characterName, moduleAttrsDict['userSpecName'], namePrefix))[0]
+                                         name='%s_%s_proxy_elbow_preTransform' \
+                                            % (moduleAttrsDict['userSpecName'], namePrefix))[0]
             cmds.makeIdentity(elbow_proxy, scale=True, apply=True)
             
             # Constrain it to the root joint and palce it under proxy group.
             cmds.parentConstraint(joint, elbow_proxy, maintainOffset=True, \
-                                    name=joint+'_%s_proxy_elbow_geo_preTransform_parentConstraint' % namePrefix)
+                                    name=joint+'_%s_proxy_elbow_preTransform_parentConstraint' % namePrefix)
             cmds.scaleConstraint(joint, elbow_proxy, maintainOffset=True, \
-                                     name=joint+'_%s_proxy_elbow_geo_preTransform_scaleConstraint' % namePrefix)
+                                     name=joint+'_%s_proxy_elbow_preTransform_scaleConstraint' % namePrefix)
             cmds.parent(elbow_proxy, proxyGrp)
             
         # If bone proxy geometry exists for the module.
-        bone_proxy_preTransform = moduleAttrsDict['module_Namespace']+':%s_proxy_bone_geo_preTransform' % namePrefix
+        bone_proxy_preTransform = moduleAttrsDict['module_Namespace']+':%s_proxy_bone_preTransform' % namePrefix
         if cmds.objExists(bone_proxy_preTransform):
             
             # Duplicate the module proxy geometry and name it.
             bone_proxy = cmds.duplicate(bone_proxy_preTransform, \
                                         returnRootsOnly=True, renameChildren=True, \
-                                        name='MRT_character%s__%s_%s_proxy_bone_geo_preTransform' \
-                                            % (characterName, moduleAttrsDict['userSpecName'], namePrefix))[0]
+                                        name='%s_%s_proxy_bone_preTransform' \
+                                            % (moduleAttrsDict['userSpecName'], namePrefix))[0]
             cmds.makeIdentity(bone_proxy, scale=True, apply=True)
             
             # Parent constrain the bone proxy geo to the joint.
             cmds.parentConstraint(joint, bone_proxy, maintainOffset=True, \
-                                      name=joint+'_%s_proxy_bone_geo_preTransform_parentConstraint' % namePrefix)
+                                      name=joint+'_%s_proxy_bone_preTransform_parentConstraint' % namePrefix)
                                       
             # Calculate and drive the aim axis scaling of the bone proxy geometry (which is between two joints).
             
@@ -2162,7 +2187,7 @@ def createProxyForSkeletonFromModule(characterJointSet, moduleAttrsDict, charact
             
             # Scale constrain the bone proxy geometry for the joint (skip the aim axis).
             cmds.scaleConstraint(joint, bone_proxy, maintainOffset=True, skip=moduleAttrsDict['node_axes'][0].lower(), \
-                                        name=joint+'_%s_proxy_bone_geo_preTransform_scaleConstraint' % namePrefix)
+                                        name=joint+'_%s_proxy_bone_preTransform_scaleConstraint' % namePrefix)
                                         
             # Place it under proxy group.
             cmds.parent(bone_proxy, proxyGrp)
@@ -2189,22 +2214,21 @@ def createProxyForSkeletonFromModule(characterJointSet, moduleAttrsDict, charact
                 # If the transform type is a constraint, do not proceed further.
                 continue
         
-            # Rename any other unnamed transforms
+            # Rename any other unnamed transforms.
             nodeName = node.rpartition('|')[-1]
-            if nodeName[:3] != 'MRT':
-                node = cmds.rename(node, 'MRT_character'+characterName+'__'+moduleAttrsDict['userSpecName']+'_'+nodeName)
+            if re.match('^(root_node|node_\d+|end_node)', nodeName):
+                node = cmds.rename(node, moduleAttrsDict['userSpecName']+'_'+nodeName)
             
             # Collect the node if it's a proxy geo transform.
             if str(node).rpartition('geo')[2] == '':
                 proxy_geo_transforms.append(node)
                 
         # Get a name for the proxy display layer for the character and create it.
-        layerName = 'MRT_character'+characterName+'_proxy_geometry'
+        layerName = 'MRT_'+characterName+'_proxy_geometry'
         if not cmds.objExists(layerName):
             cmds.createDisplayLayer(empty=True, name=layerName, noRecurse=True)
             cmds.setAttr(layerName+'.displayType', 2)
             
-    
         # Now set the color for the proxy geo transforms and add it to the display layer.
         for transform in proxy_geo_transforms:
             cmds.polyColorPerVertex(transform+'.vtx[*]', alpha=1.0, rgb=[0.663, 0.561, 0.319], notUndoable=True, \
@@ -2248,6 +2272,7 @@ def createFKlayerDriverOnJointHierarchy(*args, **kwargs):
     if not isinstance(jointLayerName, (unicode, str)):
         Error('MRT: No name specified for the driver layer. Aborting.')
         return
+    jointLayerName = ''.join([item.capitalize() for item in jointLayerName.split('_')])
 
     # 3
     if 'characterName' in kwargs:
@@ -2333,7 +2358,7 @@ def createFKlayerDriverOnJointHierarchy(*args, **kwargs):
     for joint in characterJointSet:
 
         # Find the root joint of the hierarchy
-        if joint.endswith('root_node_transform'):
+        if joint.endswith('root_node_joint'):
 
             # Get the constrained joint for the root joint. It's the joint above the root joint
             # which receives constraints. The root joint is not constrained.
@@ -2342,19 +2367,20 @@ def createFKlayerDriverOnJointHierarchy(*args, **kwargs):
             if jointParent[0].endswith('_constrained'):
 
                 # Get the naming prefix and suffix from the root joint name
-                # Eg., if the root joint name is "MRT_characterNew__module_root_node_transform",
-                # then the prefix is "MRT_characterDef__module" and the suffix is "_root_node_transform".
-                jointPrefix = re.split('_(?:root_node|node_\d+|end_node)_transform', joint)[0]
-                jointSuffix = re.findall('_(?:root_node|node_\d+|end_node)_transform', joint)[0]
+                # Eg., if the root joint name is "module_root_node_transform",
+                # then the prefix is "module" and the mid suffix is "_root_node".
+                
+                jointPrefix = re.split('_(?:root_node|node_\d+|end_node)_joint', joint)[0]
+                jointSuffix = re.findall('_(?:root_node|node_\d+|end_node)', joint)[0]
 
-                # Provide a name for the joint in the new hierarchy to created in this layer. A "_handle" suffix
+                # Provide a name for the joint in the new hierarchy to created in this layer. A "_CNTL" suffix
                 # would be added to joint name if it'll be used as direct control transforms (like as an FK control,
                 # which will drive the original joint hierarchy).
                 # If asControl argument is set to True.
                 if asControl:
-                    newName = '%s_%s%s_handle'%(jointPrefix, jointLayerName, jointSuffix)
+                    newName = '%s_%s%s_CNTL' % (jointPrefix, jointLayerName, jointSuffix)
                 else:
-                    newName = '%s_%s%s'%(jointPrefix, jointLayerName, jointSuffix)
+                    newName = '%s_%s%s_joint' % (jointPrefix, jointLayerName, jointSuffix)
 
                 # Duplicate the input joint hierarchy by duplicating its root joint, and name it.
                 newRootJoint = cmds.duplicate(joint, returnRootsOnly=True, name=newName)[0]
@@ -2382,15 +2408,16 @@ def createFKlayerDriverOnJointHierarchy(*args, **kwargs):
                             # If the joint is valid for the driver layer, it'll provide a prefix and a suffix
                             # name as derived below.
                             jointName = joint.rpartition('|')[2]
-                            jointPrefix = re.split('_(?:root_node|node_\d+|end_node)_transform', jointName)
-                            jointSuffix = re.findall('_(?:root_node|node_\d+|end_node)_transform', jointName)
+                            jointPrefix = re.split('_(?:root_node|node_\d+|end_node)_joint', jointName)
+                            jointSuffix = re.findall('_(?:root_node|node_\d+|end_node)', jointName)
+                            
                             if jointPrefix and jointSuffix:
 
                                 # Get a new name for the joint in the layer.
                                 if asControl:
-                                    newName = '%s_%s%s_handle'%(jointPrefix[0], jointLayerName, jointSuffix[0])
+                                    newName = '%s_%s%s_CNTL' % (jointPrefix[0], jointLayerName, jointSuffix[0])
                                 else:
-                                    newName = '%s_%s%s'%(jointPrefix[0], jointLayerName, jointSuffix[0])
+                                    newName = '%s_%s%s_joint' % (jointPrefix[0], jointLayerName, jointSuffix[0])
 
                                 # Rename the join in the driver layer.
                                 cmds.rename(joint, newName)
@@ -2415,7 +2442,7 @@ def createFKlayerDriverOnJointHierarchy(*args, **kwargs):
 
     # Disconnect the "all_joints" display to the driver layer joints (inherited by duplicating the input joint hierarchy).
     for joint in layerJointSet:
-        cmds.disconnectAttr('MRT_character'+characterName+'_all_joints.drawInfo', joint+'.drawOverride')
+        cmds.disconnectAttr('MRT_'+characterName+'_all_joints.drawInfo', joint+'.drawOverride')
 
         # Set the visibility of the driver joint layer based on the "layerVisibility" argument.
         if layerVisibility == 'None':
@@ -2424,7 +2451,7 @@ def createFKlayerDriverOnJointHierarchy(*args, **kwargs):
         # If the driver joint layer is to be used as direct control, connect its visibility to the "control_rig" layer.
         if layerVisibility == 'On':
             cmds.setAttr(joint+'.overrideEnabled', 1)
-            cmds.connectAttr('MRT_character'+characterName+'_control_rig.visibility', joint+'.overrideVisibility')
+            cmds.connectAttr('MRT_'+characterName+'_control_rig.visibility', joint+'.overrideVisibility')
 
             # Set its control colour.
             if controlLayerColour:
@@ -2908,8 +2935,8 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
         if validSelection:
 
             # Create the mirror move container
-            if not cmds.objExists('MRT_mirrorMove__Container'):
-                cmds.createNode('container', name='MRT_mirrorMove__Container', skipSelect=True)
+            if not cmds.objExists('MRT_mirrorMove_container'):
+                cmds.createNode('container', name='MRT_mirrorMove_container', skipSelect=True)
             
             # Multiply divide node for translating mirror control objects
             mirrorTranslateMultiplyDivide = 'MRT_mirrorMove_translate__multiplyDivide'+'_'+moduleNamespace
@@ -3051,7 +3078,7 @@ def setupMirrorMoveConnections(selections, moduleNamespaces):
                                                         cmds.getAttr(moduleNamespace+':moduleGrp.mirrorModuleNamespace'))]))
             
             # Update the mirror move container
-            addNodesToContainer('MRT_mirrorMove__Container', collected_nodes, includeHierarchyBelow=True)
+            addNodesToContainer('MRT_mirrorMove_container', collected_nodes, includeHierarchyBelow=True)
             
             melGlobals['_mrt_utilJobList'] = melGlobals['_mrt_utilJobList'] + jobNums
             
@@ -3065,8 +3092,8 @@ def deleteMirrorMoveConnections():
     cmds.undoInfo(stateWithoutFlush=False)
     
     # Delete mirror nodes
-    if cmds.objExists('MRT_mirrorMove__Container'):
-        cmds.delete('MRT_mirrorMove__Container')
+    if cmds.objExists('MRT_mirrorMove_container'):
+        cmds.delete('MRT_mirrorMove_container')
 
     cmds.undoInfo(stateWithoutFlush=True)
 

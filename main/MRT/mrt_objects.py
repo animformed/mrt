@@ -37,7 +37,7 @@ def curve(**kwargs):
     
     return crv, crvShape
     
-    
+
 def addShapes(parentTransform, shapeTransform):
     '''
     For adding shape(s) to a given transform. The shapes are added from the transform "shapeTransform"
@@ -912,7 +912,7 @@ def createRawCharacterTransformControl():
     Creates a raw curve control transform hierarchy to be used as the character root and world
     transform controls. It creates the world transform with the root transform below in hierarchy.
     '''
-    worldTransform = cmds.curve(name='__world_transform', p=[(-0.0012, 0.0, 0.0),
+    worldTransform = cmds.curve(name='WORLD_CNTL', p=[(-0.0012, 0.0, 0.0),
                                                               (-0.0009, 0.0, -0.0005),
                                                               (-0.0009, 0.0, -0.0003),
                                                               (-0.0004, 0.0, -0.0004),
@@ -945,9 +945,9 @@ def createRawCharacterTransformControl():
     worldTransform_shape = cmds.listRelatives(worldTransform, children=True, shapes=True)[0]
     cmds.setAttr(worldTransform_shape+'.overrideEnabled', 1)
     cmds.setAttr(worldTransform_shape+'.overrideColor', 3)
-    cmds.rename(worldTransform_shape, '__world_transformShape')
+    cmds.rename(worldTransform_shape, 'world_cntrlShape')
 
-    rootTransform = cmds.createNode('transform', name='__root_transform', parent=worldTransform, skipSelect=True)
+    rootTransform = cmds.createNode('transform', name='ROOT_CNTL', parent=worldTransform, skipSelect=True)
     cmds.setAttr(rootTransform+'.visibility', keyable=False, lock=True)
     
     root_zd = cmds.curve(p=[(0.0003, -0.0, -0.0003),
@@ -960,7 +960,7 @@ def createRawCharacterTransformControl():
     root_zd_shape = cmds.listRelatives(root_zd, children=True, shapes=True)[0]
     cmds.setAttr(root_zd_shape+'.overrideEnabled', 1)
     cmds.setAttr(root_zd_shape+'.overrideColor', 6)
-    cmds.rename(root_zd_shape, '__root_transform_zdShape')
+    cmds.rename(root_zd_shape, 'root_cntlZdShape')
     addShapes(rootTransform, root_zd)
 
     root_zu = cmds.curve(p=[(-0.0003, 0.0, 0.0003),
@@ -973,7 +973,7 @@ def createRawCharacterTransformControl():
     root_zu_shape = cmds.listRelatives(root_zu, children=True, shapes=True)[0]
     cmds.setAttr(root_zu_shape+'.overrideEnabled', 1)
     cmds.setAttr(root_zu_shape+'.overrideColor', 6)
-    cmds.rename(root_zu_shape, '__root_transform_zuShape')
+    cmds.rename(root_zu_shape, 'root_cntlZuShape')
     addShapes(rootTransform, root_zu)
 
     root_xd = cmds.curve(p=[(-0.0003, -0.0, -0.0003),
@@ -986,7 +986,7 @@ def createRawCharacterTransformControl():
     root_xd_shape = cmds.listRelatives(root_xd, children=True, shapes=True)[0]
     cmds.setAttr(root_xd_shape+'.overrideEnabled', 1)
     cmds.setAttr(root_xd_shape+'.overrideColor', 13)
-    cmds.rename(root_xd_shape, '__root_transform_xdShape')
+    cmds.rename(root_xd_shape, 'root_cntlXdShape')
     addShapes(rootTransform, root_xd)
 
     root_xu = cmds.curve(p=[(0.0003, 0.0, 0.0003),
@@ -999,7 +999,7 @@ def createRawCharacterTransformControl():
     root_xu_shape = cmds.listRelatives(root_xu, children=True, shapes=True)[0]
     cmds.setAttr(root_xu_shape+'.overrideEnabled', 1)
     cmds.setAttr(root_xu_shape+'.overrideColor', 13)
-    cmds.rename(root_xu_shape, '__root_transform_xuShape')
+    cmds.rename(root_xu_shape, 'root_cntlXuShape')
     addShapes(rootTransform, root_xu)
 
     return [rootTransform, worldTransform]

@@ -24,7 +24,7 @@ from maya.OpenMaya import MGlobal; Error = MGlobal.displayError
 import time, math, re, os, fnmatch, cPickle, copy, sys, random, webbrowser
 from functools import partial
 
-
+_mrt_version = 1.2
 _maya_version = mfunc.returnMayaVersion()
 
 # Define callbacks for "treeView" UI commands. For maya versions < 2013, the callbacks
@@ -173,7 +173,7 @@ class MRT_UI(object):
         # Dictionary to hold UI elements by key.
         self.uiVars = {}
 
-        # To store main UI tab frameLayouts
+        # To store main UI tab frameLayouts.
         self.createTabFrames = []
         self.editTabFrames = []
         self.animateTabFrames = []
@@ -219,10 +219,9 @@ class MRT_UI(object):
                    'mrt_displayCtrlRigOptions_UI_window',
                    'mrt_about_UI_window',
                    'mrt_displayIssues_UI_window']:
-            try:
-                cmds.deleteUI(ui)
-            except:
-                pass
+            
+            try: cmds.deleteUI(ui)
+            except: pass
 
         # Specify the width/height of the main window.
         self.width_Height = [400, 300]
@@ -232,8 +231,7 @@ class MRT_UI(object):
                                             widthHeight=self.width_Height, resizeToFitChildren=True, maximizeButton=False)
 
         # Remove the main window from preferences.
-        try:
-            cmds.windowPref('mrt_UI_window', remove=True)
+        try: cmds.windowPref('mrt_UI_window', remove=True)
         except:
             # For some reason, maya occasionally prompts the window element doesn't exist under windowPref. Not sure why.
             pass
@@ -465,19 +463,16 @@ class MRT_UI(object):
             ui_preferences_file.close()
 
         # Close the preferences window if open
-        try:
-            cmds.deleteUI('mrt_autoLoadSettingsUI_window')
-        except:
-            pass
+        try: cmds.deleteUI('mrt_autoLoadSettingsUI_window')
+        except: pass
 
         # Create the preferences window
         self.uiVars['autoLoadSettingsUIwindow'] = cmds.window('mrt_autoLoadSettingsUI_window',
                                                                title='Auto-load settings for module collections',
                                                                width=90, maximizeButton=False, sizeable=False)
-        try:
-            cmds.windowPref('mrt_autoLoadSettingsUI_window', remove=True)
-        except:
-            pass
+        
+        try: cmds.windowPref('mrt_autoLoadSettingsUI_window', remove=True)
+        except: pass
 
         # Main window column
         self.uiVars['autoLoadSettingsWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
@@ -595,10 +590,9 @@ class MRT_UI(object):
         '''
         def loadCollectionsFromSettingsWindow(*args):
             # Called to load module collection(s) into the UI
-            try:
-                cmds.deleteUI('mrt_loadCollectionClearMode_setting_UI_window')
-            except:
-                pass
+            try: cmds.deleteUI('mrt_loadCollectionClearMode_setting_UI_window')
+            except: pass
+            
             self.loadSavedModuleCollections()
 
         def setLoadCollectionClearModeValue(*args):
@@ -613,19 +607,16 @@ class MRT_UI(object):
             ui_preferences_file.close()
 
         # Close the preferences window if open
-        try:
-            cmds.deleteUI('mrt_loadCollectionClearMode_setting_UI_window')
-        except:
-            pass
+        try: cmds.deleteUI('mrt_loadCollectionClearMode_setting_UI_window')
+        except: pass
 
         # Create the preferences window
         self.uiVars['loadCollectionClearModeWindow'] = cmds.window('mrt_loadCollectionClearMode_setting_UI_window',
                                                                     title='Load module collections selectively',
                                                                     height=50, maximizeButton=False, sizeable=False)
-        try:
-            cmds.windowPref('mrt_loadCollectionClearMode_setting_UI_window', remove=True)
-        except:
-            pass
+        
+        try: cmds.windowPref('mrt_loadCollectionClearMode_setting_UI_window', remove=True)
+        except: pass
 
         # Main window column
         self.uiVars['loadCollectionClearModeWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
@@ -670,10 +661,9 @@ class MRT_UI(object):
         '''
         def loadCollectionsFromSettingsWindow(*args):
             # Called to load module collection(s) from a directory
-            try:
-                cmds.deleteUI('mrt_loadCollectionDirectoryClearMode_setting_UI_window')
-            except:
-                pass
+            try: cmds.deleteUI('mrt_loadCollectionDirectoryClearMode_setting_UI_window')
+            except: pass
+            
             self.selectDirectoryForLoadingCollections()
 
         def setLoadCollectionDirectoryClearModeValue(*args):
@@ -689,19 +679,16 @@ class MRT_UI(object):
             ui_preferences_file.close()
 
         # Close the preferences window if open
-        try:
-            cmds.deleteUI('mrt_loadCollectionDirectoryClearMode_setting_UI_window')
-        except:
-            pass
+        try: cmds.deleteUI('mrt_loadCollectionDirectoryClearMode_setting_UI_window')
+        except: pass
 
         # Create the preferences window
         self.uiVars['loadCollectionDirectoryClearModeWindow'] = \
             cmds.window('mrt_loadCollectionDirectoryClearMode_setting_UI_window', \
                          title='Load module collections from directory', height=50, maximizeButton=False, sizeable=False)
-        try:
-            cmds.windowPref('mrt_loadCollectionDirectoryClearMode_setting_UI_window', remove=True)
-        except:
-            pass
+        
+        try: cmds.windowPref('mrt_loadCollectionDirectoryClearMode_setting_UI_window', remove=True)
+        except: pass
 
         # Main window column
         self.uiVars['loadCollectionDirectoryClearModeWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
@@ -803,25 +790,21 @@ class MRT_UI(object):
 
         def loadTemplatesFromSettingsWindow(*args):
             # Load the templates
-            try:
-                cmds.deleteUI('mrt_charTemplateLoadSettingsUI_window')
-            except:
-                pass
+            try: cmds.deleteUI('mrt_charTemplateLoadSettingsUI_window')
+            except: pass
+            
             self.loadSavedCharTemplates()
 
         # Close the preferences window
-        try:
-            cmds.deleteUI('mrt_charTemplateLoadSettingsUI_window')
-        except:
-            pass
+        try: cmds.deleteUI('mrt_charTemplateLoadSettingsUI_window')
+        except: pass
 
         # Create the preference window
         self.uiVars['charTemplateLoadSettingsUIwindow'] = cmds.window('mrt_charTemplateLoadSettingsUI_window',
                          title='Settings for loading character templates(s)', width=90, maximizeButton=False, sizeable=False)
-        try:
-            cmds.windowPref('mrt_charTemplateLoadSettingsUI_window', remove=True)
-        except:
-            pass
+        
+        try: cmds.windowPref('mrt_charTemplateLoadSettingsUI_window', remove=True)
+        except: pass
 
         # Main column
         self.uiVars['charTemplateLoadSettingsWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
@@ -991,9 +974,9 @@ class MRT_UI(object):
         check = False
         if selection:
             for item in selection:
-                if re.match('^MRT_\D+__\w+:\w+_transform_proxy_(bone|elbow)_geo$', item):
+                if re.match('^MRT_\D+__\w+:\w+_proxy_(bone|elbow)_geo$', item):
                     check = True
-                    cmds.delete(item+'_preTransform')
+                    cmds.delete(item.rpartition('geo')[0] + 'preTransform')
                     moduleProxies.append(item)
             if moduleProxies:
                 for item in moduleProxies:
@@ -1111,7 +1094,7 @@ class MRT_UI(object):
             '\n This is not a malfunction within Modular Rigging Tools, but the way the AE is updated within the Maya UI.' \
             '\n The module renaming will still work correctly.'
 
-        printString8 = '\n\n 7. While adjusting the weight of control rig attributes on the character root transform, the' \
+        printString8 = '\n\n 7. While adjusting the weight of control rig attributes on the character root control, the' \
             '\n weight blending doesn\'t, work correctly as expected; it snaps to its full weight at between 0.1 ~ 0.3.' \
             '\n As far as I know, this is an issue with how the parent constraint is currently implemented, which is used' \
             '\n to connect the driver joint layer to its main joint hierarchy.'
@@ -1123,16 +1106,14 @@ class MRT_UI(object):
         printString10 = '\n\n 8. All Errors are reported as warnings here, since, an error would bring up the stack trace' \
             '\n if enabled, and it may confuse some users.'
 
-        try:
-            cmds.deleteUI('mrt_displayIssues_UI_window')
-        except:
-            pass
+        try: cmds.deleteUI('mrt_displayIssues_UI_window')
+        except: pass
+        
         self.uiVars['displayMrtIssuesWindow'] = cmds.window('mrt_displayIssues_UI_window', title='Known Issues', \
                                                                                         maximizeButton=False, sizeable=False)
-        try:
-            cmds.windowPref(self.uiVars['displayMrtIssuesWindow'], remove=True)
-        except:
-            pass
+        try: cmds.windowPref(self.uiVars['displayMrtIssuesWindow'], remove=True)
+        except: pass
+        
         self.uiVars['displayMrtIssues_columnLayout'] = cmds.columnLayout()
         self.uiVars['displayMrtIssues_scrollField'] = cmds.scrollField(text=printString1+
                                                                             printString2+
@@ -1152,20 +1133,18 @@ class MRT_UI(object):
         '''
         Display MRT dev stats.
         '''
-        printString1 = '\n\t\t\tModular Rigging Tools v1.0\n\t\t\tfor Maya 2011 and above'
+        printString1 = '\n\t\t\tModular Rigging Tools v%s\n\t\t\tfor Maya 2011 and above' % _mrt_version
         printString2 = '\n\n\tOriginally written by Himanish Bhattacharya' \
                        '\n\n\t________________________________________________________' \
                        '\n\n\tFeel free to modify the source code for your own purpose\n'
-        try:
-            cmds.deleteUI('mrt_about_UI_window')
-        except:
-            pass
+        
+        try: cmds.deleteUI('mrt_about_UI_window')
+        except: pass
+        
         self.uiVars['displayMrtAboutWindow'] = cmds.window('mrt_about_UI_window', title='About', maximizeButton=False, \
                                                                                                             sizeable=False)
-        try:
-            cmds.windowPref(self.uiVars['displayMrtAboutWindow'], remove=True)
-        except:
-            pass
+        try: cmds.windowPref(self.uiVars['displayMrtAboutWindow'], remove=True)
+        except: pass
 
         self.uiVars['displayMrtAbout_columnLayout'] = cmds.columnLayout()
         cmds.text(label=printString1, font='boldLabelFont')
@@ -1945,26 +1924,26 @@ class MRT_UI(object):
         cmds.textField(self.uiVars['moduleRename_textField'], edit=True, text=None)
 
         
-    def checkMRTcharacter(self):
+    def getMRTcharacter(self):
         '''
         Checks for a character in the current scene. If found, it returns the name
         of main character group and the auto module collection file generated while creating the character.
         '''
-        # Get the cuurent namespace, set to root.
+        # Get the current namespace, set to root.
         namespace = cmds.namespaceInfo(currentNamespace=True)
         cmds.namespace(setNamespace=':')
 
         # Look for character main groups. Normally, there should only be one.
-        transforms = cmds.ls(type='transform')
+        transforms = cmds.ls(assemblies=True)
         characterGrp = []
         for transform in transforms:
-            if re.match('MRT_character[a-zA-Z0-9]*__mainGrp', transform):
+            if cmds.attributeQuery('mrtCharacterVersion', node=transform, exists=True):
                 characterGrp.append(transform)
 
         # If found more than one character main group.
         if len(characterGrp) > 1:
-            Error('MRT: More than one character exists in the scene. Aborting.')
-            return
+            Error('MRT: More than one character exists in the scene.')
+            return None
 
         # If a character group is found in the scene.
         if len(characterGrp) == 1:
@@ -1989,6 +1968,8 @@ class MRT_UI(object):
                     if item.partition('.')[0] == collectionFile:
                         autoCollectionFile = collectionFile
                         break
+        else:
+            return None 
 
         # Reset namespace.
         cmds.namespace(setNamespace=namespace)
@@ -2259,10 +2240,10 @@ class MRT_UI(object):
         from 'mrt_functions' to create a module.
         '''
         # Check if a character exists in the scene. A module can't be created with a character in the scene.
-        characterStatus = self.checkMRTcharacter()
+        characterStatus = self.getMRTcharacter()
 
         # If a character exists in the scene, skip creating a module.
-        if characterStatus[0]:
+        if characterStatus:
             Error('MRT: Cannot create a module with a character in the scene.\n')
             return
 
@@ -2699,19 +2680,15 @@ class MRT_UI(object):
             return
 
         # Delete the remove module collection window, if it exists.
-        try:
-            cmds.deleteUI('mrt_deleteCollection_UI_window')
-        except:
-            pass
+        try: cmds.deleteUI('mrt_deleteCollection_UI_window')
+        except: pass
 
         # Create the delete module collection window.
         self.uiVars['deleteCollectionWindow'] = cmds.window('mrt_deleteCollection_UI_window',
                                                                     title='Delete module collection',
                                                                             maximizeButton=False, sizeable=False)
-        try:
-            cmds.windowPref('mrt_deleteCollection_UI_window', remove=True)
-        except:
-            pass
+        try: cmds.windowPref('mrt_deleteCollection_UI_window', remove=True)
+        except: pass
 
         # Create the main layout
         cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90,
@@ -2886,10 +2863,9 @@ class MRT_UI(object):
         def cancelEditCollectionNoDescpErrorWindow(*args):
             # Closes the edit module collection description window
             cmds.deleteUI(self.uiVars['editCollectionDescpWindow'])
-            try:
-                cmds.deleteUI(self.uiVars['editCollectionNoDescpErrorWindow'])
-            except:
-                pass
+            
+            try: cmds.deleteUI(self.uiVars['editCollectionNoDescpErrorWindow'])
+            except: pass
 
         def checkEditDescriptionForSelectedModuleCollection(*args):
             # Checks the new module collection description for saving / updating
@@ -2902,10 +2878,8 @@ class MRT_UI(object):
                     cmds.window('mrt_editCollection_noDescpError_UI_window', title='Module collection warning',
                                                                                 maximizeButton=False, sizeable=False)
                 # Remove the window from UI preferences
-                try:
-                    cmds.windowPref('mrt_editCollection_noDescpError_UI_window', remove=True)
-                except:
-                    pass
+                try: cmds.windowPref('mrt_editCollection_noDescpError_UI_window', remove=True)
+                except: pass
 
                 # Main layout
                 cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90,
@@ -2932,20 +2906,16 @@ class MRT_UI(object):
             return
 
         # Close the edit module collection description window if open
-        try:
-            cmds.deleteUI('mrt_collectionDescription_edit_UI_window')
-        except:
-            pass
+        try: cmds.deleteUI('mrt_collectionDescription_edit_UI_window')
+        except: pass
 
         # Create the module collection description window
         self.uiVars['editCollectionDescpWindow'] = cmds.window('mrt_collectionDescription_edit_UI_window', \
                                      title='Module collection description', height=150, maximizeButton=False, sizeable=False)
 
         # Remove the window from UI preference
-        try:
-            cmds.windowPref('mrt_collectionDescription_edit_UI_window', remove=True)
-        except:
-            pass
+        try: cmds.windowPref('mrt_collectionDescription_edit_UI_window', remove=True)
+        except: pass
 
         # Main column
         self.uiVars['editCollectionDescpWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
@@ -3058,9 +3028,17 @@ class MRT_UI(object):
 
         # Set the height for the treeeView and its parent layout
         if MRT_namespaces != None:
+            
+            # Get the current height of the tree list.
+            defTreeLayoutHeight = cmds.frameLayout(self.uiVars['moduleList_fLayout'], query=True, height=True)
+            
+            # Calculate the needed height.
             treeLayoutHeight = len(MRT_namespaces) * 22
-            if treeLayoutHeight > 200:
-                treeLayoutHeight = 200
+            
+            if defTreeLayoutHeight > treeLayoutHeight:
+                treeLayoutHeight = defTreeLayoutHeight
+            
+            # Set the heights for module list layouts (containing treeView)
             cmds.scrollLayout(self.uiVars['moduleList_Scroll'], edit=True, height=treeLayoutHeight+8)
             cmds.frameLayout(self.uiVars['moduleList_fLayout'], edit=True, height=treeLayoutHeight)
 
@@ -3451,14 +3429,11 @@ class MRT_UI(object):
             # Create a module collection from the passed-in information.
 
             # Close the windows for module description and its error prompt window.
-            try:
-                cmds.deleteUI('mrt_collection_noDescpError_UI_window')
-            except:
-                pass
-            try:
-                cmds.deleteUI('mrt_collectionDescription_input_UI_window')
-            except:
-                pass
+            try: cmds.deleteUI('mrt_collection_noDescpError_UI_window')
+            except: pass
+            
+            try: cmds.deleteUI('mrt_collectionDescription_input_UI_window')
+            except: pass
 
             # Get the last directory for module collection save. If error, get the default directory.
             fileFilter = 'MRT Module Collection Files (*.mrtmc)'
@@ -3672,20 +3647,16 @@ class MRT_UI(object):
                 if collectionDescription == '':
 
                     # Close the window if it exists.
-                    try:
-                        cmds.deleteUI('mrt_collection_noDescpError_UI_window')
-                    except:
-                        pass
+                    try: cmds.deleteUI('mrt_collection_noDescpError_UI_window')
+                    except: pass
 
                     # Create the "no description error window".
                     self.uiVars['collectionNoDescpErrorWindow'] = cmds.window('mrt_collection_noDescpError_UI_window',
                                                 title='Module collection warning', maximizeButton=False, sizeable=False)
 
                     # Remove it from preference.
-                    try:
-                        cmds.windowPref('mrt_collection_noDescpError_UI_window', remove=True)
-                    except:
-                        pass
+                    try: cmds.windowPref('mrt_collection_noDescpError_UI_window', remove=True)
+                    except: pass
 
                     # Create the parent layouts and elements.
                     cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90,
@@ -3740,20 +3711,16 @@ class MRT_UI(object):
         # If a module collection is being save by a user.
         if not auto:
             # Close the window for entering module collection description, if it exists.
-            try:
-                cmds.deleteUI('mrt_collectionDescription_input_UI_window')
-            except:
-                pass
+            try: cmds.deleteUI('mrt_collectionDescription_input_UI_window')
+            except: pass
 
             # Create a window UI for entering the module collection description.
             self.uiVars['collectionDescpWindow'] = cmds.window('mrt_collectionDescription_input_UI_window',
                                 title='Module collection description', height=150, maximizeButton=False, sizeable=False)
 
             # Remove the window from preference
-            try:
-                cmds.windowPref('mrt_collectionDescription_input_UI_window', remove=True)
-            except:
-                pass
+            try: cmds.windowPref('mrt_collectionDescription_input_UI_window', remove=True)
+            except: pass
 
             # Main column
             self.uiVars['collectionDescpWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
@@ -3912,19 +3879,15 @@ class MRT_UI(object):
         Calls performModuleDuplicate() to perform the duplication.
         '''
         # Close the duplicate action window if open.
-        try:
-            cmds.deleteUI('mrt_duplicateModuleAction_UI_window')
-        except:
-            pass
+        try: cmds.deleteUI('mrt_duplicateModuleAction_UI_window')
+        except: pass
 
         # Create the module duplication window
         self.uiVars['duplicateActionWindow'] = cmds.window('mrt_duplicateModuleAction_UI_window', title='Duplicate Module',
                                                                 widthHeight=(300, 150), maximizeButton=False, sizeable=False)
         # Remove it from preferences
-        try:
-            cmds.windowPref('mrt_duplicateModuleAction_UI_window', remove=True)
-        except:
-            pass
+        try: cmds.windowPref('mrt_duplicateModuleAction_UI_window', remove=True)
+        except: pass
 
         # Main column
         self.uiVars['duplicateActionWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
@@ -4042,261 +4005,205 @@ class MRT_UI(object):
         # To do this, delete the proxy geometry on the duplicated module first.
         if moduleAttrsDict['node_compnts'][2] == True:
 
-            # If elbow proxy geometry.
-            if moduleAttrsDict['proxy_geo_options'][1] == True:
-
-                for i in range(moduleAttrsDict['num_nodes']):
-
-                    if i == 0:
-
-                        # Get the name of the original proxy geometry transform.
-                        orig_proxy_elbow_transform = moduleAttrsDict['orig_module_Namespace']+':root_node_transform_proxy_elbow_geo'
-
-                        # Get the name of the duplicated module proxy geometry transform.
-                        proxy_elbow_transform = moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_elbow_geo'
-
-                        if cmds.objExists(orig_proxy_elbow_transform+'_preTransform'):
-
-                            # Delete the new proxy geometry transform on the duplicated module.
-                            cmds.delete(proxy_elbow_transform)
-
-                            # Duplicate the original proxy geometry transform, rename it.
-                            duplicatedTransform = cmds.duplicate(orig_proxy_elbow_transform,
-                                        name=moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_elbow_geo')[0]
-
-                            # Assign it to the new duplicate module.
-                            cmds.parent(duplicatedTransform, proxy_elbow_transform+'_scaleTransform', relative=True)
-
-                        else:
-                            cmds.delete(proxy_elbow_transform+'_preTransform')
-
-                    elif i == moduleAttrsDict['num_nodes']-1:
-                        orig_proxy_elbow_transform = moduleAttrsDict['orig_module_Namespace']+':end_node_transform_proxy_elbow_geo'
-                        proxy_elbow_transform = moduleAttrsDict['module_Namespace']+':end_node_transform_proxy_elbow_geo'
-
-                        if cmds.objExists(orig_proxy_elbow_transform+'_preTransform'):
-                            cmds.delete(proxy_elbow_transform)
-                            duplicatedTransform = cmds.duplicate(orig_proxy_elbow_transform,
-                                        name=moduleAttrsDict['module_Namespace']+':end_node_transform_proxy_elbow_geo')[0]
-
-                            cmds.parent(duplicatedTransform, proxy_elbow_transform+'_scaleTransform', relative=True)
-
-                        else:
-                            cmds.delete(proxy_elbow_transform+'_preTransform')
-
+            for i in range(moduleAttrsDict['num_nodes']):
+                
+                # Get the naming prefix for the joint (generated from module node).
+                if moduleAttrsDict['num_nodes'] > 1:
+                    
+                    if index == moduleAttrsDict['num_nodes']-1:
+                        namePrefix = 'end_node'
+                        
+                    elif index == 0:
+                        namePrefix = 'root_node'
+                        
                     else:
-                        proxy_elbow_transform = moduleAttrsDict['module_Namespace']+':node_'+str(i)+'_transform_proxy_elbow_geo'
-                        orig_proxy_elbow_transform = moduleAttrsDict['orig_module_Namespace']+':node_'+str(i)+'_transform_proxy_elbow_geo'
+                        namePrefix = 'node_%s' % index
+                else:
+                    namePrefix = 'root_node'
 
-                        if cmds.objExists(orig_proxy_elbow_transform+'_preTransform'):
-                            cmds.delete(proxy_elbow_transform)
-                            duplicatedTransform = cmds.duplicate(orig_proxy_elbow_transform,
-                                        name=moduleAttrsDict['module_Namespace']+':node_'+str(i)+'_transform_proxy_elbow_geo')[0]
-
-                            cmds.parent(duplicatedTransform, proxy_elbow_transform+'_scaleTransform', relative=True)
-
-                        else:
-                            cmds.delete(proxy_elbow_transform+'_preTransform')
-
-
-            # If bone proxy geometry.
-            if moduleAttrsDict['proxy_geo_options'][0] == True:
-
-                for i in range(moduleAttrsDict['num_nodes']-1):
-
-                    if i == 0:
-
-                        orig_proxy_bone_transform = moduleAttrsDict['orig_module_Namespace']+':root_node_transform_proxy_bone_geo'
-                        proxy_bone_transform = moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_bone_geo'
-
-                        if cmds.objExists(orig_proxy_bone_transform+'_preTransform'):
-                            cmds.delete(proxy_bone_transform)
-                            duplicatedTransform = cmds.duplicate(orig_proxy_bone_transform,
-                                        name=moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_bone_geo')[0]
-
-                            cmds.parent(duplicatedTransform, proxy_bone_transform+'_scaleTransform', relative=True)
-
-                        else:
-                            cmds.delete(proxy_bone_transform+'_preTransform')
-
-                    else:
-                        proxy_bone_transform = moduleAttrsDict['module_Namespace']+':node_'+str(i)+'_transform_proxy_bone_geo'
-                        orig_proxy_bone_transform = moduleAttrsDict['orig_module_Namespace']+':node_'+str(i)+'_transform_proxy_bone_geo'
-
-                        if cmds.objExists(orig_proxy_bone_transform+'_preTransform'):
-                            cmds.delete(proxy_bone_transform)
-                            duplicatedTransform = cmds.duplicate(orig_proxy_bone_transform,
-                                        name=moduleAttrsDict['module_Namespace']+':node_'+str(i)+'_transform_proxy_bone_geo')[0]
-
-                            cmds.parent(duplicatedTransform, proxy_bone_transform+'_scaleTransform', relative=True)
-
-                        else:
-                            cmds.delete(proxy_bone_transform+'_preTransform')
-
-
-            # If mirror is enabled, options for the proxies in the mirror module.
-            if moduleAttrsDict['mirror_options'][0] == 'On':
-
-                # If elbow proxy is enabled.
-                if moduleAttrsDict['proxy_geo_options'][1] == True:
-
-                    for i in range(moduleAttrsDict['num_nodes']):
-
-                        if i == 0:
-
-                            orig_proxy_elbow_transform = moduleAttrsDict['orig_mirror_module_Namespace']+':root_node_transform_proxy_elbow_geo'
-                            proxy_elbow_transform = moduleAttrsDict['mirror_module_Namespace']+':root_node_transform_proxy_elbow_geo'
-
-                            if moduleAttrsDict['proxy_geo_options'][3] == 'Off':
-
-                                if cmds.objExists(orig_proxy_elbow_transform+'_preTransform'):
-                                    cmds.delete(proxy_elbow_transform)
-                                    duplicatedTransform = cmds.duplicate(orig_proxy_elbow_transform,
-                                        name=moduleAttrsDict['mirror_module_Namespace']+':root_node_transform_proxy_elbow_geo')[0]
-
-                                    cmds.parent(duplicatedTransform, proxy_elbow_transform+'_scaleTransform', relative=True)
-
-                                else:
-                                    cmds.delete(proxy_elbow_transform+'_preTransform')
-
-                            if moduleAttrsDict['proxy_geo_options'][3] == 'On':
-
-                                mirror_proxy_elbow_transform = moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_elbow_geo'
-
-                                if cmds.objExists(mirror_proxy_elbow_transform+'_preTransform'):
-                                    cmds.delete(proxy_elbow_transform)
-                                    duplicatedTransform = cmds.duplicate(mirror_proxy_elbow_transform, instanceLeaf=True,
-                                        name=moduleAttrsDict['mirror_module_Namespace']+':root_node_transform_proxy_elbow_geo')[0]
-
-                                    cmds.parent(duplicatedTransform, proxy_elbow_transform+'_scaleTransform', relative=True)
-
-                                else:
-                                    cmds.delete(proxy_elbow_transform+'_preTransform')
-
-                        elif i == moduleAttrsDict['num_nodes']-1:
-
-                            orig_proxy_elbow_transform = moduleAttrsDict['orig_mirror_module_Namespace']+':end_node_transform_proxy_elbow_geo'
-                            proxy_elbow_transform = moduleAttrsDict['mirror_module_Namespace']+':end_node_transform_proxy_elbow_geo'
-
-                            if moduleAttrsDict['proxy_geo_options'][3] == 'Off':
-
-                                if cmds.objExists(orig_proxy_elbow_transform+'_preTransform'):
-                                    cmds.delete(proxy_elbow_transform)
-                                    duplicatedTransform = cmds.duplicate(orig_proxy_elbow_transform,
-                                        name=moduleAttrsDict['mirror_module_Namespace']+':end_node_transform_proxy_elbow_geo')[0]
-
-                                    cmds.parent(duplicatedTransform, proxy_elbow_transform+'_scaleTransform', relative=True)
-
-                                else:
-                                    cmds.delete(proxy_elbow_transform+'_preTransform')
-
-                            if moduleAttrsDict['proxy_geo_options'][3] == 'On':
-
-                                mirror_proxy_elbow_transform = moduleAttrsDict['module_Namespace']+':end_node_transform_proxy_elbow_geo'
-
-                                if cmds.objExists(mirror_proxy_elbow_transform+'_preTransform'):
-                                    cmds.delete(proxy_elbow_transform)
-                                    duplicatedTransform = cmds.duplicate(mirror_proxy_elbow_transform, instanceLeaf=True,
-                                        name=moduleAttrsDict['mirror_module_Namespace']+':end_node_transform_proxy_elbow_geo')[0]
-
-                                    cmds.parent(duplicatedTransform, proxy_elbow_transform+'_scaleTransform', relative=True)
-
-                                else:
-                                    cmds.delete(proxy_elbow_transform+'_preTransform')
-
-                        else:
-                            orig_proxy_elbow_transform = moduleAttrsDict['orig_mirror_module_Namespace']+':node_'+str(i)+'_transform_proxy_elbow_geo'
-                            proxy_elbow_transform = moduleAttrsDict['mirror_module_Namespace']+':node_'+str(i)+'_transform_proxy_elbow_geo'
-
-                            if moduleAttrsDict['proxy_geo_options'][3] == 'Off':
-
-                                if cmds.objExists(orig_proxy_elbow_transform+'_preTransform'):
-                                    cmds.delete(proxy_elbow_transform)
-                                    duplicatedTransform = cmds.duplicate(orig_proxy_elbow_transform,
-                                        name=moduleAttrsDict['mirror_module_Namespace']+':node_'+str(i)+'_transform_proxy_elbow_geo')[0]
-
-                                    cmds.parent(duplicatedTransform, proxy_elbow_transform+'_scaleTransform', relative=True)
-
-                                else:
-                                    cmds.delete(proxy_elbow_transform+'_preTransform')
-
-                            if moduleAttrsDict['proxy_geo_options'][3] == 'On':
-
-                                mirror_proxy_elbow_transform = moduleAttrsDict['module_Namespace']+':node_'+str(i)+'_transform_proxy_elbow_geo'
-
-                                if cmds.objExists(mirror_proxy_elbow_transform+'_preTransform'):
-                                    cmds.delete(proxy_elbow_transform)
-                                    duplicatedTransform = cmds.duplicate(mirror_proxy_elbow_transform, instanceLeaf=True,
-                                        name=moduleAttrsDict['mirror_module_Namespace']+':node_'+str(i)+'_transform_proxy_elbow_geo')[0]
-
-                                    cmds.parent(duplicatedTransform, proxy_elbow_transform+'_scaleTransform', relative=True)
-
-                                else:
-                                    cmds.delete(proxy_elbow_transform+'_preTransform')
-
-                # If bone proxy is enabled.
+                # If the original module has bone proxy geometry.
                 if moduleAttrsDict['proxy_geo_options'][0] == True:
+                    
+                    # Construct the name of the original bone proxy geometry transform to be duplicated.
+                    orig_proxy_bone_transform = moduleAttrsDict['orig_module_Namespace']+':%s_proxy_bone_geo' % namePrefix
+                    
+                    # Construct the name of the original bone proxy geometry pre-transform.
+                    orig_proxy_bone_preTransform = moduleAttrsDict['orig_module_Namespace']+':%s_proxy_bone_preTransform' % namePrefix
+                    
+                    # Get the name of the duplicated module's bone proxy geometry transform.
+                    proxy_bone_transform = moduleAttrsDict['module_Namespace']+':%s_proxy_bone_geo' % namePrefix
+                    
+                    # Get the name of the duplicated module's bone proxy geometry pre-transform.
+                    proxy_bone_preTransform = moduleAttrsDict['module_Namespace']+':%s_proxy_bone_preTransform' % namePrefix                    
 
-                    for i in range(moduleAttrsDict['num_nodes']-1):
+                    # Get the name of the duplicated module's bone proxy geometry's scale transform.
+                    proxy_bone_scaleTransform = moduleAttrsDict['module_Namespace']+':%s_proxy_bone_scaleTransform' % namePrefix                    
+                    
+                    # If proxy geometry is found on the original module.
+                    if cmds.objExists(orig_proxy_bone_preTransform):
+                        
+                        # Delete the new proxy geometry transform on the duplicated module; it's the default proxy geometry.
+                        cmds.delete(proxy_bone_transform)
 
-                        if i == 0:
+                        # Duplicate the original proxy geometry transform, rename it.
+                        cmds.duplicate(orig_proxy_bone_transform, name=proxy_bone_transform)
 
-                            orig_proxy_bone_transform = moduleAttrsDict['orig_mirror_module_Namespace']+':root_node_transform_proxy_bone_geo'
-                            proxy_bone_transform = moduleAttrsDict['mirror_module_Namespace']+':root_node_transform_proxy_bone_geo'
+                        # Assign it to the new duplicate module.
+                        cmds.parent(proxy_bone_transform, proxy_bone_scaleTransform, relative=True)
+                    else:
+                        # If the original module doesn't have proxy geometry.
+                        cmds.delete(proxy_bone_preTransform)
+                        
+                        
+                    # If module mirroring is enabled, perform on the proxies in the mirror module.
+                    if moduleAttrsDict['mirror_options'][0] == 'On':
+                        
+                        # Construct the name of the original mirror bone proxy geometry transform to be duplicated.
+                        orig_mirror_proxy_bone_transform = moduleAttrsDict['orig_mirror_module_Namespace']+':%s_proxy_bone_geo' % namePrefix
+                        
+                        # Construct the name of the original mirror bone proxy geometry pre-transform.
+                        orig_mirror_proxy_bone_preTransform = moduleAttrsDict['orig_mirror_module_Namespace']+':%s_proxy_bone_preTransform' % namePrefix
+                        
+                        # Get the name of the duplicated mirror module's bone proxy geometry transform.
+                        mirror_proxy_bone_transform = moduleAttrsDict['mirror_module_Namespace']+':%s_proxy_bone_geo' % namePrefix
+                        
+                        # Get the name of the duplicated mirror module's bone proxy geometry pre-transform.
+                        mirror_proxy_bone_preTransform = moduleAttrsDict['mirror_module_Namespace']+':%s_proxy_bone_preTransform' % namePrefix                    
+    
+                        # Get the name of the duplicated mirror module's bone proxy geometry's scale transform.
+                        mirror_proxy_bone_scaleTransform = moduleAttrsDict['mirror_module_Namespace']+':%s_proxy_bone_scaleTransform' % namePrefix                           
+                        
+                        # If mirror instancing is turned off.
+                        if moduleAttrsDict['proxy_geo_options'][3] == 'Off':
+                        
+                            # If bone proxy geometry is found on the original mirror module.
+                            if cmds.objExists(orig_mirror_proxy_bone_preTransform):
+                                
+                                # Delete the new bone proxy geometry transform on the duplicated mirror module; it's the default proxy geometry.
+                                cmds.delete(mirror_proxy_bone_transform)
+                                
+                                # Duplicate the original mirror module's bone proxy geometry transform, rename it.
+                                cmds.duplicate(orig_mirror_proxy_bone_transform, name=mirror_proxy_bone_transform)
+                                
+                                # Assign it to the new duplicate mirror module.
+                                cmds.parent(mirror_proxy_bone_transform, mirror_proxy_bone_scaleTransform, relative=True)
+                            else:
+                                # If the original mirror module doesn't have bone proxy geometry.
+                                cmds.delete(mirror_proxy_bone_preTransform)
+                        
+                        # If mirror instancing is turned on.
+                        if moduleAttrsDict['proxy_geo_options'][3] == 'On':
+                            
+                            # Use the proxy geometry on the duplicated module (for the mirror pair) to create an 
+                            # instance for its mirror module.
+                            
+                            # Check if the bone proxy geometry exists on the duplicated module.
+                            if cmds.objExists(proxy_bone_preTransform):
+                                
+                                # Delete the new bone proxy geometry transform on the duplicated mirror module; it's the default proxy geometry.
+                                cmds.delete(mirror_proxy_bone_transform)
+                                
+                                # Duplicate the original mirror module's bone proxy geometry transform, rename it.
+                                cmds.duplicate(proxy_bone_transform, instanceLeaf=True, name=mirror_proxy_bone_transform)
+                                
+                                # Assign it to the new duplicate mirror module.
+                                cmds.parent(mirror_proxy_bone_transform, mirror_proxy_bone_scaleTransform, relative=True)
+                            else:
+                                # If the original mirror module doesn't have bone proxy geometry.
+                                cmds.delete(mirror_proxy_bone_preTransform)
 
-                            if moduleAttrsDict['proxy_geo_options'][3] == 'Off':
 
-                                if cmds.objExists(orig_proxy_bone_transform+'_preTransform'):
-                                    cmds.delete(proxy_bone_transform)
-                                    duplicatedTransform = cmds.duplicate(orig_proxy_bone_transform,
-                                        name=moduleAttrsDict['mirror_module_Namespace']+':root_node_transform_proxy_bone_geo')[0]
+                # If the original module has elbow proxy geometry.
+                if moduleAttrsDict['proxy_geo_options'][1] == True:
+                    
+                    # Construct the name of the original elbow proxy geometry transform to be duplicated.
+                    orig_proxy_elbow_transform = moduleAttrsDict['orig_module_Namespace']+':%s_proxy_elbow_geo' % namePrefix
+                    
+                    # Construct the name of the original elbow proxy geometry pre-transform.
+                    orig_proxy_elbow_preTransform = moduleAttrsDict['orig_module_Namespace']+':%s_proxy_elbow_preTransform' % namePrefix
+                    
+                    # Get the name of the duplicated module's elbow proxy geometry transform.
+                    proxy_elbow_transform = moduleAttrsDict['module_Namespace']+':%s_proxy_elbow_geo' % namePrefix
+                    
+                    # Get the name of the duplicated module's elbow proxy geometry pre-transform.
+                    proxy_elbow_preTransform = moduleAttrsDict['module_Namespace']+':%s_proxy_elbow_preTransform' % namePrefix                    
 
-                                    cmds.parent(duplicatedTransform, proxy_bone_transform+'_scaleTransform', relative=True)
+                    # Get the name of the duplicated module's elbow proxy geometry's scale transform.
+                    proxy_elbow_scaleTransform = moduleAttrsDict['module_Namespace']+':%s_proxy_elbow_scaleTransform' % namePrefix                    
+                    
+                    # If proxy geometry is found on the original module.
+                    if cmds.objExists(orig_proxy_elbow_preTransform):
+                        
+                        # Delete the new proxy geometry transform on the duplicated module; it's the default proxy geometry.
+                        cmds.delete(proxy_elbow_transform)
 
-                                else:
-                                    cmds.delete(proxy_bone_transform+'_preTransform')
+                        # Duplicate the original proxy geometry transform, rename it.
+                        cmds.duplicate(orig_proxy_elbow_transform, name=proxy_elbow_transform)
 
-                            if moduleAttrsDict['proxy_geo_options'][3] == 'On':
+                        # Assign it to the new duplicate module.
+                        cmds.parent(proxy_elbow_transform, proxy_elbow_scaleTransform, relative=True)
+                    else:
+                        # If the original module doesn't have proxy geometry.
+                        cmds.delete(proxy_elbow_preTransform)
+                        
+                        
+                    # If module mirroring is enabled, perform on the proxies in the mirror module.
+                    if moduleAttrsDict['mirror_options'][0] == 'On':
+                        
+                        # Construct the name of the original mirror elbow proxy geometry transform to be duplicated.
+                        orig_mirror_proxy_elbow_transform = moduleAttrsDict['orig_mirror_module_Namespace']+':%s_proxy_elbow_geo' % namePrefix
+                        
+                        # Construct the name of the original mirror elbow proxy geometry pre-transform.
+                        orig_mirror_proxy_elbow_preTransform = moduleAttrsDict['orig_mirror_module_Namespace']+':%s_proxy_elbow_preTransform' % namePrefix
+                        
+                        # Get the name of the duplicated mirror module's elbow proxy geometry transform.
+                        mirror_proxy_elbow_transform = moduleAttrsDict['mirror_module_Namespace']+':%s_proxy_elbow_geo' % namePrefix
+                        
+                        # Get the name of the duplicated mirror module's elbow proxy geometry pre-transform.
+                        mirror_proxy_elbow_preTransform = moduleAttrsDict['mirror_module_Namespace']+':%s_proxy_elbow_preTransform' % namePrefix                    
+    
+                        # Get the name of the duplicated mirror module's elbow proxy geometry's scale transform.
+                        mirror_proxy_elbow_scaleTransform = moduleAttrsDict['mirror_module_Namespace']+':%s_proxy_elbow_scaleTransform' % namePrefix                           
+                        
+                        # If mirror instancing is turned off.
+                        if moduleAttrsDict['proxy_geo_options'][3] == 'Off':
+                        
+                            # If elbow proxy geometry is found on the original mirror module.
+                            if cmds.objExists(orig_mirror_proxy_elbow_preTransform):
+                                
+                                # Delete the new elbow proxy geometry transform on the duplicated mirror module; it's the default proxy geometry.
+                                cmds.delete(mirror_proxy_elbow_transform)
+                                
+                                # Duplicate the original mirror module's elbow proxy geometry transform, rename it.
+                                cmds.duplicate(orig_mirror_proxy_elbow_transform, name=mirror_proxy_elbow_transform)
+                                
+                                # Assign it to the new duplicate mirror module.
+                                cmds.parent(mirror_proxy_elbow_transform, mirror_proxy_elbow_scaleTransform, relative=True)
+                            else:
+                                # If the original mirror module doesn't have elbow proxy geometry.
+                                cmds.delete(mirror_proxy_elbow_preTransform)
+                        
+                        # If mirror instancing is turned on.
+                        if moduleAttrsDict['proxy_geo_options'][3] == 'On':
+                            
+                            # Use the proxy geometry on the duplicated module (for the mirror pair) to create an 
+                            # instance for its mirror module.
+                            
+                            # Check if the elbow proxy geometry exists on the duplicated module.
+                            if cmds.objExists(proxy_elbow_preTransform):
+                                
+                                # Delete the new elbow proxy geometry transform on the duplicated mirror module; it's the default proxy geometry.
+                                cmds.delete(mirror_proxy_elbow_transform)
+                                
+                                # Duplicate the original mirror module's elbow proxy geometry transform, rename it.
+                                cmds.duplicate(proxy_elbow_transform, instanceLeaf=True, name=mirror_proxy_elbow_transform)
+                                
+                                # Assign it to the new duplicate mirror module.
+                                cmds.parent(mirror_proxy_elbow_transform, mirror_proxy_elbow_scaleTransform, relative=True)
+                            else:
+                                # If the original mirror module doesn't have elbow proxy geometry.
+                                cmds.delete(mirror_proxy_elbow_preTransform)
 
-                                mirror_proxy_bone_transform = moduleAttrsDict['module_Namespace']+':root_node_transform_proxy_bone_geo'
-
-                                if cmds.objExists(mirror_proxy_bone_transform+'_preTransform'):
-                                    cmds.delete(proxy_bone_transform)
-                                    duplicatedTransform = cmds.duplicate(mirror_proxy_bone_transform, instanceLeaf=True,
-                                        name=moduleAttrsDict['mirror_module_Namespace']+':root_node_transform_proxy_bone_geo')[0]
-
-                                    cmds.parent(duplicatedTransform, proxy_bone_transform+'_scaleTransform', relative=True)
-
-                                else:
-                                    cmds.delete(proxy_bone_transform+'_preTransform')
-                        else:
-                            orig_proxy_bone_transform = moduleAttrsDict['orig_mirror_module_Namespace']+':node_'+str(i)+'_transform_proxy_bone_geo'
-                            proxy_bone_transform = moduleAttrsDict['mirror_module_Namespace']+':node_'+str(i)+'_transform_proxy_bone_geo'
-
-                            if moduleAttrsDict['proxy_geo_options'][3] == 'Off':
-
-                                if cmds.objExists(orig_proxy_bone_transform+'_preTransform'):
-                                    cmds.delete(proxy_bone_transform)
-                                    duplicatedTransform = cmds.duplicate(orig_proxy_bone_transform,
-                                        name=moduleAttrsDict['mirror_module_Namespace']+':node_'+str(i)+'_transform_proxy_bone_geo')[0]
-
-                                    cmds.parent(duplicatedTransform, proxy_bone_transform+'_scaleTransform', relative=True)
-
-                                else:
-                                    cmds.delete(proxy_bone_transform+'_preTransform')
-
-                            if moduleAttrsDict['proxy_geo_options'][3] == 'On':
-                                mirror_proxy_bone_transform = moduleAttrsDict['module_Namespace']+':node_'+str(i)+'_transform_proxy_bone_geo'
-
-                                if cmds.objExists(mirror_proxy_bone_transform+'_preTransform'):
-                                    cmds.delete(proxy_bone_transform)
-                                    duplicatedTransform = cmds.duplicate(mirror_proxy_bone_transform, instanceLeaf=True,
-                                        name=moduleAttrsDict['mirror_module_Namespace']+':node_'+str(i)+'_transform_proxy_bone_geo')[0]
-
-                                    cmds.parent(duplicatedTransform, proxy_bone_transform+'_scaleTransform', relative=True)
-
-                                else:
-                                    cmds.delete(proxy_bone_transform+'_preTransform')
 
         # Update the scene module treeView list with the new duplicated module.
         self.updateListForSceneModulesInUI()
@@ -4866,11 +4773,9 @@ class MRT_UI(object):
         runProgressWindow(title='Creating character', message='Checking scene...', init=True)
         
         # Check if a character exists in the scene.
-        characterStatus = self.checkMRTcharacter()
-        if characterStatus[0]:
-            characterName = re.findall('^MRT_character(\D+)__mainGrp$', characterStatus[0])
-            Error('MRT: Character "%s" exists in the scene, aborting.'%(characterName[0]))
-            
+        characterStatus = self.getMRTcharacter()
+        if characterStatus:
+
             # Update progress.
             runProgressWindow(message='Error', progress=0)
             runProgressWindow(end=True)            
@@ -4898,8 +4803,8 @@ class MRT_UI(object):
             
             return
         
-        # Or
-        characterName = characterName.title()
+        # With a valid character name, proceed.
+        characterName = characterName.lower()
 
         # Save current namespace, set to root.
         currentNamespace = cmds.namespaceInfo(currentNamespace=True)
@@ -4932,7 +4837,10 @@ class MRT_UI(object):
         runProgressWindow(message='Creating main groups...', progress=5)        
 
         # Create the main character group.
-        mainGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__mainGrp')
+        mainGrp = cmds.group(empty=True, name=characterName)
+        
+        # Add an attribute to identify the MRT build version.
+        cmds.addAttr(mainGrp, attributeType='float', longName='mrtCharacterVersion', dv=_mrt_version)
 
         # Add an attribute to store the module collection file name for the scene modules used to
         # create the character (for auto module collection file).
@@ -4942,21 +4850,21 @@ class MRT_UI(object):
         cmds.addAttr(mainGrp, dataType='string', longName='skinJointList')
 
         # Create the groups under the main character groups.
-        jointsGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__jointsMainGrp', parent=mainGrp)
-        geoMainGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__geometryMainGrp', parent=mainGrp)
-        skinGeoGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__skinGeometryGrp', parent=geoMainGrp)
-        cntlGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__controlGrp', parent=mainGrp)
-        miscGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__miscGrp', parent=mainGrp)
-        defGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__deformersGrp', parent=miscGrp)
+        jointsGrp = cmds.group(empty=True, name='joints', parent=mainGrp)
+        geoMainGrp = cmds.group(empty=True, name='geometry', parent=mainGrp)
+        skinGeoGrp = cmds.group(empty=True, name='skinGeometry', parent=geoMainGrp)
+        cntlGrp = cmds.group(empty=True, name='controls', parent=mainGrp)
+        miscGrp = cmds.group(empty=True, name='misc', parent=mainGrp)
+        defGrp = cmds.group(empty=True, name='deformers', parent=miscGrp)
         cmds.setAttr(defGrp+'.visibility', 0)
         
         # Create a group for character proxy geometry under the "geometry" main group.
-        proxyMainGrp = cmds.group(empty=True, name='MRT_character'+characterName+'__proxyAllGeometryGrp', parent=geoMainGrp)
+        proxyMainGrp = cmds.group(empty=True, name='proxyGeometry', parent=geoMainGrp)
 
         # Create the display layers for the character.
-        skinGeoLayerName = cmds.createDisplayLayer(empty=True, name='MRT_character'+characterName+'_skin_geometry', noRecurse=False)
-        skinJointsLayerName = cmds.createDisplayLayer(empty=True, name='MRT_character'+characterName+'_all_joints', noRecurse=True)
-        controlRigLayerName = cmds.createDisplayLayer(empty=True, name='MRT_character'+characterName+'_control_rig', noRecurse=False)
+        skinGeoLayerName = cmds.createDisplayLayer(empty=True, name='MRT_'+characterName+'_skin_geometry', noRecurse=False)
+        skinJointsLayerName = cmds.createDisplayLayer(empty=True, name='MRT_'+characterName+'_all_joints', noRecurse=True)
+        controlRigLayerName = cmds.createDisplayLayer(empty=True, name='MRT_'+characterName+'_control_rig', noRecurse=False)
 
         cmds.select(clear=True)
 
@@ -4993,14 +4901,14 @@ class MRT_UI(object):
             moduleAttrsDict = mfunc.returnModuleAttrsFromScene(module)
 
             # Create the joint hierarchy from module.
-            joints = mfunc.createSkeletonFromModule(moduleAttrsDict, characterName)
+            joints = mfunc.createSkeletonFromModule(moduleAttrsDict)
 
             # Collect and append the joint names for the joint hierarchy generated from module by:
             # ("<parent module node>,<parent type>", ["<child hierarchy root joint>", ..., "<child hierarchy end joint>"])
             # As an example:
-            # ("MRT_JointNode__r_clavicle:root_node_transform,Constrained", ["MRT_characterNew__r_arm_root_node_transform",
-            #                                                                "MRT_characterNew__r_arm_node_1_transform",
-            #                                                                "MRT_characterNew__r_arm_end_node_transform"])
+            # ("MRT_JointNode__r_clavicle:root_node_transform,Constrained", ["r_arm_root_node_joint",
+            #                                                                "r_arm_node_1_joint",
+            #                                                                "r_arm_end_node_joint"])
             # Also, the moduleAttrsDict['moduleParentInfo'] has the following data:
             # [[current module namespace, module parent info,
             #             [mirror module namespace, mirror module parent info (if this module has a mirrored module pair)]]
@@ -5035,7 +4943,7 @@ class MRT_UI(object):
         # Set up parenting among discrete joint hierarchies generated from scene modules. This parenting
         # is either constrained or DAG type. This depends on the module parenting relationships set-up
         # earlier among scene modules ("Constrained" or "Hierarchical" module parenting).
-        all_root_joints = mfunc.setupParentingForRawCharacterParts(characterJointSet, jointsGrp, characterName)
+        all_root_joints = mfunc.setupParentingForRawCharacterParts(characterJointSet, jointsGrp)
 
         # Find the root joints for all character joint hierarchies, parent them into the character joint group.
         characterJoints = []
@@ -5058,7 +4966,7 @@ class MRT_UI(object):
             cmds.delete(proxyMainGrp)
         
         # Update progress.
-        runProgressWindow(message='Creating main controls...', progress=90)                            
+        runProgressWindow(message='Creating main controls...', progress=90)
 
         # Create the character world and root transform controls.
         # "createRawCharacterTransformControl" returns [<root transform>, <world transform>]
@@ -5083,7 +4991,7 @@ class MRT_UI(object):
         cmds.setAttr(transforms[1]+'.scale', *scaleAdd, type='double3')
         cmds.makeIdentity(transforms[1], scale=True, translate=True, apply=True)
 
-        # Put the "globalScale" on the character root transform control.
+        # Put the "globalScale" on the character root control control.
         cmds.addAttr(transforms[0], longName='globalScale', attributeType='float', min=0.01, defaultValue=1, keyable=True)
         cmds.connectAttr(transforms[0]+'.globalScale', transforms[0]+'.scaleX')
         cmds.connectAttr(transforms[0]+'.globalScale', transforms[0]+'.scaleY')
@@ -5096,21 +5004,15 @@ class MRT_UI(object):
         cmds.setAttr(transforms[1]+'.scaleZ', keyable=False, lock=True)
         cmds.parent(transforms[1], mainGrp, absolute=True)
 
-        # Name the character root transform control.
-        transforms[0] = cmds.rename(transforms[0], 'MRT_character'+characterName+transforms[0])
-
-        # Name the character world transform control.
-        transforms[1] = cmds.rename(transforms[1], 'MRT_character'+characterName+transforms[1])
-
-        # Constrain all root joint hierarchies in a character to the character root transform.
+        # Constrain all root joint hierarchies in a character to the character root control.
         # Usually, there's only one root joint hierarchy (like spine in a biped). But there can be multiple.
         for joint in all_root_joints:
-            cmds.parentConstraint(transforms[0], joint, maintainOffset=True, name=transforms[0]+'_'+joint+'__parentConstraint')
+            cmds.parentConstraint(transforms[0], joint, maintainOffset=True, name=transforms[0]+'_'+joint+'_parentConstraint')
 
         # Connect the character "globalScale" to main joints group.
-        cmds.connectAttr(transforms[0]+'.globalScale', 'MRT_character'+characterName+'__jointsMainGrp.scaleX')
-        cmds.connectAttr(transforms[0]+'.globalScale', 'MRT_character'+characterName+'__jointsMainGrp.scaleY')
-        cmds.connectAttr(transforms[0]+'.globalScale', 'MRT_character'+characterName+'__jointsMainGrp.scaleZ')
+        cmds.connectAttr(transforms[0]+'.globalScale', characterName+'|joints.scaleX')
+        cmds.connectAttr(transforms[0]+'.globalScale', characterName+'|joints.scaleY')
+        cmds.connectAttr(transforms[0]+'.globalScale', characterName+'|joints.scaleZ')
 
         cmds.select(clear=True)
         
@@ -5120,7 +5022,7 @@ class MRT_UI(object):
         # Add the "rigLayers" attribute to all root joints for all character joint hierachies.
         # This attribute is used for parent/space switching operations.
         for joint in characterJoints:
-            if re.search('_root_node_transform', joint):
+            if re.search('_root_node_joint', joint):
                 cmds.addAttr(joint, dataType='string', longName='rigLayers', keyable=False)
                 cmds.setAttr(joint+'.rigLayers', 'None', type='string', lock=True)
 
@@ -5135,7 +5037,7 @@ class MRT_UI(object):
 
         # Add the "FK bake control layer" switch attribute on the character root control.
         # This attribute is for internal use only.
-        cmds.addAttr(transforms[0], attributeType='float', longName='FK_Bake_Layer', hasMinValue=True, hasMaxValue=True,
+        cmds.addAttr(transforms[0], attributeType='float', longName='FkBakeLayer', hasMinValue=True, hasMaxValue=True,
                                                                     minValue=0, maxValue=1, defaultValue=0, keyable=False)
         # Go through the joints in the FK bake driver layer.
         for joint in result[0]:
@@ -5144,7 +5046,7 @@ class MRT_UI(object):
             for constraint in result[1]:
                 constrainResult = mfunc.returnConstraintWeightIndexForTransform(joint, constraint)
                 if constrainResult:
-                    cmds.connectAttr(transforms[0]+'.FK_Bake_Layer', constraint+'.'+constrainResult[1])
+                    cmds.connectAttr(transforms[0]+'.FkBakeLayer', constraint+'.'+constrainResult[1])
 
         # New control rig layer switch attribute(s) will be user keyable.
         cmds.addAttr(transforms[0], attributeType='enum', longName='CONTROL_RIGS', enumName=' ', keyable=True)
@@ -5152,16 +5054,16 @@ class MRT_UI(object):
 
         # Add the character world transform and controlGrp to the "control_rig" display layer.
         cmds.select([transforms[1], cntlGrp])
-        mel.eval('editDisplayLayerMembers -noRecurse MRT_character'+characterName+'_control_rig `ls -selection`;')
+        mel.eval('editDisplayLayerMembers -noRecurse MRT_'+characterName+'_control_rig `ls -selection`;')
 
         cmds.select(clear=True)
         
         # Update progress.
-        runProgressWindow(message='Almost...', progress=99)         
+        runProgressWindow(message='Almost...', progress=99)
 
         # Create a set for all character joints.
         cmds.select(characterJoints, replace=True)
-        cmds.sets(name='MRT_character'+characterName+'__skinJointSet')
+        cmds.sets(name='MRT_'+characterName+'_skinJointSet')
 
         # Reset namespace.
         if cmds.namespace(exists=currentNamespace):
@@ -5183,55 +5085,55 @@ class MRT_UI(object):
         internally during character creation for this purpose
         '''
         # Check if a character exists in the scene.
-        status = self.checkMRTcharacter()
-        if not status[0]:
-            Error('MRT: No character in the scene. Aborting.')
-            return
+        status = self.getMRTcharacter()
+        
+        # If a character exists, proceed.
+        if status:
+            
+            # If no auto module collection is found for the character, warn.
+            if status[0] and status[1] == '':
+                Error('MRT: Cannot find the auto-collection file containing the modules for ' \
+                             'the current character. Unable to revert. Aborting')
+                return
 
-        # If no auto module collection is found for the character, warn.
-        if status[0] and status[1] == '':
-            Error('MRT: Cannot find the auto-collection file containing the modules for ' \
-                         'the current character. Unable to revert. Aborting')
-            return
-
-        # If the main character group and auto module collection file is found for the character.
-        if status[0] and status[1] != '':
-
-            characterName = status[0].partition('MRT_character')[2].rpartition('__')[0]
-            charGeoGrp = 'MRT_character'+characterName + '__geometryMainGrp'
-            charSkinGeoGrp = 'MRT_character'+characterName + '__deformersGrp'
-            charDefGrp = 'MRT_character'+characterName + '__skinGeometryGrp'
-            charMiscGrp = 'MRT_character'+characterName + '__miscGrp'
-            proxyGeoGep = 'MRT_character'+characterName + '__proxyAllGeometryGrp'
-
-            # Unparent the groups under the character main group to world.
-            for obj in [charDefGrp, charSkinGeoGrp, charMiscGrp, charGeoGrp, proxyGeoGep]:
-                if cmds.objExists(obj):
-                    allChildren = cmds.listRelatives(obj, children=True) or []
-                    if allChildren:
-                        for child in allChildren:
-                            if not re.match('^MRT_character\w+(deformersGrp|skinGeometryGrp|proxyAllGeometryGrp|proxyGeoGrp)$', child):
-                                cmds.parent(child, world=True)
-
-            # Delete the main character group.
-            cmds.delete(status[0])
-
-            # Remove all display layers created for character.
-            displayLayers = [item for item in cmds.ls(type='displayLayer') if re.match('^MRT_character[a-zA-Z0-9]*_\w+', item)]
-            for layerName in displayLayers:
-                if cmds.objExists(layerName):
-                    cmds.delete(layerName)
-
-            # Remove all control rig containers, if any, for the character.
-            ctrl_containers = [item for item in cmds.ls(type='container') if re.match('^MRT_character[a-zA-Z0-9]*__\w+_Container$', item)]
-            if ctrl_containers:
-                cmds.delete(ctrl_containers)
-
-            # Get the auto module collection file path for the character.
-            autoFile = self.autoCollections_path + '/' + status[1] + '.mrtmc'
-
-            # Install scene module(s) from the module collection file.
-            self.installSelectedModuleCollectionToScene(autoInstallFile=autoFile)
+            # If the main character group and auto module collection file is found for the character.
+            if status[0] and status[1] != '':
+    
+                characterName = status[0].lower()
+                charGeoGrp =  '|%s|geometry' % characterName
+                charSkinGeoGrp = '|%s|deformers' % characterName
+                charDefGrp = '%s|skinGeometry' % charGeoGrp
+                charMiscGrp = '|%s|misc' % characterName
+                proxyGeoGrp = '%s|proxyGeometry' % charGeoGrp
+    
+                # Unparent the groups under the character main group to world.
+                for obj in [charDefGrp, charSkinGeoGrp, charMiscGrp, charGeoGrp, proxyGeoGrp]:
+                    if cmds.objExists(obj):
+                        allChildren = cmds.listRelatives(obj, children=True, fullPath=True) or []
+                        if allChildren:
+                            for child in allChildren:
+                                if not re.match('(deformers|skinGeometry|proxyGeometry|misc)$', child):
+                                    cmds.parent(child, world=True)
+    
+                # Delete the main character group.
+                cmds.delete(status[0])
+    
+                # Remove all display layers created for character.
+                displayLayers = [item for item in cmds.ls(type='displayLayer') if re.match('^MRT_[a-zA-Z0-9]*_\w+', item)]
+                for layerName in displayLayers:
+                    if cmds.objExists(layerName):
+                        cmds.delete(layerName)
+    
+                # Remove all control rig containers, if any, for the character.
+                ctrl_containers = [item for item in cmds.ls(type='container') if re.match('^MRT_[a-zA-Z0-9]*__\w+_container$', item)]
+                if ctrl_containers:
+                    cmds.delete(ctrl_containers)
+    
+                # Get the auto module collection file path for the character.
+                autoFile = self.autoCollections_path + '/' + status[1] + '.mrtmc'
+    
+                # Install scene module(s) from the module collection file.
+                self.installSelectedModuleCollectionToScene(autoInstallFile=autoFile)
 
 
     # ............................................. CHARACTER TEMPLATES ............................................
@@ -5423,10 +5325,9 @@ class MRT_UI(object):
         # Check if a character exists in the current scene, skip importing if true.
         transforms = cmds.ls(type='transform')
         for transform in transforms:
-            characterName = re.findall('^MRT_character(\D+)__mainGrp$', transform)
-            if characterName:
-                Error('MRT: The character "%s" exists in the scene. '  \
-                                                                    'Unable to import a template.' % (characterName[0]))
+            status = self.getMRTcharacter()
+            if status:
+                Error('MRT: Unable to import a template.')
                 return
 
         # Skip importing if module(s) exist in the scene.
@@ -5499,10 +5400,9 @@ class MRT_UI(object):
         def cancelEditCharTemplateNoDescrpErrorWindow(*args):
             # Closes the edit character template description window
             cmds.deleteUI(self.uiVars['editCharTemplateDescrpWindow'])
-            try:
-                cmds.deleteUI(self.uiVars['editCharTemplateNoDescrpErrorWindow'])
-            except:
-                pass
+            
+            try: cmds.deleteUI(self.uiVars['editCharTemplateNoDescrpErrorWindow'])
+            except: pass
 
         def checkEditDescriptionForSelectedCharTemplate(*args):
             # Checks the new character template description for saving / updating
@@ -5515,10 +5415,8 @@ class MRT_UI(object):
                     cmds.window('mrt_editCharTemplate_noDescrpError_UI_window', title='Character template warning',
                                                                                     maximizeButton=False, sizeable=False)
                 # Remove the window from UI preferences
-                try:
-                    cmds.windowPref('mrt_editCharTemplate_noDescrpError_UI_window', remove=True)
-                except:
-                    pass
+                try: cmds.windowPref('mrt_editCharTemplate_noDescrpError_UI_window', remove=True)
+                except: pass
 
                 # Main layout
                 cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90,
@@ -5545,20 +5443,16 @@ class MRT_UI(object):
             return
 
         # Close the edit character template description window if open
-        try:
-            cmds.deleteUI('mrt_charTemplateDescription_edit_UI_window')
-        except:
-            pass
+        try: cmds.deleteUI('mrt_charTemplateDescription_edit_UI_window')
+        except: pass
 
         # Create the character template description window
         self.uiVars['editCharTemplateDescrpWindow'] = cmds.window('mrt_charTemplateDescription_edit_UI_window',
                                 title='Character template description', height=150, maximizeButton=False, sizeable=False)
 
         # Remove the window from UI preference
-        try:
-            cmds.windowPref('mrt_charTemplateDescription_edit_UI_window', remove=True)
-        except:
-            pass
+        try: cmds.windowPref('mrt_charTemplateDescription_edit_UI_window', remove=True)
+        except: pass
 
         # Main column
         self.uiVars['editCharTemplateDescrpWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
@@ -5661,18 +5555,15 @@ class MRT_UI(object):
             return
 
         # Delete the remove character template window, if it exists.
-        try:
-            cmds.deleteUI('mrt_deleteCharTemplate_UI_window')
-        except:
-            pass
+        try: cmds.deleteUI('mrt_deleteCharTemplate_UI_window')
+        except: pass
+        
         self.uiVars['deleteCharTemplateWindow'] = cmds.window('mrt_deleteCharTemplate_UI_window',
                                                      title='Delete character template', maximizeButton=False, sizeable=False)
 
         # Create the delete character template window.
-        try:
-            cmds.windowPref('mrt_deleteCharTemplate_UI_window', remove=True)
-        except:
-            pass
+        try: cmds.windowPref('mrt_deleteCharTemplate_UI_window', remove=True)
+        except: pass
 
         # Create the main layout
         cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90, width=220,
@@ -5698,10 +5589,10 @@ class MRT_UI(object):
             for saving with a character template.
             '''
             # Check if a character exists in the scene.
-            status = self.checkMRTcharacter()
+            status = self.getMRTcharacter()
             
-            if not status[0]:
-                Error('MRT: No character in the scene. Aborting.')
+            if not status:
+                Error('MRT: Cannot save a character template.')
                 
                 # Close the character template description window
                 cmds.deleteUI('mrt_charTemplateDescription_UI_window')
@@ -5712,18 +5603,14 @@ class MRT_UI(object):
             
             # If the character template description string is empty,
             if templateDescription == '':
-                try:
-                    cmds.deleteUI('mrt_charTemplate_noDescpError_UI_window')
-                except:
-                    pass
+                try: cmds.deleteUI('mrt_charTemplate_noDescpError_UI_window')
+                except: pass
                     
                 # Create the check template description window
                 self.uiVars['charTemplateDescrpErrorWindow'] = cmds.window('mrt_charTemplate_noDescpError_UI_window',
                                                 title='Character template warning', maximizeButton=False, sizeable=False)
-                try:
-                    cmds.windowPref('mrt_charTemplate_noDescpError_UI_window', remove=True)
-                except:
-                    pass
+                try: cmds.windowPref('mrt_charTemplate_noDescpError_UI_window', remove=True)
+                except: pass
                     
                 cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=90,
                                                                             width=220, marginWidth=20, marginHeight=15)
@@ -5753,21 +5640,17 @@ class MRT_UI(object):
             Saves a character template with the description entered by the user.
             '''
             # Close the check character template description window
-            try:
-                cmds.deleteUI('mrt_charTemplate_noDescpError_UI_window')
-            except:
-                pass
+            try: cmds.deleteUI('mrt_charTemplate_noDescpError_UI_window')
+            except: pass
                 
             # Close the character template description window
-            try:
-                cmds.deleteUI('mrt_charTemplateDescription_UI_window')
-            except:
-                pass
+            try: cmds.deleteUI('mrt_charTemplateDescription_UI_window')
+            except: pass
                 
             # Check the current scene for character, if not, return.
-            status = self.checkMRTcharacter()
-            if not status[0]:
-                Error('MRT: No character in the scene. Aborting.')
+            status = self.getMRTcharacter()
+            if not status:
+                Error('MRT: Cannot save a character template.')
                 return
                 
             # Get the last directory accessed to save character template (saved as a preference)
@@ -5804,17 +5687,17 @@ class MRT_UI(object):
             
             # Now collect objects from the scene for the character template file.
             
-            # Collect the character main group (returned by checkMRTcharacter)
+            # Collect the character main group (returned by getMRTcharacter)
             templateObjects = [status[0]]
             
             # Collect the proxy geometry display layer.
-            characterName = status[0].partition('MRT_character')[2].rpartition('__')[0]
-            layerName = 'MRT_character'+characterName+'_proxy_geometry'
+            characterName = status[0].lower()
+            layerName = 'MRT_'+characterName+'_proxy_geometry'
             if cmds.objExists(layerName):
                 templateObjects.append(layerName)
                 
             # Collect the skinJointSet set.
-            skinJointSet = 'MRT_character'+characterName+'__skinJointSet'
+            skinJointSet = 'MRT_'+characterName+'_skinJointSet'
             templateObjects.append(skinJointSet)
             
             # Select the collected objects.
@@ -5857,68 +5740,64 @@ class MRT_UI(object):
         cmds.namespace(setNamespace=':')
         
         # Check if a character exists in the scene.
-        status = self.checkMRTcharacter()
-        if not status[0]:
-            Error('MRT: No character in the scene. Aborting.')
-            return
+        status = self.getMRTcharacter()
         
-        # Check if any control rig is applied to the character before saving a template.
-        # This can be done by finding any control rig attribute on the character root transform.
-        allAttrs = cmds.listAttr(status[0].partition('mainGrp')[0]+'root_transform', visible=True, keyable=True)
+        # If a character exists, proceed.
+        if status:  
         
-        # Get the control rig attribute(s), if any.
-        controlAttrs = set.symmetric_difference(set(['translateX', 'translateY', 'translateZ',
-                                                     'rotateX', 'rotateY', 'rotateZ',
-                                                     'globalScale', 'CONTROL_RIGS']), set(allAttrs))
-        # If found,
-        if len(controlAttrs):
-            Error('MRT: One or more control rigs are currently applied to the character. ' \
-                         'Detach them before saving a character template.')
-            return
-        
-        # Bring up the window for entering the character template description.
-        try:
-            cmds.deleteUI('mrt_charTemplateDescription_UI_window')
-        except:
-            pass
-        self.uiVars['charTemplateDescrpWindow'] = cmds.window('mrt_charTemplateDescription_UI_window',
-                                                                title='Character template description',
-                                                                    height=150, maximizeButton=False, sizeable=False)
-        try:
-            cmds.windowPref('mrt_charTemplateDescription_UI_window', remove=True)
-        except:
-            pass
+            # Check if any control rig is applied to the character before saving a template.
+            # This can be done by finding any control rig attribute on the character root control.
+            allAttrs = cmds.listAttr('|%s|WORLD_CNTL|ROOT_CNTL' % status[0], visible=True, keyable=True)
             
-        self.uiVars['charTemplateDescrpWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
-        
-        cmds.text(label='')
-        cmds.text('Enter description for character template', align='center', font='boldLabelFont')
-        
-        cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=75,
-                                                                            width=300, marginWidth=5, marginHeight=10)
-                         
-        self.uiVars['charTemplateDescrpWindowScrollField'] = cmds.scrollField(preventOverride=True, wordWrap=True)
-        
-        cmds.setParent(self.uiVars['charTemplateDescrpWindowColumn'])
-        
-        cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 28], [2, 'left', 20]))
-        
-        # To process the character template description and save the character template (calls nested def).
-        cmds.button(label='Save template', width=130, command=saveCharTemplateFromDescriptionProcessInputUI)
-        
-        cmds.button(label='Cancel', width=90, command=partial(self.closeWindow, self.uiVars['charTemplateDescrpWindow']))
-        
-        cmds.setParent(self.uiVars['charTemplateDescrpWindowColumn'])
-        cmds.text(label='')
-        
-        cmds.showWindow(self.uiVars['charTemplateDescrpWindow'])
-        
-        # Restore namespace and selection.
-        cmds.namespace(setNamespace=namespace)
-        if not selection:
-            cmds.select(clear=True)
-        else:
-            cmds.select(selection)
+            # Get the control rig attribute(s), if any.
+            controlAttrs = set.symmetric_difference(set(['translateX', 'translateY', 'translateZ',
+                                                         'rotateX', 'rotateY', 'rotateZ',
+                                                         'globalScale', 'CONTROL_RIGS']), set(allAttrs))
+            # If found,
+            if len(controlAttrs):
+                Error('MRT: One or more control rigs are currently applied to the character. ' \
+                             'Detach them before saving a character template.')
+                return
+            
+            # Bring up the window for entering the character template description.
+            try: cmds.deleteUI('mrt_charTemplateDescription_UI_window')
+            except: pass
+            self.uiVars['charTemplateDescrpWindow'] = cmds.window('mrt_charTemplateDescription_UI_window',
+                                                                    title='Character template description',
+                                                                        height=150, maximizeButton=False, sizeable=False)
+            try: cmds.windowPref('mrt_charTemplateDescription_UI_window', remove=True)
+            except: pass
+            
+            self.uiVars['charTemplateDescrpWindowColumn'] = cmds.columnLayout(adjustableColumn=True)
+            
+            cmds.text(label='')
+            cmds.text('Enter description for character template', align='center', font='boldLabelFont')
+            
+            cmds.frameLayout(visible=True, borderVisible=False, collapsable=False, labelVisible=False, height=75,
+                                                                                width=300, marginWidth=5, marginHeight=10)
+                             
+            self.uiVars['charTemplateDescrpWindowScrollField'] = cmds.scrollField(preventOverride=True, wordWrap=True)
+            
+            cmds.setParent(self.uiVars['charTemplateDescrpWindowColumn'])
+            
+            cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 28], [2, 'left', 20]))
+            
+            # To process the character template description and save the character template (calls nested def).
+            cmds.button(label='Save template', width=130, command=saveCharTemplateFromDescriptionProcessInputUI)
+            
+            cmds.button(label='Cancel', width=90, command=partial(self.closeWindow, self.uiVars['charTemplateDescrpWindow']))
+            
+            cmds.setParent(self.uiVars['charTemplateDescrpWindowColumn'])
+            cmds.text(label='')
+            
+            cmds.showWindow(self.uiVars['charTemplateDescrpWindow'])
+            
+            # Restore namespace and selection.
+            cmds.namespace(setNamespace=namespace)
+            if not selection:
+                cmds.select(clear=True)
+            else:
+                cmds.select(selection)
 
 
     # ............................................... CONTROL RIGGING ..............................................
@@ -5951,7 +5830,7 @@ class MRT_UI(object):
                         klass_p_name += ' ' + char
                     else:
                         klass_p_name += char
-                        
+
                 # Now add the title.
                 scrollTextString += '\n\n\n' + klass_p_name
                 scrollTextString += '\n' + '-' * len(klass_p_name) + '\n'
@@ -5985,17 +5864,14 @@ class MRT_UI(object):
                     scrollTextString += func
             
             # Bring up the window to display the current rigging options.
-            try:
-                cmds.deleteUI('mrt_displayCtrlRigOptions_UI_window')
-            except:
-                pass
+            try: cmds.deleteUI('mrt_displayCtrlRigOptions_UI_window')
+            except: pass
                 
             self.uiVars['displayCtrlRigOptionsWindow'] = cmds.window('mrt_displayCtrlRigOptions_UI_window',
                             title='Control rigging options for character hierarchies', maximizeButton=False, width=760, height=300)
-            try:
-                cmds.windowPref(self.uiVars['displayCtrlRigOptionsWindow'], remove=True)
-            except:
-                pass
+            
+            try: cmds.windowPref(self.uiVars['displayCtrlRigOptionsWindow'], remove=True)
+            except: pass
                 
             self.uiVars['displayCtrlRigOptions_formLayout'] = cmds.formLayout()
             
@@ -6040,6 +5916,7 @@ class MRT_UI(object):
             control_klasses = []
             
             if customHierarchyTreeListString:
+                
                 # Get all control rig classes under the base class with class attribute
                 # "customHierarchy" set to string value (default base value is set to None).
                 customClasses = [cls for cls in getattr(mrt_controlRig, 'BaseJointControl').__subclasses__()
@@ -6116,11 +5993,11 @@ class MRT_UI(object):
                                   '##\n## Using \"%s\" control class for rigging options. ##' % (className)
             
             # Now store the attributes for control rigging for the selected joint hierarchy.
-            # Store the control rig class name
+            # Store the control rig class name.
             self.controlRiggingAttributes['__klass__'] = '%s' % (className)
             
             # Get the control rig definitions that can be applied to the selected joint hierarchy.
-            funcList = eval('[item for item in dir(mrt_controlRig.%s) if not re.search(\'__\', item)]'%(className))
+            funcList = eval('[item for item in dir(mrt_controlRig.%s) if not re.search(\'__\', item)]' % (className))
             funcNameList = eval('[item.partition(\'apply\')[2].replace(\'_\', \' \') for item in dir(mrt_controlRig.%s) \
                                                                         if re.search(\'^apply[A-Z]\', item)]' % (className))
             # Store the control rig definitions under the attributes.
@@ -6209,13 +6086,16 @@ class MRT_UI(object):
         controlClass = self.controlRiggingAttributes['__klass__']
         
         # Get the character name.
-        characterName = selection.partition('__')[0].partition('MRT_character')[2]
-        
-        # Get the instance for the control rig class.
-        controlRigInst = eval('mrt_controlRig.%s(characterName, hierarchyRoot)' % controlClass)
-        
+        characterName = self.getMRTcharacter()[0]
+
         # Get the control rig definition to be applied.
         controlRigApplyFunc = self.controlRiggingAttributes[selectFunc]
+        
+        # Get the name of the control rig definition suffix name.
+        ctrlRigLayer = controlRigApplyFunc.partition('apply')[2]
+        
+        # Get the instance for the control rig class.
+        controlRigInst = eval('mrt_controlRig.%s(characterName, hierarchyRoot, ctrlRigLayer)' % controlClass)
         
         # Apply the control rig definition to the selected joint hierarchy.
         eval('controlRigInst.%s()' % controlRigApplyFunc)
@@ -6255,9 +6135,10 @@ class MRT_UI(object):
         # Get the selected control rig to be detached.
         ctrlRigLayerName = cmds.textScrollList(self.uiVars['c_rig_attachedRigs_txScList'], query=True, selectItem=True)[-1]
         ctrlRigLayer = self.controlRiggingAttributes[ctrlRigLayerName].partition('apply')[2]
+        ctrlRigNiceName = ''.join([item.title() for item in ctrlRigLayer.split('_')])
         hierarchyRoot = self.controlRiggingAttributes['__rootJoint__']
-        characterName = hierarchyRoot.partition('__')[0].partition('MRT_character')[2]
-        userSpecName = re.split('_root_node_transform', hierarchyRoot)[0].partition('__')[2]
+        characterName = self.getMRTcharacter()[0]
+        userSpecName = hierarchyRoot.partition('_root_node_joint')[0]
 
         # Change the rig layer attribute on root joint for the character hierarchy
         rigLayers = cmds.getAttr(hierarchyRoot+'.rigLayers')
@@ -6277,14 +6158,13 @@ class MRT_UI(object):
         cmds.currentTime(0)
 
         # Get character root and world transform controls.
-        rootCtrls = [item for item in cmds.ls(type='transform') 
-                     if re.match('^MRT_character%s__(world|root){1}_transform$' % (characterName), item)]
+        rootCtrls = [item for item in cmds.ls(type='transform') if re.match('^(WORLD|ROOT)_CNTL$', item)]
         if rootCtrls:
             nodes.extend(rootCtrls)
 
         # Get all module containers.
         ctrl_containers = [item for item in cmds.ls(type='container') 
-                           if re.match('^MRT_character%s__\w+_Container$'%(characterName), item)]
+                           if re.match('^MRT_[0-9a-zA-Z]*__\w+_container$', item)]
         if ctrl_containers:
             nodes.extend(ctrl_containers)
 
@@ -6301,7 +6181,7 @@ class MRT_UI(object):
                             cmds.setAttr(node+'.'+attr, 1)
 
         # Get all character joints.
-        allJoints = cmds.getAttr('MRT_character'+characterName+'__mainGrp.skinJointList')
+        allJoints = cmds.getAttr('|%s.skinJointList' % characterName)
         allJoints = allJoints.split(',')
 
         # Force update on character joint attributes.
@@ -6310,22 +6190,22 @@ class MRT_UI(object):
             cmds.getAttr(joint+'.rotate')
             cmds.getAttr(joint+'.scale')
 
-        # Remove the control rig container
-        ctrl_container = 'MRT_character{0}__{1}_{2}_Container'.format(characterName, userSpecName, ctrlRigLayer)
+        # Remove the control rig container.
+        ctrl_container = 'MRT_{0}__{1}_container'.format(userSpecName, ctrlRigNiceName)
 
-        # Get all character controls.
+        # Get all character controls for the control rig to be removed.
         allControlRigHandles = [item for item in cmds.ls(type='transform') 
-                    if re.match('^MRT_character%s__%s_%s\w+handle$' % (characterName, userSpecName, ctrlRigLayer), item)]
+                    if re.match('^%s_%s\w+CNTL$' % (userSpecName, ctrlRigNiceName), item)]
 
         # Go through each character control.
         for handle in allControlRigHandles:
-
+            
             # Get all child target character control(s) for current control, if they exist.
             # The current control may be a parent target for space switching for the child control.
             childTargetHandles = \
-                set([item.rpartition('_parentSwitch_grp_parentConstraint')[0]
-                    for item in cmds.listConnections(handle, destination=True)
-                    if re.match('^MRT_character%s__\w+handle_parentSwitch_grp_parentConstraint$' % (characterName), item)])
+                set([re.split('parentSwitch_grp_(parent|orient){1}Constraint', item)[0]
+                    for item in cmds.listConnections(handle, source=False, destination=True)
+                    if re.match('^\w+parentSwitch_grp_(parent|orient){1}Constraint$', item)])
 
             if childTargetHandles:
 
@@ -6371,8 +6251,7 @@ class MRT_UI(object):
 
         # Remove all parent switch condition nodes for the control rig layer (which is to be deleted).
         allParentSwitchConditions = [item for item in cmds.ls(type='condition') if \
-                                     re.match('^MRT_character%s__%s_%s_\w+_parentSwitch_condition$'
-                                              % (characterName, userSpecName, ctrlRigLayer), item)]
+                                     re.match('^%s_%s_\w+_parentSwitch_condition$' % (userSpecName, ctrlRigNiceName), item)]
         if allParentSwitchConditions:
             cmds.delete(allParentSwitchConditions)
 
@@ -6383,17 +6262,18 @@ class MRT_UI(object):
             Error('MRT: No container found for the control rig to be removed. Please check the source ' \
                          'definition for the control rig.')
 
-        # Remove the control rig layer attribute from charcater world transform control.
-        attrName = '{0}_{1}'.format(userSpecName, ctrlRigLayer)
+        # Remove the control rig layer attribute from character root control.
+        attrName = '{0}_{1}'.format(userSpecName, ctrlRigNiceName)
         check = False
-        if cmds.attributeQuery(attrName, node='MRT_character'+characterName+'__root_transform', exists=True):
-            cmds.deleteAttr('MRT_character'+characterName+'__root_transform', attribute=attrName)
+        rootCtrl = '|%s|WORLD_CNTL|ROOT_CNTL' % characterName
+        if cmds.attributeQuery(attrName, node=rootCtrl, exists=True):
+            cmds.deleteAttr(rootCtrl, attribute=attrName)
             check = True
-        if cmds.attributeQuery(attrName+'_visibility', node='MRT_character'+characterName+'__root_transform', exists=True):
-            cmds.deleteAttr('MRT_character'+characterName+'__root_transform', attribute=attrName+'_visibility')
+        if cmds.attributeQuery(attrName+'_visibility', node=rootCtrl, exists=True):
+            cmds.deleteAttr(rootCtrl, attribute=attrName+'_visibility')
             check = True
         if not check:
-            Error('MRT: No attribute found on the character root transform for the control rig to be removed. ' \
+            Error('MRT: No attribute found on the character root control for the control rig to be removed. ' \
                          'Please check the source definition for the control rig.')
 
         # Reset selection.
@@ -6461,9 +6341,9 @@ class MRT_UI(object):
         '''
         Checks if a selected object (passed-in) is an MRT character joint.
         '''
-        matchObjects = [re.compile('^MRT_character[a-zA-Z0-9]*__\w+_node_\d+_transform$'),
-                        re.compile('^MRT_character[a-zA-Z0-9]*__\w+_root_node_transform$'),
-                        re.compile('^MRT_character[a-zA-Z0-9]*__\w+_end_node_transform$')]
+        matchObjects = [re.compile('^\w+_node_\d+_joint$'),
+                        re.compile('^\w+_root_node_joint$'),
+                        re.compile('^\w+_end_node_joint$')]
 
         for i, matchObject in enumerate(matchObjects):
 
@@ -6471,10 +6351,13 @@ class MRT_UI(object):
             matchResult = matchObject.match(selection)
 
             if matchResult:
-
-                # If valid, return true with the index+1 of the matchObjects index.
-                # This can be used to identify the joint name type.
-                return True, i+1
+                
+                # Check if it's created by MRT.
+                if cmds.attributeQuery('mrtJoint', node=selection, exists=True):
+                    
+                    # If valid, return true with the index+1 of the matchObjects index.
+                    # This can be used to identify the joint name type.
+                    return True, i+1
 
         # Invalid MRT character joint.
         return False, 0
@@ -6501,14 +6384,13 @@ class MRT_UI(object):
                 # If there are no duplicated character joint(s) in the scene, proceed.
                 if char_joint_state:
 
-                    characterName = selection.partition('__')[0].partition('MRT_character')[2]
                     rootJoint = mfunc.returnRootForCharacterHierarchy(selection)
                     rootJointAllChildren = cmds.listRelatives(rootJoint, allDescendents=True, type='joint') or []
 
                     # Check for additional "root_node_transform" joint children. This might exist
                     # in a custom character joint hierarchy, created from module with hierarchical child module(s).
                     children_roots = [item for item in rootJointAllChildren if \
-                                      re.match('^MRT_character\w+_root_node_transform$', item)]
+                                      re.match('^\w+_root_node_joint$', item)]
                     if children_roots:
 
                         # Get the joint hierarchy data from the main root joint for the selected character hierarchy.
@@ -6542,6 +6424,18 @@ class MRT_UI(object):
     # ............................................... PARENT SWITCHING ..............................................
 
 
+    def checkCharacterControlForParentSwitchGrp(self, ctrl):
+        '''
+        Checks and returns if a character control has a parent switch group above in the hierarchy.
+        '''
+        parent = cmds.listRelatives(ctrl, parent=True) or None
+        while parent:
+            if re.match('^%s_parentSwitch_grp$' % ctrl, parent):
+                return parent
+            parent = cmds.listRelatives(parent, parent=True) or None
+        return None
+        
+        
     def insertValidSelectionForParentSwitching(self, *args):
         '''
         Checks for a valid character control to be inserted into the control field.
@@ -6556,21 +6450,22 @@ class MRT_UI(object):
         self.clearParentSwitchControlField()
 
         # Check if a character control is selected.
-        if re.match('^MRT_character[A-Za-z0-9]*__\w+_handle$', selection):
+        if re.match('^\w+_CNTL$', selection):
 
             # While selecting FK based control for assigning parent target(s), you can only select the root FK control.
             # Match for root: MRT_character[A-Za-z0-9]*__\w+_root_node_transform_handle
-            if re.match('^MRT_character[A-Za-z0-9]*__\w+_(node_\d+_transform|end_node_transform){1}_handle$', selection):
+            if re.match('^\w+_(node_\d+|end_node){1}_CNTL$', selection):
                 Error('MRT: Invalid control/object for assigning target parent controls. You can only select '\
                                                                                               'the root FK control handle.')
                 return
 
-            # If the character control has a valid pre-transform below the parent switch group.
-            parent = cmds.listRelatives(selection, parent=True)[0]
-            if re.match(selection+'_grp', parent):
+            # If the character control has a valid parent switch group above it, continue.
+            parentSwitch_grp = self.checkCharacterControlForParentSwitchGrp(selection)
+                
+            if parentSwitch_grp:
 
                 # Get the parent switch group
-                self.controlParentSwitchGrp = selection + '_parentSwitch_grp'
+                self.controlParentSwitchGrp = parentSwitch_grp
 
                 # Update the text field for character control (for parent switching)
                 cmds.textField(self.uiVars['c_rig_prntSwitch_textField'], edit=True, text=selection, font='plainLabelFont')
@@ -6641,7 +6536,7 @@ class MRT_UI(object):
                 for layer in sorted(targetInfoList):
 
                     # Character root control to be added as the first item in the parent target list
-                    if re.match('^MRT_character[A-Za-z0-9]*__root_transform$', layer):
+                    if re.match('^ROOT_CNTL$', layer):
                         cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], edit=True, 
                                          enable=True, appendPosition=[1, layer], height=scrollHeight, font='plainLabelFont')
                     else:
@@ -6694,26 +6589,24 @@ class MRT_UI(object):
         else:
             return
 
-        # If a character control or character root transform is selected (to be added as valid parent target).
-        if re.match('^MRT_character[A-Za-z0-9]*__\w+_handle$', selection) or \
-                                                    re.match('^MRT_character[A-Za-z0-9]*__root_transform$', selection):
+        # If a character control or character root control is selected (to be added as valid parent target).
+        if re.match('^\w+_CNTL$', selection):
 
             # Get the control to which parent target(s) are to be added.
             ins_control = cmds.textField(self.uiVars['c_rig_prntSwitch_textField'], query=True, text=True)
-
-            characterName = selection.partition('__')[0].partition('MRT_character')[2]
-            ins_control = ins_control.partition('__')[2]
-            ins_control_h_name = re.split('_[A-Z]', ins_control)[0]
+            
+            # Get the control rig name.
+            controlRigName = ins_control.partition('_')[0]
             
             # Get the root joint in its joint hierarchy.
-            ins_control_rootJoint = 'MRT_character%s__%s_root_node_transform'%(characterName, ins_control_h_name)
+            ins_control_rootJoint = '%s_root_node_joint' % controlRigName
             
-            # If the selected control is not the character root transform
-            if not re.match('^MRT_character[A-Za-z0-9]*__root_transform$', selection):
+            # If the selected control is not the character root control.
+            if not re.match('^ROOT_CNTL$', selection):
 
                 selectionName = selection.partition('__')[2]
                 selectionUserSpecName = re.split('_[A-Z]', selectionName)[0]
-                rootJoint = 'MRT_character%s__%s_root_node_transform'%(characterName, selectionUserSpecName)
+                rootJoint = '%s_root_node_joint' % selectionUserSpecName
                 
                 # If the root joint for the joint hierarchy belonging to the selected control doesn't match.
                 if rootJoint != ins_control_rootJoint:
@@ -6735,7 +6628,7 @@ class MRT_UI(object):
 
                 if not result:
                     Error('MRT Warning: The joint hierarchy for the selected control rig has no parent hierarchy. '\
-                                 'If you\'re adding the character root transform as a target parent for a root FK control '\
+                                 'If you\'re adding the character root control as a target parent for a root FK control '\
                                  'assigned to this hierarchy, it will have no effect.')
 
             # Now add the selection to the parent target list in the UI.
@@ -6757,7 +6650,7 @@ class MRT_UI(object):
 
         else:
             Error('MRT: Invalid control/object as a parent target. You can only select a control ' \
-                         'transform (with suffix \'handle\') or the character root transform.')
+                         'transform (with suffix \'handle\') or the character root control.')
 
         self.updateRemoveAllButtonStatForParentSwitching()
 
@@ -6849,27 +6742,22 @@ class MRT_UI(object):
             selection = selection[-1]
 
         # Check if the selected object is a character control
-        if re.match('^MRT_character[A-Za-z0-9]*__\w+_handle$', selection):
+        if re.match('^\w+_CNTL$', selection):
 
-            # Check if the character control has a parent switch group
-            transformParent = cmds.listRelatives(selection, parent=True)
-            if transformParent:
-                if re.match(selection+'_grp', transformParent[0]):
-                    Error('MRT: The selected control handle already has parent switch group. Skipping')
-                    return
+            # Check if the character control has a parent switch group.
+            if checkCharacterControlForParentSwitchGrp(selection):
+                Error('MRT: The selected control handle already has parent switch group. Skipping.')
+                return
         else:
             Error('MRT: Invalid selection. Please select a valid character control.')
             return
 
-        characterName = selection.partition('__')[0].partition('MRT_character')[2]
-        selectionName = selection.partition('__')[2]
-        selectionUserSpecName = re.split('_[A-Z]', selectionName)[0]
-        rootJoint = 'MRT_character%s__%s_root_node_transform'%(characterName, selectionUserSpecName)
+        selectionUserSpecName = selectionName.partition('_')[0]
+        rootJoint = '%s_root_node_joint' % selectionUserSpecName
 
         # Create the parent switch group node which will receive the constraints from parent transforms.
         parentSwitch_grp = cmds.group(empty=True, name=selection + '_parentSwitch_grp')
-        tempConstraint = cmds.parentConstraint(selection, parentSwitch_grp, maintainOffset=False)[0]
-        cmds.delete(tempConstraint)
+        cmds.delete(cmds.parentConstraint(selection, parentSwitch_grp, maintainOffset=False))
 
         # Add custom attributes to the group node, and create a child transform to contain the main transform
         # (for which the parent switch group is being created).
@@ -6882,23 +6770,17 @@ class MRT_UI(object):
         cmds.addAttr(parentSwitch_grp, dataType='string', longName='parentTargetList', keyable=False)
         cmds.setAttr(parentSwitch_grp+'.parentTargetList', 'None', type='string', lock=True)
 
-        # Create a pre-transform for the character control, to be placed below the parent switch group.
-        transform_grp = cmds.duplicate(parentSwitch_grp, parentOnly=True, name=selection+'_grp')[0]
-
         # If the character control has a parent, get it.
         transformParent = cmds.listRelatives(selection, parent=True)
         if transformParent:
             cmds.parent(parentSwitch_grp, transformParent[0], absolute=True)
-
-        # Parent the control pre-transform below the parent switch group.
-        cmds.parent(transform_grp, parentSwitch_grp, absolute=True)
-
-        # Parent the control below its pre-transform
-        cmds.parent(selection, transform_grp, absolute=True)
+            
+        # Parent the control below the parent switch group.
+        cmds.parent(selection, parentSwitch_grp, absolute=True)
 
         # Add the control pre-transform and the parent switch group to the control's container.
         controlContainer = cmds.container(selection, query=True, findContainer=True)
-        mfunc.addNodesToContainer(controlContainer, [parentSwitch_grp, transform_grp])
+        mfunc.addNodesToContainer(controlContainer, parentSwitch_grp)
 
 
     def create_update_parentSwitchTargetsForControl(self, *args):
@@ -6906,26 +6788,26 @@ class MRT_UI(object):
         This method applies the changes to parent switch space options in the UI. It adds or removes the parent
         targets for a selected / inserted control object.
         '''
-        # Get all the current parent targets
+        # Get all the current parent targets.
         allItems = cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], query=True, allItems=True)
         
-        # Get the control to apply changes to parent switching
+        # Get the control to apply changes to parent switching.
         ss_control = cmds.textField(self.uiVars['c_rig_prntSwitch_textField'], query=True, text=True)
 
         updatedTargets = []
         existingTargets = []
 
-        # Collect the parent targets
+        # Collect the parent targets.
         for item in allItems:
             if not '< no current target(s) >' in item:
                 item = item.partition('(')[0].strip()
                 updatedTargets.append(item)
 
-        # Get the current parent targets
+        # Get the current parent targets.
         for item in self.existingParentSwitchTargets:
             existingTargets.append(item)
 
-        # Now get the parent targets to be updated
+        # Now get the parent targets to be updated.
         targetsToBeRemoved = set.difference(set(existingTargets), set(updatedTargets))
         targetsToBeAdded = set.difference(set(updatedTargets), set(existingTargets))
 
@@ -6935,9 +6817,9 @@ class MRT_UI(object):
         # containers currently in the scene.
         nodes = []
         nodes.extend([item for item in cmds.ls(type='transform') if
-                                                re.match('^MRT_character[0-9a-zA-Z]*__(world|root){1}_transform$', item)])
+                                                re.match('^(WORLD|ROOT)_CNTL$', item)])
         nodes.extend([item for item in cmds.ls(type='container') if
-                                                            re.match('^MRT_character[0-9a-zA-Z]*__\w+_Container$', item)])
+                                                re.match('^MRT_[0-9a-zA-Z]*__\w+_container$', item)])
 
         # Iterate through the nodes, remove all keyframes, and set the channel attributes.
         for node in nodes:
@@ -6951,26 +6833,27 @@ class MRT_UI(object):
                         cmds.setAttr(node+'.'+attr, 1)
 
         if targetsToBeRemoved:
+            
             for target in targetsToBeRemoved:
 
-                # Delete the switch condition node
+                # Delete the switch condition node.
                 parentSwitchCondition = '%s_%s_parentSwitch_condition' % (ss_control, target)
                 cmds.delete(parentSwitchCondition)
 
-                # Remove the target (to be removed) from the enum parent options list
+                # Remove the target (to be removed) from the enum parent options list.
                 attrs = cmds.addAttr(ss_control+'.targetParents', query=True, enumName=True)
                 attrs = attrs.split(':')
                 index = attrs.index(target)
                 attrs.pop(index)
                 cmds.addAttr(ss_control+'.targetParents', edit=True, enumName=':'.join(attrs))
 
-                # Remove the target constraint
+                # Remove the target constraint.
                 if cmds.objectType(ss_control, isType='joint'):
                     cmds.orientConstraint(target, self.controlParentSwitchGrp, edit=True, remove=True)
                 else:
                     cmds.parentConstraint(target, self.controlParentSwitchGrp, edit=True, remove=True)
 
-                # Update the parent target transform list
+                # Update the parent target transform list.
                 currentTargets = cmds.getAttr(self.controlParentSwitchGrp+'.parentTargetList')
                 currentTargets = currentTargets.split(',')
                 index = currentTargets.index(target)
@@ -6983,7 +6866,7 @@ class MRT_UI(object):
         if targetsToBeAdded:
             for target in targetsToBeAdded:
 
-                # Apply the constraint from the parent target
+                # Apply the constraint from the parent target.
                 if cmds.objectType(ss_control, isType='joint'):
                     constraint = cmds.orientConstraint(target, self.controlParentSwitchGrp, maintainOffset=True,
                                                             name=self.controlParentSwitchGrp+'_orientConstraint')[0]
@@ -6991,12 +6874,12 @@ class MRT_UI(object):
                     constraint = cmds.parentConstraint(target, self.controlParentSwitchGrp, maintainOffset=True,
                                                             name=self.controlParentSwitchGrp+'_parentConstraint')[0]
 
-                # Update the parent target options enum list on the control
+                # Update the parent target options enum list on the control.
                 attrs = cmds.addAttr(ss_control+'.targetParents', query=True, enumName=True)
                 attrs = attrs + ':' + target
                 cmds.addAttr(ss_control+'.targetParents', edit=True, enumName=attrs)
                 
-                # Create the parent switch condition
+                # Create the parent switch condition.
                 parentSwitchCondition = cmds.createNode('condition', name=ss_control+'_'+target+'_parentSwitch_condition',
                                                                                                           skipSelect=True)
                 # Connect the condition to drive the constraint weight for the new parent target.
@@ -7018,13 +6901,13 @@ class MRT_UI(object):
                     cmds.setAttr(self.controlParentSwitchGrp+'.parentTargetList', lock=False)
                     cmds.setAttr(self.controlParentSwitchGrp+'.parentTargetList', target, type='string', lock=True)
         
-        # Check if the parent target string list is valid after updates
+        # Check if the parent target string list is valid after updates.
         targetInfo = cmds.getAttr(self.controlParentSwitchGrp+'.parentTargetList')
         if not targetInfo:
             cmds.setAttr(self.controlParentSwitchGrp+'.parentTargetList', lock=False)
             cmds.setAttr(self.controlParentSwitchGrp+'.parentTargetList', 'None', type='string', lock=True)
         
-        # Refresh the parent target indices in all parent switch conditions for the control
+        # Refresh the parent target indices in all parent switch conditions for the control.
         allAttrs = cmds.addAttr(ss_control+'.targetParents', query=True, enumName=True)
         allAttrs = allAttrs.split(':')
         for attr in allAttrs[1:]:
@@ -7032,13 +6915,13 @@ class MRT_UI(object):
             parentSwitchCondition = ss_control+'_'+attr+'_parentSwitch_condition'
             cmds.setAttr(parentSwitchCondition+'.firstTerm', index)
         
-        # Set the default parent target
+        # Set the default parent target.
         if len(allAttrs) == 1:
             cmds.setAttr(ss_control+'.targetParents', 0)
         if len(allAttrs) > 1:
             cmds.setAttr(ss_control+'.targetParents', 1)
         
-        # Cleanup
+        # Cleanup.
         self.clearParentSwitchControlField()
         cmds.select(ss_control, replace=True)
         self.insertValidSelectionForParentSwitching()

@@ -2016,9 +2016,9 @@ class MRT_Module(object):
                     cmds.delete(node)
                     
             # Get the names of the proxy geo transforms.
-            proxyElbowGeoPreTransform = '_proxy_elbow_geo_preTransform'
-            proxyElbowGeoScaleTransform = '_proxy_elbow_geo_scaleTransform'
-            proxyElbowTransform = '_proxy_elbow_geo'
+            proxyElbowGeoPreTransform = 'proxy_elbow_preTransform'
+            proxyElbowGeoScaleTransform = 'proxy_elbow_scaleTransform'
+            proxyElbowTransform = 'proxy_elbow_geo'
             
             # If the current module is a mirrored module (on the -ve side of the creation plane)
             # and part of a mirrored module pair, and if mirror instancing is enabled for module proxy geometry.
@@ -2032,8 +2032,8 @@ class MRT_Module(object):
                 
                 # Duplicate the "original" elbow proxy geometry as an instance. The original elbow proxy geometry
                 # is on the node for its mirror module on the +ve side of the creation plane. 
-                originalProxyElbowTransform = originalNamespace+':'+mfunc.stripMRTNamespace(joint)[1]+proxyElbowTransform
-                transformInstance = cmds.duplicate(originalProxyElbowTransform, instanceLeaf=True, name='_proxy_elbow_geo')[0]
+                originalProxyElbowTransform = originalNamespace+':'+mfunc.stripMRTNamespace(joint)[1]+'_'+proxyElbowTransform
+                transformInstance = cmds.duplicate(originalProxyElbowTransform, instanceLeaf=True, name='proxy_elbow_geo')[0]
                 cmds.parent(transformInstance, proxyElbowGeoScaleTransform, relative=True)
                 
                 # Set the scale factor for the proxy's scale transform to "mirror" the vertex positions. 
@@ -2111,11 +2111,11 @@ class MRT_Module(object):
             
             # Organise the proxy geo hierarchy for the node.
             cmds.parent(proxyElbowGeoPreTransform, self.proxyGeoGrp, absolute=True)
-            cmds.rename(proxyElbowGeoPreTransform, joint+proxyElbowGeoPreTransform)
-            cmds.rename(proxyElbowGeoScaleTransform, joint+proxyElbowGeoScaleTransform)
+            cmds.rename(proxyElbowGeoPreTransform, joint.rpartition('transform')[0] + proxyElbowGeoPreTransform)
+            cmds.rename(proxyElbowGeoScaleTransform, joint.rpartition('transform')[0] + proxyElbowGeoScaleTransform)
             
             # Rename the proxy elbow geo for the node.
-            cmds.rename(proxyElbowTransform, joint+proxyElbowTransform)
+            cmds.rename(proxyElbowTransform, joint.rpartition('transform')[0] + proxyElbowTransform)
 
         cmds.select(clear=True)
 
@@ -2144,8 +2144,8 @@ class MRT_Module(object):
                     cmds.delete(node)
             
             # Get the names of the proxy geo transforms.
-            proxyBoneGeoPreTransform = 'proxy_bone_geo_preTransform'
-            proxyBoneGeoScaleTransform = 'proxy_bone_geo_scaleTransform'
+            proxyBoneGeoPreTransform = 'proxy_bone_preTransform'
+            proxyBoneGeoScaleTransform = 'proxy_bone_scaleTransform'
             proxyBoneTransform = 'proxy_bone_geo'
             
             # Set the rotate and scale pivot for the proxy geo transforms, based on the aim axis for the module node.
@@ -2207,8 +2207,7 @@ class MRT_Module(object):
             cmds.parent(proxyBoneGeoPreTransform, self.proxyGeoGrp, absolute=True)
             
             # Orient the bone proxy geo with the node joint.
-            tempConstraint = cmds.orientConstraint(joint, proxyBoneGeoPreTransform, maintainOffset=False)
-            cmds.delete(tempConstraint)
+            cmds.delete(cmds.orientConstraint(joint, proxyBoneGeoPreTransform, maintainOffset=False))
             
             # Connect the module transform scaling to the proxy bone geom transform.
             for axis in self.nodeAxes[1:]:
@@ -2231,9 +2230,9 @@ class MRT_Module(object):
                                                   name=self.nodeJoints[index+1]+'_'+proxyBoneGeoPreTransform+'_aimConstraint')
             
             # Rename the bone proxy geo transforms for node node joint.
-            cmds.rename(proxyBoneGeoPreTransform, joint+'_'+proxyBoneGeoPreTransform)
-            cmds.rename(proxyBoneGeoScaleTransform, joint+'_'+proxyBoneGeoScaleTransform)
-            cmds.rename(proxyBoneTransform, joint+'_'+proxyBoneTransform)
+            cmds.rename(proxyBoneGeoPreTransform, joint.rpartition('transform')[0] + proxyBoneGeoPreTransform)
+            cmds.rename(proxyBoneGeoScaleTransform, joint.rpartition('transform')[0] + proxyBoneGeoScaleTransform)
+            cmds.rename(proxyBoneTransform, joint.rpartition('transform')[0] + proxyBoneTransform)
 
         cmds.select(clear=True)
 

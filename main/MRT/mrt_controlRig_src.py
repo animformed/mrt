@@ -59,7 +59,7 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
     customHierarchy = None
 
 
-    def __init__(self, characterName, rootJoint):
+    def __init__(self, characterName, rootJoint, ctrlRig):
 
         '''Initializing instance attributes for use in all methods to be defined.'''
 
@@ -67,13 +67,13 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
         self.characterName = characterName
 
         # Get the user-defined for the selected joint hierarchy on which control is to be applied.
-        self.userSpecName = re.split('_root_node_transform', rootJoint)[0].partition('__')[2]
+        self.userSpecName = rootJoint.partition('_root_node_joint')[0]
 
         # Get the name of the root transform control (Large red-blue coloured cross-shaped control).
-        self.ch_root_transform = 'MRT_character'+characterName+'__root_transform'
+        self.ch_root_transform = '|%s|WORLD_CNTL|ROOT_CNTL' % characterName
 
         # Get the name of the character world transform control (Large grey-coloured control curve with four arrows).
-        self.ch_world_transform = 'MRT_character'+characterName+'__world_transform'
+        self.ch_world_transform = '|%s|WORLD_CNTL' % characterName
 
         # Get the name of the root joint of the selected hierarchy.
         self.rootJoint = rootJoint
@@ -82,7 +82,7 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
         self.controlColour = cmds.colorIndexSliderGrp('__MRT_controlLayerColour_IndexSliderGrp', query=True, value=True) - 1
 
         # Get a list of all joints in the "skinJointList" set.
-        allJoints = (cmds.getAttr('MRT_character'+characterName+'__mainGrp.skinJointList')).split(',')
+        allJoints = cmds.getAttr('|%s.skinJointList' % characterName).split(',')
 
         # Find and sort the names of joints in the selected joint hierarchy from "allJoints".
         self.selCharacterHierarchy = []
@@ -107,9 +107,12 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
         # For this you'll get one of the two values, "world" or "local_orientation".
         self.transOriFunc = cmds.getAttr(rootJoint+'.translationFunction')
 
-        # Create the control attribute / naming prefix.
-        self.ctrlAttrPrefix = re.split('_root_node_transform', rootJoint)[0].partition('__')[2]
-        self.namePrefix = rootJoint.partition('_root_node_transform')[0]
+        # Get the user specified name for the hierarchy, nice name for the control rig layer, and create the name prefix.
+        self.ctrlRigName = ''.join([item.title() for item in ctrlRig.split('_')])
+        self.namePrefix = self.userSpecName + '_' + ctrlRigName
+        
+        # Create a container for the control rig.
+        self.ctrl_container = cmds.createNode('container', name='MRT_%s__%s_container' % (hierarchyName, ctrlRigName), skipSelect=True)        
         
         # Reset all controls on the character to their default positions, if any.
         # This will also turn off any control weights and their visibility for the selected joint hierarchy.
@@ -118,7 +121,7 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
         self.toggleHierarchyCtrlWeights()
         self.toggleHierarchyCtrlVisibility()
 
-        # Force update on all joint attributes, after resetAllControls()
+        # Force update on all joint attributes, after resetAllControls().
         for joint in allJoints:
             cmds.getAttr(joint+'.translate')
             cmds.getAttr(joint+'.rotate')
@@ -128,6 +131,18 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
         self.collectedNodes = []
 
 
+    def getCtrlNiceNameForPublish(self, ctrl):
+        '''
+        Returns a nice name for publishing a control/transform name for a container.
+        Eg., "l_arm_root_node_CNTL" returns "lArmRootNodeCntl".
+        '''
+        name_tokens = ctrl.split('_')
+        if name_tokens > 1:
+            return name_tokens[0].lower() + ''.join([token.title() for token in name_tokens[1:]])
+        else:
+            return None
+    
+    
     def getHierarchyCtrlContainers(self):
 
         '''This class method will return a list of all containers in the scene for control rigs currently applied to the
@@ -142,7 +157,8 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
         if rigLayers != 'None':
             rigLayers = rigLayers.split(',')
             for layer in rigLayers:
-                name = '%s_%s_Container'%(self.namePrefix, layer)
+                rigLayerName = ''.join([item.title() for item in layer.split('_')])
+                name = 'MRT_%s__%s_container' % (self.userSpecName, rigLayerName)
                 containers.append(name)
 
         return containers
@@ -160,7 +176,7 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
         if ctrl_attribs:
             for attr in ctrl_attribs[3:]:
                 if not attr.endswith('visibility'):
-                    cmds.setAttr('MRT_character'+self.characterName+'__root_transform'+'.'+attr, value)
+                    cmds.setAttr(self.ch_root_transform+'.'+attr, value)
 
 
     def resetAllControls(self):
@@ -173,9 +189,9 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
         # Collect the character root and world transform controls, and all the control rig containers currently in the scene.
         nodes = []
         nodes.extend([item for item in cmds.ls(type='transform') \
-                      if re.match('^MRT_character%s__(world|root){1}_transform$'%(self.characterName), item)])
+                      if re.match('^(WORLD|ROOT)_CNTL$' % (self.characterName), item)])
         nodes.extend([item for item in cmds.ls(type='container') \
-                      if re.match('^MRT_character%s__\w+_Container$'%(self.characterName), item)])
+                      if re.match('^MRT_[0-9a-zA-Z]*__\w+_container$', item)])
         # Iterate through the nodes, remove all keyframes, and set the channel attributes.
         for node in nodes:
             mel.eval('cutKey -t ":" '+node+';')
@@ -198,9 +214,9 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
         if ctrl_attribs:
             for attr in ctrl_attribs[3:]:
                 attrUserSpec = re.split('_[A-Z]', attr)[0]
-                if re.match('^%s$'%(self.userSpecName), attrUserSpec):
+                if re.match('^%s$' % (self.userSpecName), attrUserSpec):
                     if not attr.endswith('visibility'):
-                        cmds.setAttr('MRT_character'+self.characterName+'__root_transform'+'.'+attr, value)
+                        cmds.setAttr(self.ch_root_transform+'.'+attr, value)
 
 
     def toggleHierarchyCtrlVisibility(self, value=0):
@@ -213,9 +229,9 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
         if ctrl_attribs:
             for attr in ctrl_attribs[3:]:
                 attrUserSpec = re.split('_[A-Z]', attr)[0]
-                if re.match('^%s$'%(self.userSpecName), attrUserSpec):
+                if re.match('^%s$' % (self.userSpecName), attrUserSpec):
                     if attr.endswith('visibility'):
-                        cmds.setAttr('MRT_character'+self.characterName+'__root_transform'+'.'+attr, value)
+                        cmds.setAttr(self.ch_root_transform+'.'+attr, value)
 
 
     def createCtrlRigWeightAttributeOnRootTransform(self, ctrlAttr, visibility_nodes=[]):
@@ -248,7 +264,7 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
             for node in visibility_nodes:
                 cmds.connectAttr(self.ch_root_transform+'.'+ctrlAttr+'_visibility', node+'.visibility')
 
-
+                
     def createParentSwitchGrpForTransform(self, *args, **kwargs):
 
         '''Creates a parent group node for a given control transform (above its pre-transform or pivot, if specified), 
@@ -421,13 +437,7 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
         self.driverJointLayerSet = jointSet
 
         # Update the instance attribute to contain the driver constraints for the joint hiearachy.
-        self.driverConstraintsForInput = driver_constraints
-
-        # Update the naming prefix for the control rig.
-        self.namePrefix = self.namePrefix + '_FK_Control'
-        
-        # Create a container for the control rig.
-        ctrl_container = cmds.createNode('container', name=self.namePrefix+'_Container', skipSelect=True)
+        self.driverConstraintsForInput = driver_constraints        
         
         # Calculate the size of shape for the FK control.
         shapeRadius = cmds.getAttr(self.rootJoint+'.radius') * 0.35
@@ -455,15 +465,15 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
 
         # Create a custom keyable attribute on the character root transform by the control name to adjust the weight of the
         # driver joint layer by using the method "createCtrlRigWeightAttributeOnRootTransform".
-        self.createCtrlRigWeightAttributeOnRootTransform(self.ctrlAttrPrefix+'_FK_Control', jointSet)
+        self.createCtrlRigWeightAttributeOnRootTransform(self.namePrefix, jointSet)
 
         # Add the joint layer nodes to the control rig container.
-        mfunc.addNodesToContainer(ctrl_container, self.collectedNodes, True)
+        mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, True)
 
         # Publish the rotate attribute on the driver layer joints (which is used for direct control).
         for joint in jointSet:
-            jointName = re.split('MRT_character%s__'%(self.characterName), joint)[1]
-            cmds.container(ctrl_container, edit=True, publishAndBind=[joint+'.rotate', jointName+'_rotate'])
+            jointName = ''.join([token.title() for token in joint.split('_')])
+            cmds.container(self.ctrl_container, edit=True, publishAndBind=[joint+'.rotate', jointName+'_rotate'])
         cmds.select(clear=True)
 
 
@@ -491,12 +501,6 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
         # Update the instance attribute to contain the driver constraints for the joint hierarachy.
         self.driverConstraintsForInput = driver_constraints
 
-        # Update the naming prefix for the control rig.
-        self.namePrefix = self.namePrefix + '_FK_Control_Stretchy'
-        
-        # Create a container for the control rig.
-        ctrl_container = cmds.createNode('container', name=self.namePrefix+'_Container', skipSelect=True)        
-
         # Calculate the size of shape for the FK control.
         shapeRadius = cmds.getAttr(self.rootJoint+'.radius') * 0.35
 
@@ -511,7 +515,7 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
             cmds.setAttr(joint+'.overrideEnabled', 1)
             cmds.setAttr(joint+'.overrideColor', self.controlColour)
             cmds.setAttr(joint+'.visibility', keyable=False)
-            
+
             xhandle = objects.load_xhandleShape(joint, colour=self.controlColour, transformOnly=True)
             cmds.setAttr(xhandle['shape']+'.localScaleX', shapeRadius)
             cmds.setAttr(xhandle['shape']+'.localScaleY', shapeRadius)
@@ -520,16 +524,16 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
 
         # Create a custom keyable attribute on the character root transform by the control name to adjust the
         # weight of the driver joint layer by using the method "createCtrlRigWeightAttributeOnRootTransform".
-        self.createCtrlRigWeightAttributeOnRootTransform(self.ctrlAttrPrefix+'_FK_Control_Stretchy', jointSet)
+        self.createCtrlRigWeightAttributeOnRootTransform(self.namePrefix, jointSet)
 
         # Add the joint layer nodes (along with its parent switch group) to the control rig container.
-        mfunc.addNodesToContainer(ctrl_container, self.collectedNodes, True)
+        mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, True)
 
         # Publish the rotate and scale attributes on the driver layer joints (which is used for direct control).
         for joint in jointSet:
-            jointName = re.split('MRT_character%s__'%(self.characterName), joint)[1]
-            cmds.container(ctrl_container, edit=True, publishAndBind=[joint+'.rotate', jointName+'_rotate'])
-            cmds.container(ctrl_container, edit=True, publishAndBind=[joint+'.scale', jointName+'_scale'])
+            jointName = ''.join([token.title() for token in joint.split('_')])
+            cmds.container(self.ctrl_container, edit=True, publishAndBind=[joint+'.rotate', jointName+'_rotate'])
+            cmds.container(self.ctrl_container, edit=True, publishAndBind=[joint+'.scale', jointName+'_scale'])
         cmds.select(clear=True)
 
 
@@ -600,15 +604,9 @@ class CustomLegControl(BaseJointControl):
         '''Creates controls for a reverse IK leg with a main foot transform and a pole vector transform in auto
         non-flip / manual mode.'''
 
-        # Update the naming prefix for the control rig.
-        self.namePrefix = self.namePrefix + '_Reverse_IK_Leg_Control'
-        
-        # Create a container for the control rig.
-        ctrl_container = cmds.createNode('container', name=self.namePrefix+'_Container', skipSelect=True)        
-
         # Control group, to be placed under "__controlGrp".
-        ctrlGrp = cmds.group(empty=True, name=self.namePrefix + '_Grp', \
-                             parent='MRT_character%s__controlGrp'%(self.characterName))
+        ctrlGrp = cmds.group(empty=True, name=self.namePrefix + '_ctrlGrp', \
+                             parent='|%s|controls' % self.characterName)
         
         # Add it to the node list to be added to the control rig container.
         self.collectedNodes.append(ctrlGrp)
@@ -706,7 +704,7 @@ class CustomLegControl(BaseJointControl):
 
         # Create the IK control handle.
         shapeRadius = cmds.getAttr(self.rootJoint+'.radius') * 0.88
-        legControl = objects.load_xhandleShape(self.namePrefix+'_handle', colour=self.controlColour)
+        legControl = objects.load_xhandleShape(self.namePrefix+'_CNTL', colour=self.controlColour)
         cmds.setAttr(legControl['shape']+'.localScaleX', shapeRadius)
         cmds.setAttr(legControl['shape']+'.localScaleY', shapeRadius)
         cmds.setAttr(legControl['shape']+'.localScaleZ', shapeRadius)
@@ -894,7 +892,7 @@ class CustomLegControl(BaseJointControl):
         ball_heel_vec_mag = math.sqrt(reduce(lambda x,y: x+y, [component**2 for component in ball_heel_vec])) * 0.3
 
         # Create and place the foot bank transform controls.
-        bankPivot_1_ctrl = objects.load_xhandleShape(self.namePrefix+'_footBankPivot_1_handle', 
+        bankPivot_1_ctrl = objects.load_xhandleShape(self.namePrefix+'_footBankPivot_1_CNTL', 
                                                           colour=self.controlColour, transformOnly=True)
         cmds.setAttr(bankPivot_1_ctrl['shape']+'.localScaleX', manualPVHandleShapeRadius * 0.7)
         cmds.setAttr(bankPivot_1_ctrl['shape']+'.localScaleY', manualPVHandleShapeRadius * 0.7)
@@ -910,7 +908,7 @@ class CustomLegControl(BaseJointControl):
             if not val:
                 cmds.setAttr(bankPivot_1_ctrl['transform']+'.translate'+axis, keyable=False, channelBox=False, lock=True)
 
-        bankPivot_2_ctrl = objects.load_xhandleShape(self.namePrefix+'_footBankPivot_2_handle', 
+        bankPivot_2_ctrl = objects.load_xhandleShape(self.namePrefix+'_footBankPivot_2_CNTL', 
                                                           colour=self.controlColour, transformOnly=True)
         cmds.setAttr(bankPivot_2_ctrl['shape']+'.localScaleX', manualPVHandleShapeRadius * 0.7)
         cmds.setAttr(bankPivot_2_ctrl['shape']+'.localScaleY', manualPVHandleShapeRadius * 0.7)
@@ -1095,18 +1093,18 @@ class CustomLegControl(BaseJointControl):
         cmds.setAttr(legControl['transform']+'.Foot_Bank', 0)
         
         # Add the nodes to the control rig container, and then publish the necessary keyable attributes.
-        mfunc.addNodesToContainer(ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
+        mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
 
-        mfunc.updateContainerNodes(ctrl_container)
+        mfunc.updateContainerNodes(self.ctrl_container)
         
         legControlAttrs = cmds.listAttr(legControl['transform'], keyable=True, visible=True, unlocked=True)
         legControlName = legControl['transform'].partition('__')[2]
         for attr in legControlAttrs:
             if not re.search('Foot_Toe_Straight|Foot_Toe_Lift', attr):
-                cmds.container(ctrl_container, edit=True, publishAndBind=[legControl['transform']+'.'+attr, \
+                cmds.container(self.ctrl_container, edit=True, publishAndBind=[legControl['transform']+'.'+attr, \
                                                                           legControlName+'_'+attr])
         for axis in ['X', 'Y', 'Z']:
-            cmds.container(ctrl_container, edit=True, publishAndBind=[knee_pv['transform']+'.translate'+axis, \
+            cmds.container(self.ctrl_container, edit=True, publishAndBind=[knee_pv['transform']+'.translate'+axis, \
                                                                       'kneePVmanual_control_translate'+axis])
         cmds.setAttr(legControl['transform']+'.overrideEnabled', 1)
         cmds.connectAttr('MRT_character'+self.characterName+'_control_rig.visibility', \
@@ -1118,7 +1116,7 @@ class CustomLegControl(BaseJointControl):
         
         # Create a custom keyable attribute on the character root transform by the control name to adjust the weight
         # of the driver joint layer by using the method "createCtrlRigWeightAttributeOnRootTransform".
-        self.createCtrlRigWeightAttributeOnRootTransform(self.ctrlAttrPrefix+'_Reverse_IK_Leg_Control',
+        self.createCtrlRigWeightAttributeOnRootTransform(self.namePrefix,
                                                          [legControl['transform'], bankPivot_1_ctrl['transform'],
                                                           bankPivot_2_ctrl['transform'], knee_pv['transform']])
         cmds.select(clear=True)
@@ -1133,7 +1131,7 @@ class CustomLegControl(BaseJointControl):
         self.namePrefix = self.namePrefix + '_Reverse_IK_Leg_Control_Stretchy'
         
         # Create a container for the control rig.
-        ctrl_container = cmds.createNode('container', name=self.namePrefix+'_Container', skipSelect=True)        
+        self.ctrl_container = cmds.createNode('container', name=self.namePrefix+'_container', skipSelect=True)        
 
         # Control group, to be placed under "__controlGrp".
         ctrlGrp = cmds.group(empty=True, name=self.namePrefix + '_Grp', \
@@ -1655,17 +1653,17 @@ class CustomLegControl(BaseJointControl):
         cmds.setAttr(legControl['transform']+'.Foot_Bank', 0)
         
         # Add the nodes to the control rig container, and then publish the necessary keyable attributes.
-        mfunc.addNodesToContainer(ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
+        mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
 
-        mfunc.updateContainerNodes(ctrl_container)
+        mfunc.updateContainerNodes(self.ctrl_container)
 
         legControlAttrs = cmds.listAttr(legControl['transform'], keyable=True, visible=True, unlocked=True)
         legControlName = legControl['transform'].partition('__')[2]
         for attr in legControlAttrs:
             if not re.search('Foot_Toe_Straight|Foot_Toe_Lift', attr):
-                cmds.container(ctrl_container, edit=True, publishAndBind=[legControl['transform']+'.'+attr, legControlName+'_'+attr])
+                cmds.container(self.ctrl_container, edit=True, publishAndBind=[legControl['transform']+'.'+attr, legControlName+'_'+attr])
         for axis in ['X', 'Y', 'Z']:
-            cmds.container(ctrl_container, edit=True, publishAndBind=[knee_pv['transform']+'.translate'+axis, \
+            cmds.container(self.ctrl_container, edit=True, publishAndBind=[knee_pv['transform']+'.translate'+axis, \
                                                                       'kneePVmanual_control_translate'+axis])
         cmds.setAttr(legControl['transform']+'.overrideEnabled', 1)
         cmds.connectAttr('MRT_character'+self.characterName+'_control_rig.visibility', \
@@ -1676,8 +1674,11 @@ class CustomLegControl(BaseJointControl):
 
         # Create a custom keyable attribute on the character root transform by the control name to adjust the weight
         # of the driver joint layer by using the method "createCtrlRigWeightAttributeOnRootTransform".
-        self.createCtrlRigWeightAttributeOnRootTransform(self.ctrlAttrPrefix+'_Reverse_IK_Leg_Control_Stretchy', \
-                                                         [legControl['transform'], bankPivot_1_ctrl['transform'], bankPivot_2_ctrl['transform'], knee_pv['transform']])
+        self.createCtrlRigWeightAttributeOnRootTransform(self.namePrefix, \
+                                                         [legControl['transform'], 
+                                                          bankPivot_1_ctrl['transform'], 
+                                                          bankPivot_2_ctrl['transform'], 
+                                                          knee_pv['transform']])
 
         cmds.select(clear=True)
 
@@ -1720,7 +1721,7 @@ class JointChainControl(BaseJointControl):
         self.namePrefix = self.namePrefix + '_Dynamic_FK_Control'
 
         # Create a container for the control rig.
-        ctrl_container = cmds.createNode('container', name=self.namePrefix+'_Container', skipSelect=True)
+        self.ctrl_container = cmds.createNode('container', name=self.namePrefix+'_container', skipSelect=True)
 
         # Get the radius of the shape to be applied to the FK control joints.
         shapeRadius = cmds.getAttr(self.rootJoint+'.radius') * 0.35
@@ -1927,16 +1928,16 @@ class JointChainControl(BaseJointControl):
         cmds.select(clear=True)
 
         # Add all the rest of the nodes to the control rig container.
-        mfunc.addNodesToContainer(ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
+        mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
         
         # Publish the rotate attributes for the control joints.
         for joint in ctrlJointSet:
             jointName = re.split('MRT_character%s__'%(self.characterName), joint)[1]
-            cmds.container(ctrl_container, edit=True, publishAndBind=[joint+'.rotate', jointName+'_rotate'])
+            cmds.container(self.ctrl_container, edit=True, publishAndBind=[joint+'.rotate', jointName+'_rotate'])
             
         # Create a custom keyable attribute on the character root transform by the control name to adjust the weight of
         # the driver joint layer by using the method "createCtrlRigWeightAttributeOnRootTransform".
-        self.createCtrlRigWeightAttributeOnRootTransform(self.ctrlAttrPrefix+'_Dynamic_FK_Control', \
+        self.createCtrlRigWeightAttributeOnRootTransform(self.namePrefix, \
                                                          ctrlJointSet+[dynSettingsCtrl['transform']])
         cmds.select(clear=True)
 
@@ -1969,7 +1970,7 @@ class JointChainControl(BaseJointControl):
         self.namePrefix = self.namePrefix + '_Dynamic_FK_Control_Stretchy'
 
         # Create a container for the control rig.
-        ctrl_container = cmds.createNode('container', name=self.namePrefix+'_Container', skipSelect=True)
+        self.ctrl_container = cmds.createNode('container', name=self.namePrefix+'_container', skipSelect=True)
 
         # Get the radius of the shape to be applied to the FK control joints.
         shapeRadius = cmds.getAttr(self.rootJoint+'.radius') * 0.35
@@ -2045,7 +2046,7 @@ class JointChainControl(BaseJointControl):
         cmds.namespace(setNamespace=':')
         cmds.namespace(moveNamespace=[tempNamespaceName, ':'], force=True)
         cmds.namespace(removeNamespace=tempNamespaceName)
-        mfunc.addNodesToContainer(ctrl_container, skin_nodes, includeHierarchyBelow=True)
+        mfunc.addNodesToContainer(self.ctrl_container, skin_nodes, includeHierarchyBelow=True)
         cmds.select(clear=True)
 
         # Create a control group node to place all DAG nodes (not part of the character joint hierarchy) under it.
@@ -2164,16 +2165,16 @@ class JointChainControl(BaseJointControl):
         cmds.select(clear=True)
 
         # Add all the rest of the nodes to the control rig container.
-        mfunc.addNodesToContainer(ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
+        mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
         
         # Publish the rotate attributes for the control joints.
         for joint in ctrlJointSet:
             jointName = re.split('MRT_character%s__'%(self.characterName), joint)[1]
-            cmds.container(ctrl_container, edit=True, publishAndBind=[joint+'.rotate', jointName+'_rotate'])
+            cmds.container(self.ctrl_container, edit=True, publishAndBind=[joint+'.rotate', jointName+'_rotate'])
             
         # Create a custom keyable attribute on the character root transform by the control name to adjust the weight
         # of the driver joint layer by using the method "createCtrlRigWeightAttributeOnRootTransform".
-        self.createCtrlRigWeightAttributeOnRootTransform(self.ctrlAttrPrefix+'_Dynamic_FK_Control_Stretchy', \
+        self.createCtrlRigWeightAttributeOnRootTransform(self.namePrefix, \
                                                          ctrlJointSet+[dynSettingsCtrl['transform']])
         cmds.select(clear=True)
 
@@ -2204,7 +2205,7 @@ class JointChainControl(BaseJointControl):
         self.namePrefix = self.namePrefix + '_Dynamic_End_IK_Control'
 
         # Create a container for the control rig.
-        ctrl_container = cmds.createNode('container', name=self.namePrefix+'_Container', skipSelect=True)
+        self.ctrl_container = cmds.createNode('container', name=self.namePrefix+'_container', skipSelect=True)
 
         # Create the driver joint layer.
         defJointSet, driver_constraints, defLayerRootJoint = mfunc.createFKlayerDriverOnJointHierarchy(self.selCharacterHierarchy,
@@ -2429,14 +2430,14 @@ class JointChainControl(BaseJointControl):
         cmds.select(clear=True)
 
         # Add all the rest of the nodes to the control rig container and publish necessary attributes.
-        mfunc.addNodesToContainer(ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
-        cmds.container(ctrl_container, edit=True, publishAndBind=[pvHandle['transform']+'.translate', 'dynamicEndIk_pvHandle_translate'])
-        cmds.container(ctrl_container, edit=True, publishAndBind=[controlHandle['transform']+'.translate', 'Dynamic_End_IK_Control_translate'])
-        cmds.container(ctrl_container, edit=True, publishAndBind=[controlHandle['transform']+'.IK_Twist', 'Dynamic_End_IK_Control_ik_twist'])
+        mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
+        cmds.container(self.ctrl_container, edit=True, publishAndBind=[pvHandle['transform']+'.translate', 'dynamicEndIk_pvHandle_translate'])
+        cmds.container(self.ctrl_container, edit=True, publishAndBind=[controlHandle['transform']+'.translate', 'Dynamic_End_IK_Control_translate'])
+        cmds.container(self.ctrl_container, edit=True, publishAndBind=[controlHandle['transform']+'.IK_Twist', 'Dynamic_End_IK_Control_ik_twist'])
 
         # Create a custom keyable attribute on the character root transform by the control name to adjust the weight of the
         # driver joint layer by using the method "createCtrlRigWeightAttributeOnRootTransform".
-        self.createCtrlRigWeightAttributeOnRootTransform(self.ctrlAttrPrefix+'_Dynamic_End_IK_Control', \
+        self.createCtrlRigWeightAttributeOnRootTransform(self.namePrefix, \
                                                          [controlHandle['transform'], pvHandle['transform'], dynSettingsCtrl['transform']])
         cmds.select(clear=True)
 
@@ -2466,7 +2467,7 @@ class JointChainControl(BaseJointControl):
         self.namePrefix = self.namePrefix + '_Dynamic_End_IK_Control_Stretchy'
 
         # Create a container for the control rig.
-        ctrl_container = cmds.createNode('container', name=self.namePrefix+'_Container', skipSelect=True)
+        self.ctrl_container = cmds.createNode('container', name=self.namePrefix+'_container', skipSelect=True)
 
         # Create the driver joint layer.
         defJointSet, driver_constraints, defLayerRootJoint = mfunc.createFKlayerDriverOnJointHierarchy(self.selCharacterHierarchy,
@@ -2724,18 +2725,20 @@ class JointChainControl(BaseJointControl):
         cmds.select(clear=True)
 
         # Add all the rest of the nodes to the control rig container and publish necessary attributes.
-        mfunc.addNodesToContainer(ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
-        cmds.container(ctrl_container, edit=True, publishAndBind=\
+        mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
+        cmds.container(self.ctrl_container, edit=True, publishAndBind=\
                        [pvHandle['transform']+'.translate', 'dynamicEndIk_pvHandle_translate'])
-        cmds.container(ctrl_container, edit=True, publishAndBind=\
+        cmds.container(self.ctrl_container, edit=True, publishAndBind=\
                        [controlHandle['transform']+'.translate', 'Dynamic_End_IK_Control_translate'])
-        cmds.container(ctrl_container, edit=True, publishAndBind=\
+        cmds.container(self.ctrl_container, edit=True, publishAndBind=\
                        [controlHandle['transform']+'.IK_Twist', 'Dynamic_End_IK_Control_ik_twist'])
 
         # Create a custom keyable attribute on the character root transform by the control name to adjust the
         # weight of the driver joint layer by using the method "createCtrlRigWeightAttributeOnRootTransform".
-        self.createCtrlRigWeightAttributeOnRootTransform(self.ctrlAttrPrefix+'_Dynamic_End_IK_Control_Stretchy', \
-                                                         [controlHandle['transform'], pvHandle['transform'], dynSettingsCtrl['transform']])
+        self.createCtrlRigWeightAttributeOnRootTransform(self.namePrefix, \
+                                                         [controlHandle['transform'], 
+                                                          pvHandle['transform'], 
+                                                          dynSettingsCtrl['transform']])
         cmds.select(clear=True)
 
 
@@ -2776,7 +2779,7 @@ class HingeControl(BaseJointControl):
         self.driverConstraintsForInput = driver_constraints
 
         # Create a container for the control rig.
-        ctrl_container = cmds.createNode('container', name=self.namePrefix+'_Container', skipSelect=True)
+        self.ctrl_container = cmds.createNode('container', name=self.namePrefix+'_container', skipSelect=True)
 
         # Create a control group node to place all DAG nodes (not part of the character joint hierarchy) under it.
         ctrlGrp = cmds.group(empty=True, name=self.namePrefix + '_Grp', \
@@ -2847,19 +2850,20 @@ class HingeControl(BaseJointControl):
                                                weight=1, connectScaleWithRootCtrl=True)
         
         # Add all the rest of the nodes to the control rig container and publish necessary attributes.
-        mfunc.addNodesToContainer(ctrl_container, self.collectedNodes, \
+        mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, \
                                   includeHierarchyBelow=True)
-        cmds.container(ctrl_container, edit=True, publishAndBind=\
+        cmds.container(self.ctrl_container, edit=True, publishAndBind=\
                        [elbow_pv['transform']+'.translate', 'ik_elbowPV_control_translate'])
-        cmds.container(ctrl_container, edit=True, publishAndBind=\
+        cmds.container(self.ctrl_container, edit=True, publishAndBind=\
                        [controlHandle['transform']+'.translate', 'ik_control_translate'])
-        cmds.container(ctrl_container, edit=True, publishAndBind=\
+        cmds.container(self.ctrl_container, edit=True, publishAndBind=\
                        [controlHandle['transform']+'.rotate', 'ik_control_rotate'])
 
         # Create a custom keyable attribute on the character root transform by the control name to adjust
         # the weight of the driver joint layer by using the method "createCtrlRigWeightAttributeOnRootTransform".
-        self.createCtrlRigWeightAttributeOnRootTransform(self.ctrlAttrPrefix+'_IK_Control', \
-                                                         [controlHandle['transform'], elbow_pv['transform']])
+        self.createCtrlRigWeightAttributeOnRootTransform(self.namePrefix, \
+                                                         [controlHandle['transform'], 
+                                                          elbow_pv['transform']])
         cmds.select(clear=True)
 
 
@@ -2889,7 +2893,7 @@ class HingeControl(BaseJointControl):
         self.driverConstraintsForInput = driver_constraints
 
         # Create a container for the control rig.
-        ctrl_container = cmds.createNode('container', name=self.namePrefix+'_Container', skipSelect=True)
+        self.ctrl_container = cmds.createNode('container', name=self.namePrefix+'_container', skipSelect=True)
 
         # Create a control group node to place all DAG nodes (not part of the character joint hierarchy) under it.
         ctrlGrp = cmds.group(empty=True, name=self.namePrefix + '_Grp', \
@@ -3001,16 +3005,17 @@ class HingeControl(BaseJointControl):
                                                    lowerArmTranslateMultiply, upperArmTranslateMultiply])
         
         # Add all the rest of the nodes to the control rig container and publish necessary attributes.
-        mfunc.addNodesToContainer(ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
-        cmds.container(ctrl_container, edit=True, publishAndBind=\
+        mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
+        cmds.container(self.ctrl_container, edit=True, publishAndBind=\
                        [elbow_pv['transform']+'.translate', 'ik_elbowPV_control_translate'])
-        cmds.container(ctrl_container, edit=True, publishAndBind=[controlHandle['transform']+'.translate', 'ik_control_translate'])
-        cmds.container(ctrl_container, edit=True, publishAndBind=[controlHandle['transform']+'.rotate', 'ik_control_rotate'])
+        cmds.container(self.ctrl_container, edit=True, publishAndBind=[controlHandle['transform']+'.translate', 'ik_control_translate'])
+        cmds.container(self.ctrl_container, edit=True, publishAndBind=[controlHandle['transform']+'.rotate', 'ik_control_rotate'])
 
         # Create a custom keyable attribute on the character root transform by the control name to adjust the weight
         # of the driver joint layer by using the method "createCtrlRigWeightAttributeOnRootTransform".
-        self.createCtrlRigWeightAttributeOnRootTransform(self.ctrlAttrPrefix+'_IK_Control_Stretchy', \
-                                                         [controlHandle['transform'], elbow_pv['transform']])
+        self.createCtrlRigWeightAttributeOnRootTransform(self.namePrefix, \
+                                                         [controlHandle['transform'], 
+                                                          elbow_pv['transform']])
         cmds.select(clear=True)
 
 
@@ -3041,7 +3046,7 @@ class HingeControl(BaseJointControl):
         self.driverConstraintsForInput = driver_constraints
 
         # Create a container for the control rig.
-        ctrl_container = cmds.createNode('container', name=self.namePrefix+'_Container', skipSelect=True)
+        self.ctrl_container = cmds.createNode('container', name=self.namePrefix+'_container', skipSelect=True)
 
         # Create a control group node to place all DAG nodes (not part of the character joint hierarchy) under it.
         ctrlGrp = cmds.group(empty=True, name=self.namePrefix + '_Grp', \
@@ -3217,16 +3222,17 @@ class HingeControl(BaseJointControl):
                                shldrToElbow_distanceBtwn, elbowToWrist_distanceBtwn, shldrToWrist_distanceBtwn])
 
         # Add all the rest of the nodes to the control rig container and publish necessary attributes.
-        mfunc.addNodesToContainer(ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
-        cmds.container(ctrl_container, edit=True, publishAndBind=[elbow_pv['transform']+'.translate', \
+        mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
+        cmds.container(self.ctrl_container, edit=True, publishAndBind=[elbow_pv['transform']+'.translate', \
                                                                   'ik_elbowPV_control_translate'])
-        cmds.container(ctrl_container, edit=True, publishAndBind=[controlHandle['transform']+'.translate', 'ik_control_translate'])
-        cmds.container(ctrl_container, edit=True, publishAndBind=[controlHandle['transform']+'.rotate', 'ik_control_rotate'])
+        cmds.container(self.ctrl_container, edit=True, publishAndBind=[controlHandle['transform']+'.translate', 'ik_control_translate'])
+        cmds.container(self.ctrl_container, edit=True, publishAndBind=[controlHandle['transform']+'.rotate', 'ik_control_rotate'])
 
         # Create a custom keyable attribute on the character root transform by the control name to adjust the weight
         # of the driver joint layer by using the method "createCtrlRigWeightAttributeOnRootTransform".
-        self.createCtrlRigWeightAttributeOnRootTransform(self.ctrlAttrPrefix+'_IK_Control_Stretchy_With_Elbow_Control', \
-                                                         [controlHandle['transform'], elbow_pv['transform']])
+        self.createCtrlRigWeightAttributeOnRootTransform(self.namePrefix, \
+                                                         [controlHandle['transform'], 
+                                                          elbow_pv['transform']])
         cmds.select(clear=True)
 
 
@@ -3293,7 +3299,7 @@ class SplineControl(BaseJointControl):
                                                                weight=1, connectScaleWithRootCtrl=True)
         
         # Create a container for the control rig.
-        ctrl_container = cmds.createNode('container', name=self.namePrefix+'_Container', skipSelect=True)
+        self.ctrl_container = cmds.createNode('container', name=self.namePrefix+'_container', skipSelect=True)
 
         # Create a parent switch group for the root FK control joint.
         ps_grp = self.createParentSwitchGrpForTransform(layerRootJoint, constrainToRootCtrl=True)
@@ -3317,23 +3323,23 @@ class SplineControl(BaseJointControl):
                              name=root_translation_ctl['transform']+'_parentConstraint')[0]
 
         # Add the joint layer nodes to the control rig container.
-        mfunc.addNodesToContainer(ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
+        mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
 
         # Publish the attributes for joints.
         for joint in jointSet:
             jointName = re.split('MRT_character%s__'%(self.characterName), joint)[1]
-            cmds.container(ctrl_container, edit=True, publishAndBind=[joint+'.rotate', jointName+'_rotate'])
+            cmds.container(self.ctrl_container, edit=True, publishAndBind=[joint+'.rotate', jointName+'_rotate'])
 
         # Publish the root translation handle control attributes.
         handleName = re.split('MRT_character%s__'%(self.characterName), root_translation_ctl['transform'])[1]
-        cmds.container(ctrl_container, edit=True, publishAndBind=\
+        cmds.container(self.ctrl_container, edit=True, publishAndBind=\
                        [root_translation_ctl['transform']+'.translate', handleName+'_translate'])
-        cmds.container(ctrl_container, edit=True, publishAndBind=\
+        cmds.container(self.ctrl_container, edit=True, publishAndBind=\
                                [root_translation_ctl['transform']+'.rotate', handleName+'_rotate'])        
 
         # Create a custom keyable attribute on the character root transform by the control name to adjust the weight
         # of the driver joint layer by using the method "createCtrlRigWeightAttributeOnRootTransform".
-        self.createCtrlRigWeightAttributeOnRootTransform(self.ctrlAttrPrefix+'_FK_Control', jointSet+[root_translation_ctl['transform']])
+        self.createCtrlRigWeightAttributeOnRootTransform(self.namePrefix, jointSet+[root_translation_ctl['transform']])
 
         cmds.select(clear=True)
 
@@ -3391,7 +3397,7 @@ class SplineControl(BaseJointControl):
                                                                weight=1, connectScaleWithRootCtrl=True)
         
         # Create a container for the control rig.
-        ctrl_container = cmds.createNode('container', name=self.namePrefix+'_Container', skipSelect=True)
+        self.ctrl_container = cmds.createNode('container', name=self.namePrefix+'_container', skipSelect=True)
 
         # Create a parent switch group for the root FK control joint.
         ps_grp = self.createParentSwitchGrpForTransform(layerRootJoint, constrainToRootCtrl=True)
@@ -3415,24 +3421,24 @@ class SplineControl(BaseJointControl):
                              name=root_translation_ctl['transform']+'_parentConstraint')[0]
 
         # Add the joint layer nodes to the control rig container.
-        mfunc.addNodesToContainer(ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
+        mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
 
         # Publish the attributes for joints.
         for joint in jointSet:
             jointName = re.split('MRT_character%s__'%(self.characterName), joint)[1]
-            cmds.container(ctrl_container, edit=True, publishAndBind=[joint+'.rotate', jointName+'_rotate'])
-            cmds.container(ctrl_container, edit=True, publishAndBind=[joint+'.scale', jointName+'_scale'])
+            cmds.container(self.ctrl_container, edit=True, publishAndBind=[joint+'.rotate', jointName+'_rotate'])
+            cmds.container(self.ctrl_container, edit=True, publishAndBind=[joint+'.scale', jointName+'_scale'])
 
         # Publish the root translation handle control attributes.
         handleName = re.split('MRT_character%s__'%(self.characterName), root_translation_ctl['transform'])[1]
-        cmds.container(ctrl_container, edit=True, publishAndBind=\
+        cmds.container(self.ctrl_container, edit=True, publishAndBind=\
                        [root_translation_ctl['transform']+'.translate', handleName+'_translate'])
-        cmds.container(ctrl_container, edit=True, publishAndBind=\
+        cmds.container(self.ctrl_container, edit=True, publishAndBind=\
                                [root_translation_ctl['transform']+'.rotate', handleName+'_rotate'])
 
         # Create a custom keyable attribute on the character root transform by the control name to adjust the
         # weight of the driver joint layer by using the method "createCtrlRigWeightAttributeOnRootTransform".
-        self.createCtrlRigWeightAttributeOnRootTransform(self.ctrlAttrPrefix+'_FK_Control_Stretchy', \
+        self.createCtrlRigWeightAttributeOnRootTransform(self.namePrefix, \
                                                          jointSet+[root_translation_ctl['transform']])
         cmds.select(clear=True)
 
@@ -3470,7 +3476,7 @@ class SplineControl(BaseJointControl):
         self.driverConstraintsForInput = driver_constraints
 
         # Create a container for the control rig.
-        ctrl_container = cmds.createNode('container', name=self.namePrefix+'_Container', skipSelect=True)
+        self.ctrl_container = cmds.createNode('container', name=self.namePrefix+'_container', skipSelect=True)
 
         # Create a control group node to place all DAG nodes (not part of the character joint hierarchy) under it.
         ctrlGrp = cmds.group(empty=True, name=self.namePrefix + '_Grp', \
@@ -3544,24 +3550,24 @@ class SplineControl(BaseJointControl):
                              name=root_translation_ctl['transform']+'_parentConstraint')[0]
 
         # Add the joint layer nodes to the control rig container.
-        mfunc.addNodesToContainer(ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
+        mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
         
         # Publish the reverse FK control attributes.
         for handle in r_fk_handles:
             handleName = re.split('MRT_character%s__'%(self.characterName), handle['transform'])[1]
-            cmds.container(ctrl_container, edit=True, publishAndBind=[handle['transform']+'.rotate', handleName+'_rotate'])
+            cmds.container(self.ctrl_container, edit=True, publishAndBind=[handle['transform']+'.rotate', handleName+'_rotate'])
 
         # Publish the root handle control attributes.
         handleName = re.split('MRT_character%s__'%(self.characterName), root_translation_ctl['transform'])[1]
-        cmds.container(ctrl_container, edit=True, publishAndBind=\
+        cmds.container(self.ctrl_container, edit=True, publishAndBind=\
                        [root_translation_ctl['transform']+'.translate', handleName+'_translate'])
-        cmds.container(ctrl_container, edit=True, publishAndBind=\
+        cmds.container(self.ctrl_container, edit=True, publishAndBind=\
                                [root_translation_ctl['transform']+'.rotate', handleName+'_rotate'])
 
         # Create a custom keyable attribute on the character root transform by the control name to adjust the weight
         # of the driver joint layer by using the method "createCtrlRigWeightAttributeOnRootTransform".
         all_controls = [root_translation_ctl['transform']] + [item['transform'] for item in r_fk_handles]
-        self.createCtrlRigWeightAttributeOnRootTransform(self.ctrlAttrPrefix+'_Reverse_Spine_FK_Control', all_controls)
+        self.createCtrlRigWeightAttributeOnRootTransform(self.namePrefix, all_controls)
         cmds.select(clear=True)
 
 
@@ -3597,7 +3603,7 @@ class SplineControl(BaseJointControl):
         self.driverConstraintsForInput = driver_constraints
 
         # Create a container for the control rig.
-        ctrl_container = cmds.createNode('container', name=self.namePrefix+'_Container', skipSelect=True)
+        self.ctrl_container = cmds.createNode('container', name=self.namePrefix+'_container', skipSelect=True)
 
         # Create a control group node to place all DAG nodes (not part of the character joint hierarchy) under it.
         ctrlGrp = cmds.group(empty=True, name=self.namePrefix + '_Grp', \
@@ -3671,25 +3677,25 @@ class SplineControl(BaseJointControl):
                              name=root_translation_ctl['transform']+'_parentConstraint')[0]
 
         # Add the joint layer nodes to the control rig container.
-        mfunc.addNodesToContainer(ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
+        mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
         
         # Publish the reverse FK control attributes.
         for handle in r_fk_handles:
             handleName = re.split('MRT_character%s__'%(self.characterName), handle['transform'])[1]
-            cmds.container(ctrl_container, edit=True, publishAndBind=[handle['transform']+'.rotate', handleName+'_rotate'])
-            cmds.container(ctrl_container, edit=True, publishAndBind=[handle['transform']+'.scale', handleName+'_scale'])
+            cmds.container(self.ctrl_container, edit=True, publishAndBind=[handle['transform']+'.rotate', handleName+'_rotate'])
+            cmds.container(self.ctrl_container, edit=True, publishAndBind=[handle['transform']+'.scale', handleName+'_scale'])
 
         # Publish the root handle control attributes.
         handleName = re.split('MRT_character%s__'%(self.characterName), root_translation_ctl['transform'])[1]
-        cmds.container(ctrl_container, edit=True, publishAndBind=\
+        cmds.container(self.ctrl_container, edit=True, publishAndBind=\
                        [root_translation_ctl['transform']+'.translate', handleName+'_translate'])
-        cmds.container(ctrl_container, edit=True, publishAndBind=\
+        cmds.container(self.ctrl_container, edit=True, publishAndBind=\
                                [root_translation_ctl['transform']+'.rotate', handleName+'_rotate'])
 
         # Create a custom keyable attribute on the character root transform by the control name to adjust the weight
         # of the driver joint layer by using the method "createCtrlRigWeightAttributeOnRootTransform".
         all_controls = [root_translation_ctl['transform']] + [item['transform'] for item in r_fk_handles]
-        self.createCtrlRigWeightAttributeOnRootTransform(self.ctrlAttrPrefix+'_Reverse_Spine_FK_Control_Stretchy', all_controls)
+        self.createCtrlRigWeightAttributeOnRootTransform(self.namePrefix, all_controls)
         cmds.select(clear=True)
 
 
@@ -3711,7 +3717,7 @@ class SplineControl(BaseJointControl):
         self.collectedNodes.append(ctrlGrp)        
 
         # Create a container for the control rig.
-        ctrl_container = cmds.createNode('container', name=self.namePrefix+'_Container', skipSelect=True)
+        self.ctrl_container = cmds.createNode('container', name=self.namePrefix+'_container', skipSelect=True)
 
         # Create the FK layer driver joints, collect them and add to the control container.
         defJointSet, driver_constraints, defLayerRootJoint = \
@@ -4113,24 +4119,24 @@ class SplineControl(BaseJointControl):
             cmds.select(clear=True)
 
         # Add all the control rig nodes to the container and publish attributes.
-        mfunc.addNodesToContainer(ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
+        mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
         
-        mfunc.updateContainerNodes(ctrl_container)
+        mfunc.updateContainerNodes(self.ctrl_container)
         
         for i in range(len(ctlJoints)):
             transformName = re.split('MRT_character%s__'%(self.characterName), ctlJoints[i])[1]
             if i == 0:
-                cmds.container(ctrl_container, edit=True, publishAndBind=\
+                cmds.container(self.ctrl_container, edit=True, publishAndBind=\
                                [ctlJoints[i]+'.translate', transformName+'_translate'])
-            cmds.container(ctrl_container, edit=True, publishAndBind=[ctlJoints[i]+'.rotate', transformName+'_rotate'])
-            cmds.container(ctrl_container, edit=True, publishAndBind=[ctlJoints[i]+'.scale', transformName+'_scale'])
+            cmds.container(self.ctrl_container, edit=True, publishAndBind=[ctlJoints[i]+'.rotate', transformName+'_rotate'])
+            cmds.container(self.ctrl_container, edit=True, publishAndBind=[ctlJoints[i]+'.scale', transformName+'_scale'])
         for joint in ik_controls:
             jointName = re.split('MRT_character%s__'%(self.characterName), joint)[1]
-            cmds.container(ctrl_container, edit=True, publishAndBind=[joint+'.translate', jointName+'_translate'])
+            cmds.container(self.ctrl_container, edit=True, publishAndBind=[joint+'.translate', jointName+'_translate'])
 
         # Create a custom keyable attribute on the character root transform by the control name to adjust the weight
         # of the driver joint layer by using the method "createCtrlRigWeightAttributeOnRootTransform".
-        self.createCtrlRigWeightAttributeOnRootTransform(self.ctrlAttrPrefix+'_Auto_Spline_Control', \
+        self.createCtrlRigWeightAttributeOnRootTransform(self.namePrefix, \
                                                          ctlJoints+ik_controls+[root_translation_ctl['transform']])
 
 
