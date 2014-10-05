@@ -227,7 +227,7 @@ class MRT_UI(object):
         self.width_Height = [400, 300]
 
         # Create the main window.
-        self.uiVars['window'] = cmds.window('mrt_UI_window', title='Modular Rigging Tools',
+        self.uiVars['window'] = cmds.window('mrt_UI_window', title='Modular Rigging Tools v%s' % _mrt_version,
                                             widthHeight=self.width_Height, resizeToFitChildren=True, maximizeButton=False)
 
         # Remove the main window from preferences.
@@ -240,7 +240,7 @@ class MRT_UI(object):
         cmds.menuBarLayout()
         
         # Create the dock control for the main window. This is done after creating the initial layout.
-        self.uiVars['dockWindow'] = cmds.dockControl('mrt_UI_dockWindow', label='Modular Rigging Tools',
+        self.uiVars['dockWindow'] = cmds.dockControl('mrt_UI_dockWindow', label='Modular Rigging Tools v%s' % _mrt_version,
                                                     area='left', content=self.uiVars['window'],
                                                     allowedArea=['left', 'right'])
 
@@ -4805,7 +4805,7 @@ class MRT_UI(object):
         
         # With a valid character name, proceed.
         characterName = characterName.lower()
-
+        
         # Save current namespace, set to root.
         currentNamespace = cmds.namespaceInfo(currentNamespace=True)
         cmds.namespace(setNamespace=':')
@@ -4934,6 +4934,9 @@ class MRT_UI(object):
                     # Parent the proxy geo for the joint hierarchy under the main proxy geo group.
                     cmds.parent(proxyGrp, proxyMainGrp, absolute=True)
 
+        # Disable / delete all mirror move nodes and connections for mirror module nodes.
+        mfunc.deleteMirrorMoveConnections()        
+
         # Delete all scene modules (not needed further).
         self.deleteAllSceneModules()
         
@@ -5033,7 +5036,7 @@ class MRT_UI(object):
         cmds.editDisplayLayerMembers(skinJointsLayerName, *characterJoints)
 
         # Create an "FK bake" driver joint layer.
-        result = mfunc.createFKlayerDriverOnJointHierarchy(characterJoints, 'FK_bake', characterName, False, 'None', True)
+        result = mfunc.createFKlayerDriverOnJointHierarchy(characterJoints, 'FkBake', characterName, False, 'None', True)
 
         # Add the "FK bake control layer" switch attribute on the character root control.
         # This attribute is for internal use only.
@@ -5931,7 +5934,7 @@ class MRT_UI(object):
                     klassName = klass.__name__
 
                     h_string = eval('mrt_controlRig.%s.customHierarchy' % klassName)
-                    if h_string == customHierarchyTreeListString:
+                    if mfunc.cmpCustomHierarchyStructureStrings(h_string, customHierarchyTreeListString):
                         control_klasses.append(klassName)
                 
                 # If multiple control rig classes are found for the custom joint hierarchy,

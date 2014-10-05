@@ -193,7 +193,7 @@ def prep_MRTcontrolRig_source():
     Executed at startup to combine the .py sources under "userControlClasses" with "mrt_controlRig_src.py"
     as "mrt_controlRig.py", which is then imported and used.
     '''
-    # Remove any existing sources
+    # Remove any existing sources.
     cleanup_MRT_actions()
 
     # Path to custom control classes.
@@ -416,7 +416,7 @@ def validateSceneModules():
 
     return olderModules
 
-    
+
 def findHighestNumSuffix(baseName, names):
     '''
     Find and return the max numerical suffix value separated by underscore(s) for a given string name.
@@ -802,18 +802,72 @@ def concatenateCommonNamesFromHierarchyData(data, commonNames=[]):
     return commonNames
 
 
+def cmpCustomHierarchyStructureStrings(clsAttrString='', hierarchyString=''):
+    """
+    Compares two string values, one from the "customHierarchy" string attribute of a control rig class,
+    and another from the string return value from "returnHierarchyTreeListStringForCustomControlRigging()",
+    to see if they match. This comparison is used to validate if a custom joint hierarchy in character
+    can be used with methods for a given control rig class.
+    
+    For eg., a "customHierarchy" value can be,
+
+    customHierarchy = \
+    '''
+    <HingeNode>_root_node_joint   
+    <HingeNode>_node_1_joint  
+        <HingeNode>_end_node_joint  
+            <JointNode>_root_node_joint  
+            <JointNode>_root_node_joint  
+                <JointNode>_end_node_joint 
+                        
+    '''
+    Here, the "customHierarchy" value is passed-in under "clsAttrString".
+    
+    "hierarchyString" can be,
+    
+    '\n<HingeNode>_root_node_joint\n<HingeNode>_node_1_joint\n    <HingeNode>_end_node_joint\n        <JointNode>_root_node_joint\n        <JointNode>_root_node_joint\n            <JointNode>_end_node_joint\n'
+    
+    which is returned from "returnHierarchyTreeListStringForCustomControlRigging()" and passed-in.
+    
+    This function is needed since direct string comparision is not correct for all situations. 
+    A user may append extra spaces after each joint name in a line under the "customHierarchy", 
+    and hence this has to be taken into account.
+    
+    """
+    # Break the individual strings as lists as per newlines, so each joint name occurs 
+    # as individual string items in the lists.
+    clsAttrString_items = [i for i in re.split('[ ]*\n', clsAttrString) if len(i.strip())]
+    hierarchyString_items = [i for i in re.split('[ ]*\n', hierarchyString) if len(i.strip())]
+    
+    # For "clsAttrString_items", find the common preceding space value and remove them from items.
+    paddings = [re.findall('^[ ]*', i)[0] for i in clsAttrString_items]
+    clsAttrString_items = [re.sub('^%s' % min(paddings), '', i) for i in clsAttrString_items]
+    
+    # Check if the lists are of same length, or if they have same number of joints in their descriptions.
+    if len(clsAttrString_items) == len(hierarchyString_items):
+        
+        # If each item matches,
+        for str1, str2 in zip(clsAttrString_items, hierarchyString_items):
+            if str1 != str2:
+                return False
+    else:
+        return False
+
+    return True
+                
+
 # -------------------------------------------------------------------------------------------------------------
 #
 #   SCENE FUNCTIONS
 #
 # -------------------------------------------------------------------------------------------------------------
 
-def returnHierarchyTreeListStringForCustomControlRigging(rootJoint, prefix='', prettyPrint=True):
+def returnHierarchyTreeListStringForCustomControlRigging(rootJoint, prefix=''):
     '''
     Returns a string value depicting the hierarchy tree list of all joints from a given root joint. 
     For more description, see the comments for "CustomLegControl" class in "mrt_controlRig_src.py".
 
-    Returns string with following layout for a valid root joint with prettyPrint set to True:
+    Returns string with following layout for a valid root joint:
 
     Each child joint is indented with a tab space.
 
@@ -824,12 +878,17 @@ def returnHierarchyTreeListStringForCustomControlRigging(rootJoint, prefix='', p
                 <JointNode>_root_node_joint
                     <JointNode>_end_node_joint
     '''
-    if prettyPrint:
-        newLine = '\n'
-        tabLine = '\t'
-    else:
-        newLine = '\\n'
-        tabLine = '\\t'
+    # DEPRECATED >>>>>
+    # if prettyPrint:
+    #    newLine = '\n'
+    #    tabLine = '\t'
+    # else:
+    #    newLine = '\\n'
+    #    tabLine = '\\t'
+    # <<<<<<
+    
+    newLine = '\n'
+    tabLine = ' ' * 4
 
     # Stores the string attributes for the passed-in joint name
     jh_string = '%s<%s>%s%s'%(prefix, cmds.getAttr(rootJoint+'.inheritedNodeType'), \
@@ -874,7 +933,7 @@ def returnHierarchyTreeListStringForCustomControlRigging(rootJoint, prefix='', p
             if len(children_list):
 
                 for child in children_list:
-                    jh_string += returnHierarchyTreeListStringForCustomControlRigging(child, prefix, prettyPrint=prettyPrint)
+                    jh_string += returnHierarchyTreeListStringForCustomControlRigging(child, prefix)
 
                 break
 
@@ -2086,6 +2145,7 @@ def setupParentingForRawCharacterParts(characterJointSet, jointsMainGrp):
                 
             # Parent the root joint to it.
             cmds.parent(item[1][0], d_joint, absolute=True)
+            
             # Parent the constrained joint under the joint group.
             cmds.parent(d_joint, jointGrp, absolute=True)
 
@@ -2272,7 +2332,7 @@ def createFKlayerDriverOnJointHierarchy(*args, **kwargs):
     if not isinstance(jointLayerName, (unicode, str)):
         Error('MRT: No name specified for the driver layer. Aborting.')
         return
-    jointLayerName = ''.join([item.capitalize() for item in jointLayerName.split('_')])
+    jointLayerName = jointLayerName[0].upper() + jointLayerName[1:] # Capitalize first character.
 
     # 3
     if 'characterName' in kwargs:
@@ -2385,6 +2445,10 @@ def createFKlayerDriverOnJointHierarchy(*args, **kwargs):
                 # Duplicate the input joint hierarchy by duplicating its root joint, and name it.
                 newRootJoint = cmds.duplicate(joint, returnRootsOnly=True, name=newName)[0]
 
+                # Change the draw style for joint to "None" if to be used as a control.
+                if asControl:
+                    cmds.setAttr(newRootJoint + '.drawStyle', 2)
+
                 # Get the name of the root joint of this new layer.
                 layerRootJoint = newRootJoint
 
@@ -2421,7 +2485,11 @@ def createFKlayerDriverOnJointHierarchy(*args, **kwargs):
 
                                 # Rename the join in the driver layer.
                                 cmds.rename(joint, newName)
-
+                                
+                                # Change the draw style for joint to "None" if to be used as a control.
+                                if asControl:
+                                    cmds.setAttr(newName + '.drawStyle', 2)
+                                
                                 # Append the renamed joint to the layer set
                                 layerJointSet.append(newName)
 
