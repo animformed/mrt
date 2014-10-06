@@ -305,7 +305,7 @@ def runProgressWindow(title='', message='', progress=0, step=0, totalProgress=10
     # Store the progress window message for re-use, if no new message is passed-in.
     if not cmds.optionVar(exists='rProgressWindowMsg'):
         cmds.optionVar(stringValue=('rProgressWindowMsg', message))
-    
+
     if not message:
         message = cmds.optionVar(query='rProgressWindowMsg')
     else:
@@ -313,21 +313,32 @@ def runProgressWindow(title='', message='', progress=0, step=0, totalProgress=10
 
     # If the progress window is to be continued, update the message and the progress as necessary.
     if (init + end) == 0:
+        cmds.text('__mrt_progressWindow_status', edit=True, label=message)
         if progress:
-            cmds.progressWindow(edit=True, progress=progress, status=message)
+            cmds.progressBar('__mrt_progressWindow_bar', edit=True, progress=progress)
         if step:
-            cmds.progressWindow(edit=True, step=step, status=message)
-        if (progress + step) == 0:
-            currentProgress = cmds.progressWindow(query=True, progress=True)
-            cmds.progressWindow(edit=True, progress=currentProgress, status=message)
-         
+            cmds.progressBar('__mrt_progressWindow_bar', edit=True, step=step)
+        
     # Create or end the progress window, based on the parameters.
     if (init + end) == 1:
         if init:
-            cmds.progressWindow(endProgress=True)
-            cmds.progressWindow(title=title, progress=0, status=message, isInterruptable=False, maxValue=totalProgress)
+            try: cmds.deleteUI('__mrt_progressWindow')
+            except: pass
+            cmds.window('__mrt_progressWindow', title=title, widthHeight=(300, 100), maximizeButton=False, sizeable=False)
+            cmds.formLayout('__mrt_progressWindow_form', numberOfDivisions=100)
+            cmds.text('__mrt_progressWindow_status', label=message)
+            cmds.progressBar('__mrt_progressWindow_bar', width=150, height=20, progress=0, maxValue=totalProgress)
+            cmds.formLayout('__mrt_progressWindow_form', edit=True, attachForm=(['__mrt_progressWindow_status', 'top', 15], 
+                                                                                ['__mrt_progressWindow_status', 'left', 5],
+                                                                                ['__mrt_progressWindow_status', 'right', 5],
+                                                                                ['__mrt_progressWindow_bar', 'bottom', 20],
+                                                                                ['__mrt_progressWindow_bar', 'left', 20],
+                                                                                ['__mrt_progressWindow_bar', 'right', 20]))
+            cmds.showWindow('__mrt_progressWindow')
+            
         if end:
-            cmds.progressWindow(endProgress=True)
+            try: cmds.deleteUI('__mrt_progressWindow')
+            except: pass
             
             
 def cleanup_MRT_actions(jobNum=None):
@@ -814,11 +825,11 @@ def cmpCustomHierarchyStructureStrings(clsAttrString='', hierarchyString=''):
     customHierarchy = \
     '''
     <HingeNode>_root_node_joint   
-    <HingeNode>_node_1_joint  
-        <HingeNode>_end_node_joint  
-            <JointNode>_root_node_joint  
-            <JointNode>_root_node_joint  
-                <JointNode>_end_node_joint 
+        <HingeNode>_node_1_joint  
+            <HingeNode>_end_node_joint  
+                <JointNode>_root_node_joint  
+                <JointNode>_root_node_joint  
+                    <JointNode>_end_node_joint 
                         
     '''
     Here, the "customHierarchy" value is passed-in under "clsAttrString".
@@ -864,7 +875,9 @@ def cmpCustomHierarchyStructureStrings(clsAttrString='', hierarchyString=''):
 
 def returnHierarchyTreeListStringForCustomControlRigging(rootJoint, prefix=''):
     '''
-    Returns a string value depicting the hierarchy tree list of all joints from a given root joint. 
+    Returns a string value depicting the hierarchy tree list of all joints from a given root joint,
+    for a given "rootJoint" of a character hierarchy.
+    
     For more description, see the comments for "CustomLegControl" class in "mrt_controlRig_src.py".
 
     Returns string with following layout for a valid root joint:
@@ -890,9 +903,11 @@ def returnHierarchyTreeListStringForCustomControlRigging(rootJoint, prefix=''):
     newLine = '\n'
     tabLine = ' ' * 4
 
-    # Stores the string attributes for the passed-in joint name
-    jh_string = '%s<%s>%s%s'%(prefix, cmds.getAttr(rootJoint+'.inheritedNodeType'), \
-                re.split('(_root_node_joint|_end_node_joint|_node_\d+_joint)', rootJoint)[1], newLine)
+    # Stores the string attributes for the passed-in joint name.
+    jh_string = '%s<%s>%s%s' % (prefix, 
+                                cmds.getAttr(rootJoint+'.inheritedNodeType'),
+                                re.split('(_root_node_joint|_end_node_joint|_node_\d+_joint)', rootJoint)[1], 
+                                newLine)
 
     # Check the joint for multiple children. If they have further descendents, search recursively and collect 
     # their joint name attributes if the passed-in joint has only a single child joint.
@@ -906,8 +921,10 @@ def returnHierarchyTreeListStringForCustomControlRigging(rootJoint, prefix=''):
         if len(children) == 1:
 
             # Append the child joint name attributes.
-            jh_string += '%s<%s>%s%s'%(prefix, cmds.getAttr(children[0]+'.inheritedNodeType'), \
-                re.split('(_root_node_joint|_end_node_joint|_node_\d+_joint)', children[0])[1], newLine)
+            jh_string += '%s<%s>%s%s' % (prefix, 
+                                         cmds.getAttr(children[0]+'.inheritedNodeType'),
+                                         re.split('(_root_node_joint|_end_node_joint|_node_\d+_joint)', children[0])[1], 
+                                         newLine)
 
             children = cmds.listRelatives(children[0], children=True, type='joint') 
 

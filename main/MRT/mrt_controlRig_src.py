@@ -222,11 +222,13 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
         nodes.extend([item for item in cmds.ls(type='transform') \
                       if re.match('^(WORLD|ROOT)_CNTL$', item)])
         nodes.extend([item for item in cmds.ls(type='container') \
-                      if re.match('^MRT_[0-9a-zA-Z]*__\w+_container$', item)])
+                      if re.match('^MRT_\w+__[0-9a-zA-Z]*_container$', item)])
+        print 'NODES', nodes
         # Iterate through the nodes, remove all keyframes, and set the channel attributes.
         for node in nodes:
             mel.eval('cutKey -t ":" '+node+';')
             ctrlAttrs = cmds.listAttr(node, keyable=True, visible=True, unlocked=True) or []
+            print ctrlAttrs
             if ctrlAttrs:
                 for attr in ctrlAttrs:
                     if re.search('(translate|rotate){1}', attr):
@@ -360,32 +362,41 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
         # Place the pivot (or pre-transform) for the given control transform under the parent switch group.
         cmds.parent(pivot, parentSwitch_grp, absolute=True)
 
-        # Add the character root transform as a parent switch target, if specified.
+        # Add the character root control as a parent switch target, if specified.
         if constrainToRootCtrl:
             
-            targetTransform = cmds.group(empty=True, name=ctrl+'_target')
-            cmds.delete(cmds.parentConstraint(ctrl, targetTransform, maintainOffset=False))
-            cmds.parent(targetTransform, self.ch_root_transform, absolute=True)
-            self.collectedNodes.append(targetTransform)
-            
+            # Constrain the character root control,
             if cmds.objectType(ctrl, isType='joint'):
-                constraint = cmds.orientConstraint(targetTransform, parentSwitch_grp, maintainOffset=True, \
+                constraint = cmds.orientConstraint(self.ch_root_transform, parentSwitch_grp, maintainOffset=True, \
                                                    name=parentSwitch_grp+'_orientConstraint')[0]
             else:
-                constraint = cmds.parentConstraint(targetTransform, parentSwitch_grp, maintainOffset=True, \
+                constraint = cmds.parentConstraint(self.ch_root_transform, parentSwitch_grp, maintainOffset=True, \
                                                    name=parentSwitch_grp+'_parentConstraint')[0]
+                
+            # Add a custom attribute "targetParents" to store the target list, and for the user to switch them.
             cmds.addAttr(ctrl+'.targetParents', edit=True, enumName='None:'+self.ch_root_transform)
-            parentSwitchCondition = cmds.createNode('condition', \
-                                                    name=ctrl+'_'+self.ch_root_transform+'_parentSwitch_condition', skipSelect=True)
+            
+            # Create a condition to set the weight of parent target based on the value of "targetParents".
+            # Here the parent target is the character root control.
+            parentSwitchCondition = cmds.createNode('condition',
+                                                    name=ctrl+'_'+self.ch_root_transform+'_parentSwitch_condition', 
+                                                    skipSelect=True)
+            
+            # Set/Connect the condition to set the target parent upon switching target(s) under "targetParents".
             cmds.setAttr(parentSwitchCondition+'.firstTerm', 1)
-            cmds.connectAttr(ctrl+'.targetParents', parentSwitchCondition+'.secondTerm')
             cmds.setAttr(parentSwitchCondition+'.colorIfTrueR', 1)
-            cmds.setAttr(parentSwitchCondition+'.colorIfFalseR', 0)
-            cmds.connectAttr(parentSwitchCondition+'.outColorR', constraint+'.'+targetTransform+'W0')
+            cmds.setAttr(parentSwitchCondition+'.colorIfFalseR', 0)            
+            cmds.connectAttr(ctrl+'.targetParents', parentSwitchCondition+'.secondTerm')
+            cmds.connectAttr(parentSwitchCondition+'.outColorR', constraint+'.'+self.ch_root_transform+'W0')
+            
+            # Set the current target as the character root control, if set.
             if weight == 1:
                 cmds.setAttr(ctrl+'.targetParents', 1)
+            
+            # Update the "parentTargetList" on the parent switch group.
             cmds.setAttr(parentSwitch_grp+'.parentTargetList', lock=False)
             cmds.setAttr(parentSwitch_grp+'.parentTargetList', self.ch_root_transform, type='string', lock=True)
+            
             self.collectedNodes.append(parentSwitchCondition)
 
         # Connect the scaling on the character root transform to the parent switch group node.
@@ -452,6 +463,7 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
 
         # For FK control, we'll need only one joint layer, which will also act as the driver. Notice the connectLayer is set
         # to True(last argument). This layer will be controlled directly (notice 'asControl' is set to True).
+        
         jointSet, driver_constraints, layerRootJoint = mfunc.createFKlayerDriverOnJointHierarchy(self.selCharacterHierarchy,
                                                                                                  self.ctrlRigName,
                                                                                                  self.characterName,
@@ -657,8 +669,7 @@ class CustomLegControl(BaseJointControl):
         transform1_start_vec = transform2_start_vec = cmds.xform(origKneeJoint, query=True, worldSpace=True, translation=True)
         transform1_end_vec = cmds.xform(origAnkleJoint, query=True, worldSpace=True, translation=True)
         transform2_end_vec = hip_pos = cmds.xform(self.rootJoint, query=True, worldSpace=True, translation=True)
-        result = mfunc.returnCrossProductDirection(transform1_start_vec, transform1_end_vec, transform2_start_vec, \
-                                                   transform2_end_vec)
+        result = mfunc.returnCrossProductDirection(transform1_start_vec, transform1_end_vec, transform2_start_vec, transform2_end_vec)
         leg_cross_pos = [round(item, 4) for item in result[1]]
         leg_cross_vec = map(lambda x,y:x+y, leg_cross_pos, transform1_start_vec)
 
@@ -667,8 +678,7 @@ class CustomLegControl(BaseJointControl):
         transform1_start_vec = transform2_start_vec = cmds.xform(origHeelJoint, query=True, worldSpace=True, translation=True)
         transform1_end_vec = cmds.xform(origAnkleJoint, query=True, worldSpace=True, translation=True)
         transform2_end_vec = cmds.xform(origToeJoint, query=True, worldSpace=True, translation=True)
-        result = mfunc.returnCrossProductDirection(transform1_start_vec, transform1_end_vec, transform2_start_vec, \
-                                                   transform2_end_vec)
+        result = mfunc.returnCrossProductDirection(transform1_start_vec, transform1_end_vec, transform2_start_vec, transform2_end_vec)
         foot_cross_pos = [round(item, 4) for item in result[1]]
         foot_cross_vec = map(lambda x,y:x+y, foot_cross_pos, transform1_start_vec)
         foot_aim_vec = mfunc.returnOffsetPositionBetweenTwoVectors(transform2_start_vec, transform2_end_vec, 1.5)
@@ -707,26 +717,31 @@ class CustomLegControl(BaseJointControl):
         check = cmds.cycleCheck(query=True, evaluation=True)
         if check:
             cmds.cycleCheck(evaluation=False)
+            
         handleName = self.namePrefix + '_hipAnkleIkHandle'
         effName = self.namePrefix + '_hipAnkleIkEffector'
+        
         legIkNodes = cmds.ikHandle(startJoint=hipJoint, endEffector=ankleJoint, name=handleName, solver='ikRPsolver')
         cmds.rename(legIkNodes[1], effName)
         cmds.setAttr(legIkNodes[0]+'.visibility', 0)
-        tempConstraint = cmds.orientConstraint(ankleJoint, legIkNodes[0], maintainOffset=False)
-        cmds.delete(tempConstraint)
+        cmds.delete(cmds.orientConstraint(ankleJoint, legIkNodes[0], maintainOffset=False))
         mfunc.updateNodeList(legIkNodes[0])
 
         # Create IK SC solvers from ankle to ball, and from ball to toe, on the driver joint layer.
         handleName = self.namePrefix + '_ankleBallIkHandle'
         effName = self.namePrefix + '_ankleBallIkEffector'
+        
         ballIkNodes = cmds.ikHandle(startJoint=ankleJoint, endEffector=ballJoint, name=handleName, solver='ikSCsolver')
         cmds.rename(ballIkNodes[1], effName)
         cmds.setAttr(ballIkNodes[0]+'.visibility', 0)
+        
         handleName = self.namePrefix + '_ballToeIkHandle'
         effName = self.namePrefix + '_ballToeIkEffector'
+        
         toeIkNodes = cmds.ikHandle(startJoint=ballJoint, endEffector=toeJoint, name=handleName, solver='ikSCsolver')
         cmds.rename(toeIkNodes[1], effName)
         cmds.setAttr(toeIkNodes[0]+'.visibility', 0)
+        
         if check:
             cmds.cycleCheck(evaluation=True)
 
@@ -752,7 +767,8 @@ class CustomLegControl(BaseJointControl):
         cmds.addAttr(legControl['transform'], attributeType='double', longName='Heel_Pivot', defaultValue=0, keyable=True)
         cmds.addAttr(legControl['transform'], attributeType='enum', longName='Pole_Vector_Mode', minValue=0, maxValue=1, \
                      enumName=':No Flip:Manual', defaultValue=0, keyable=True)
-
+        
+        # Align the IK control handle based on the 'translation function' value, inherited from the module state.
         if cmds.attributeQuery('translationFunction', node=legControl['transform'], exists=True) and \
            cmds.getAttr(legControl['transform']+'.translationFunction') == 'local_orientation':
             cmds.xform(legControl['preTransform'], worldSpace=True, translation=\
@@ -770,64 +786,93 @@ class CustomLegControl(BaseJointControl):
         self.createParentSwitchGrpForTransform(legControl['transform'], constrainToRootCtrl=True, 
                                                weight=1, connectScaleWithRootCtrl=True)
 
-        # Create and place the foot group transforms for parenting IK handles and set their respective rotation orders.
+
+        # Create and place the foot group transforms for parenting the IK handles and set their respective rotation orders.
+        
+        # heelRoll transform.
         heel_grp_preTransform = self.namePrefix + '_heelRoll_preTransform'
         heel_grp = self.namePrefix + '_heelRoll_transform'
+        
         cmds.group(empty=True, name=heel_grp_preTransform)
         cmds.group(empty=True, name=heel_grp)
-        cmds.xform(heel_grp_preTransform, worldSpace=True, translation=cmds.xform(heelJoint, query=True, worldSpace=True, translation=True), \
+        
+        # Align the heelRoll transform.
+        cmds.xform(heel_grp_preTransform, worldSpace=True, 
+                   translation=cmds.xform(heelJoint, query=True, worldSpace=True, translation=True),
                    rotation=cmds.xform(heelJoint, query=True, worldSpace=True, rotation=True))
+        
+        # Place it.
         cmds.parent(heel_grp_preTransform, legControl['transform'], absolute=True)
         cmds.parent(heel_grp, heel_grp_preTransform, relative=True)
         cmds.makeIdentity(heel_grp, rotate=True, apply=True)
+        
+        # Set the rotation order for the heelRoll grp.
         heel_grp_axesInfoData = mfunc.returnAxesInfoForFootTransform(heel_grp, foot_vec_dict)
         if heel_grp_axesInfoData['cross'][1] > 0:
             heel_grp_cross_ax_rot_mult = 1
         else:
             heel_grp_cross_ax_rot_mult = -1
         mfunc.setRotationOrderForFootUtilTransform(heel_grp, heel_grp_axesInfoData)
-
+        
+        
+        # toeRoll transform.
         toeRoll_grp = self.namePrefix + '_toeRoll_transform'
         cmds.group(empty=True, name=toeRoll_grp)
-
-        cmds.xform(toeRoll_grp, worldSpace=True, translation=\
-                   cmds.xform(toeJoint, query=True, worldSpace=True, translation=True), rotation=\
-                   cmds.xform(toeJoint, query=True, worldSpace=True, rotation=True))
-
+        
+        # Align the toeRoll transform.
+        cmds.xform(toeRoll_grp, worldSpace=True, 
+                   translation=cmds.xform(toeJoint, query=True, worldSpace=True, translation=True), 
+                   rotation=cmds.xform(toeJoint, query=True, worldSpace=True, rotation=True))
+        
+        # Place it.
         cmds.parent(toeRoll_grp, heel_grp, absolute=True)
         cmds.makeIdentity(toeRoll_grp, rotate=True, apply=True)
+        
+        # Set the rotation order for the toeRoll grp.
         toeRoll_grp_axesInfoData = mfunc.returnAxesInfoForFootTransform(toeRoll_grp, foot_vec_dict)
         if toeRoll_grp_axesInfoData['cross'][1] > 0:
             toeRoll_grp_cross_ax_rot_mult = 1
         else:
             toeRoll_grp_cross_ax_rot_mult = -1
         mfunc.setRotationOrderForFootUtilTransform(toeRoll_grp, toeRoll_grp_axesInfoData)
-
+        
+        
+        # ballRoll transform.
         ballRoll_grp = self.namePrefix + '_ballRoll_transform'
         cmds.group(empty=True, name=ballRoll_grp)
-
+        
+        # Align the ballRoll transform.
         cmds.xform(ballRoll_grp, worldSpace=True, translation=\
                    cmds.xform(ballJoint, query=True, worldSpace=True, translation=True), rotation=\
                    cmds.xform(ballJoint, query=True, worldSpace=True, rotation=True))
-
+        
+        # Place it.
         cmds.parent(ballRoll_grp, toeRoll_grp, absolute=True)
         cmds.makeIdentity(ballRoll_grp, rotate=True, apply=True)
+        
+        # Set the rotation order for the ballRoll grp.
         ballRoll_grp_axesInfoData = mfunc.returnAxesInfoForFootTransform(toeRoll_grp, foot_vec_dict)
         if ballRoll_grp_axesInfoData['cross'][1] > 0:
             ballRoll_grp_cross_ax_rot_mult = 1
         else:
             ballRoll_grp_cross_ax_rot_mult = -1
         mfunc.setRotationOrderForFootUtilTransform(ballRoll_grp, ballRoll_grp_axesInfoData)
-
+        
+        
+        # toeCurl transform.
         toeCurl_grp = self.namePrefix + '_toeCurl_transform'
         cmds.group(empty=True, name=toeCurl_grp)
-
-        cmds.xform(toeCurl_grp, worldSpace=True, translation=\
-                   cmds.xform(ballJoint, query=True, worldSpace=True, translation=True), rotation=\
-                   cmds.xform(ballJoint, query=True, worldSpace=True, rotation=True))
-
+        
+        # Align the toeCurl transform.
+        cmds.xform(toeCurl_grp, worldSpace=True, 
+                   translation=cmds.xform(ballJoint, query=True, worldSpace=True, translation=True), 
+                   rotation=cmds.xform(ballJoint, query=True, worldSpace=True, rotation=True))
+        
+        # Place it.
         cmds.parent(toeCurl_grp, toeRoll_grp, absolute=True)
         cmds.makeIdentity(toeCurl_grp, rotate=True, apply=True)
+        
+        # Set the rotation order for the toeCurl grp.
         toeCurl_grp_axesInfoData = mfunc.returnAxesInfoForFootTransform(toeRoll_grp, foot_vec_dict)
         if toeCurl_grp_axesInfoData['cross'][1] > 0:
             toeCurl_grp_cross_ax_rot_mult = 1
@@ -835,22 +880,25 @@ class CustomLegControl(BaseJointControl):
             toeCurl_grp_cross_ax_rot_mult = -1
         mfunc.setRotationOrderForFootUtilTransform(toeCurl_grp, toeCurl_grp_axesInfoData)
 
+
         # Now parent the IKs to the foot gropus
         cmds.parent(legIkNodes[0], ballRoll_grp, absolute=True)
         cmds.parent(ballIkNodes[0], toeRoll_grp, absolute=True)
         cmds.parent(toeIkNodes[0], toeCurl_grp, absolute=True)
 
-        # Find the world positions for hip, knee and ankle, and then calculate the knee manual pole vector and start
-        # position for the no-flip pole vector.
-        hip_pos = cmds.xform(hipJoint, query=True, worldSpace=True, translation=True)
-        ankle_pos = cmds.xform(ankleJoint, query=True, worldSpace=True, translation=True)
+        # Find the world positions for hip, knee and ankle, and then calculate the knee manual pole vector position,
+        # and start position for the no-flip pole vector.
+        
+        # Get the "first-pass" position of the manual pole vector position.
         hip_ankle_mid_pos = eval(cmds.getAttr(self.rootJoint+'.ikSegmentMidPos'))
         knee_pos = cmds.xform(kneeJoint, query=True, worldSpace=True, translation=True)
         ik_pv_offset_pos = mfunc.returnOffsetPositionBetweenTwoVectors(hip_ankle_mid_pos, knee_pos, 2.0)
-
+        
+        hip_pos = cmds.xform(hipJoint, query=True, worldSpace=True, translation=True)
+        ankle_pos = cmds.xform(ankleJoint, query=True, worldSpace=True, translation=True)        
         hip_knee_vec = map(lambda x,y: x-y, hip_pos, knee_pos)
-        hip_ankle_vec = map(lambda x,y: x-y, hip_pos, ankle_pos)
         hip_knee_vec_mag = math.sqrt(reduce(lambda x,y: x+y, [component**2 for component in hip_knee_vec]))
+        hip_ankle_vec = map(lambda x,y: x-y, hip_pos, ankle_pos)
         hip_ankle_vec_mag = math.sqrt(reduce(lambda x,y: x+y, [component**2 for component in hip_ankle_vec]))
 
         i = 1

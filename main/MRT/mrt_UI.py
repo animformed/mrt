@@ -288,12 +288,12 @@ class MRT_UI(object):
         # The 'Help' menu will have general help options.
         cmds.menu(label='Help', helpMenu=True)
         cmds.menuItem(label='Documentation', \
-                                      command=partial(self.openWebPage, 'http://www.animformed.net/home/mrt-documentation/'))
+                      command=partial(self.openWebPage, 'http://animformed.ghoster.io/modular-rigging-tools-documentation/'))
         cmds.menuItem(label='Tutorial/How To\'s', \
-               command=partial(self.openWebPage, 'http://www.animformed.net/home/using-modular-rigging-tools-for-maya-p-i/'))
+                      command=partial(self.openWebPage, 'http://animformed.ghoster.io/using-modular-rigging-tools-for-maya/'))
         cmds.menuItem(divider=True)
         cmds.menuItem(label='Extending MRT - Writing custom control rigs', \
-                                          command=partial(self.openWebPage, 'http://www.animformed.net/home/extending-mrt/'))
+                      command=partial(self.openWebPage, 'http://animformed.ghoster.io/extending-mrt/'))
         cmds.menuItem(divider=True)
         cmds.menuItem(label='Known Issues / Workarounds', command=self.display_mrt_issues)
         cmds.menuItem(divider=True)
@@ -1134,7 +1134,8 @@ class MRT_UI(object):
         Display MRT dev stats.
         '''
         printString1 = '\n\t\t\tModular Rigging Tools v%s\n\t\t\tfor Maya 2011 and above' % _mrt_version
-        printString2 = '\n\n\tOriginally written by Himanish Bhattacharya' \
+        printString2 = '\n\t\tFULLY OPEN SOURCED' \
+                       '\n\n\tOriginally written by Himanish Bhattacharya' \
                        '\n\n\t________________________________________________________' \
                        '\n\n\tFeel free to modify the source code for your own purpose\n'
         
@@ -5107,15 +5108,15 @@ class MRT_UI(object):
                 charSkinGeoGrp = '|%s|deformers' % characterName
                 charDefGrp = '%s|skinGeometry' % charGeoGrp
                 charMiscGrp = '|%s|misc' % characterName
-                proxyGeoGrp = '%s|proxyGeometry' % charGeoGrp
+                ## proxyGeoGrp = '%s|proxyGeometry' % charGeoGrp  >> Not needed
     
                 # Unparent the groups under the character main group to world.
-                for obj in [charDefGrp, charSkinGeoGrp, charMiscGrp, charGeoGrp, proxyGeoGrp]:
+                for obj in [charDefGrp, charSkinGeoGrp, charMiscGrp, charGeoGrp]:
                     if cmds.objExists(obj):
                         allChildren = cmds.listRelatives(obj, children=True, fullPath=True) or []
                         if allChildren:
                             for child in allChildren:
-                                if not re.match('(deformers|skinGeometry|proxyGeometry|misc)$', child):
+                                if not re.match('^.+(deformers|skinGeometry|misc|proxyGeometry){1}$', child):
                                     cmds.parent(child, world=True)
     
                 # Delete the main character group.
@@ -5128,7 +5129,7 @@ class MRT_UI(object):
                         cmds.delete(layerName)
     
                 # Remove all control rig containers, if any, for the character.
-                ctrl_containers = [item for item in cmds.ls(type='container') if re.match('^MRT_[a-zA-Z0-9]*__\w+_container$', item)]
+                ctrl_containers = [item for item in cmds.ls(type='container') if re.match('^MRT_\w+__[0-9a-zA-Z]*_container$', item)]
                 if ctrl_containers:
                     cmds.delete(ctrl_containers)
     
@@ -6167,7 +6168,7 @@ class MRT_UI(object):
 
         # Get all module containers.
         ctrl_containers = [item for item in cmds.ls(type='container') 
-                           if re.match('^MRT_[0-9a-zA-Z]*__\w+_container$', item)]
+                           if re.match('^MRT_\w+__[0-9a-zA-Z]*_container$', item)]
         if ctrl_containers:
             nodes.extend(ctrl_containers)
 
@@ -6822,7 +6823,7 @@ class MRT_UI(object):
         nodes.extend([item for item in cmds.ls(type='transform') if
                                                 re.match('^(WORLD|ROOT)_CNTL$', item)])
         nodes.extend([item for item in cmds.ls(type='container') if
-                                                re.match('^MRT_[0-9a-zA-Z]*__\w+_container$', item)])
+                                                re.match('^MRT_\w+__[0-9a-zA-Z]*_container$', item)])
 
         # Iterate through the nodes, remove all keyframes, and set the channel attributes.
         for node in nodes:
@@ -6867,6 +6868,7 @@ class MRT_UI(object):
                 cmds.setAttr(self.controlParentSwitchGrp+'.parentTargetList', currentTargets, type='string', lock=True)
 
         if targetsToBeAdded:
+            
             for target in targetsToBeAdded:
 
                 # Apply the constraint from the parent target.

@@ -19,7 +19,7 @@ import maya.mel as mel
 import mrt_functions as mfunc
 import mrt_objects as objects
 
-import math, os
+import math, os, re
 from functools import partial
 
 '''
@@ -2032,7 +2032,10 @@ class MRT_Module(object):
                 
                 # Duplicate the "original" elbow proxy geometry as an instance. The original elbow proxy geometry
                 # is on the node for its mirror module on the +ve side of the creation plane. 
-                originalProxyElbowTransform = originalNamespace+':'+mfunc.stripMRTNamespace(joint)[1]+'_'+proxyElbowTransform
+                originalProxyElbowTransform = '%s:%s_%s' % (originalNamespace, 
+                                                            re.findall('(root_node|node_\d+|end_node)', joint)[0], 
+                                                            proxyElbowTransform)
+
                 transformInstance = cmds.duplicate(originalProxyElbowTransform, instanceLeaf=True, name='proxy_elbow_geo')[0]
                 cmds.parent(transformInstance, proxyElbowGeoScaleTransform, relative=True)
                 
@@ -2175,7 +2178,10 @@ class MRT_Module(object):
                 
                 # Duplicate the "original" bone proxy geometry as an instance. The original elbow proxy geometry
                 # is on the node for its mirror module on the +ve side of the creation plane.
-                originalProxyBoneTransform = originalNamespace+':'+mfunc.stripMRTNamespace(joint)[1]+'_'+proxyBoneTransform
+                originalProxyBoneTransform = '%s:%s_%s' % (originalNamespace, 
+                                                           re.findall('(root_node|node_\d+|end_node)', joint)[0], 
+                                                           proxyBoneTransform)                
+                
                 transformInstance = cmds.duplicate(originalProxyBoneTransform, instanceLeaf=True, name='proxy_bone_geo')[0]
                 cmds.parent(transformInstance, proxyBoneGeoScaleTransform, relative=True)
                 
