@@ -11,7 +11,7 @@
 
 import maya.cmds as cmds
 import maya.mel as mel
-import re, math, os
+import re, math, os, math
 
 # Import MRT base and utility functions.
 import mrt_functions as mfunc
@@ -94,13 +94,54 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
         self.userSpecName = rootJoint.partition('_root_node_joint')[0]
 
         # Get the name of the root transform control (Large red-blue coloured cross-shaped control).
-        self.ch_root_transform = 'ROOT_CNTL'
+        self.ch_root_cntl = 'ROOT_CNTL'
 
         # Get the name of the character world transform control (Large grey-coloured control curve with four arrows).
-        self.ch_world_transform = 'WORLD_CNTL'
+        self.ch_world_cntl = 'WORLD_CNTL'
 
         # Get the name of the root joint of the selected hierarchy.
         self.rootJoint = rootJoint
+        
+        # The root joint has these custom attributes with values that you may use in a control rig definition.
+        #
+        # nodeAxes - The axes orientation order for joints in the selected hierarchy for control rigging,
+        #            for which the root joint is passed-in. Originating from the module node axes during creation,
+        #            it has three upper case characters, X Y and Z in an order. If the nodeAxes is "XYZ", X is the 
+        #            aim, Y is the up and Z is the plane (creation plane) axis for joint orientation in the hierarchy.
+        # 
+        # plane - The creation plane for the originating module for the selected joint hierarchy. It can have the 
+        #         following values, XY, YZ and XZ with a - or + sign preceding it. The plane attribute is useful when 
+        #         working with joint hierarchy which is created from mirrored module pair. It shows the mirroring plane
+        #         and the sign shows the direction of the aim axis down the joint hierarchy. If it's -ve, then it's reversed.
+        #
+        # translationFunction - This is used for orienting non FK based controls in a control rig definition for the
+        #                       selected joint hierarchy. It can have the value, 'local_orientation' or 'world'. This attribute
+        #                       is derived from 'translation transform function' during module creation. If set to 'local_orientation', 
+        #                       a non FK control for the joint hierarchy can be oriented locally to the closest joint or use
+        #                       any other technique that you may wish to have in a control rig definition. If set to 'world',
+        #                       the non FK control can have world orientation. 
+        #                       
+        # rotationFunction - This is used for orienting FK based controls in a control rig definition. It can have the value,
+        #                    'behaviour' or 'orientation'. This attribute is derived from 'rotation transform function' during 
+        #                    module creation and is useful when writing control definitions for mirrored joint hierarchies,
+        #                    created from mirrored module pair(s). If this is set to 'behaviour', then the aim axes for the 
+        #                    hierarchies are reversed, as others. Hence, use these values to check for the current orientation 
+        #                    of joints, and create the FK controls as necessary.
+        #
+        # There are other custom attributes which are specific only for joint hierarchies created from :
+        #
+        # ikSegmentMidPos - For joint hierarchies created from HingeNode module. It stores the world space position of the hinge
+        #                   joint (to be used as a knee or elbow) projected on the line segment between the root and end joints.
+        #                   A joint hierarchy created from a HingeNode module has three joints (two bones).
+        #
+        # splineOrientation - For joint hierarchies created from SplineNode module. This attribute is derived from 'node orientation type'
+        #                     attribute for the SplineNode module. It can have the value 0 or 1. If set to 0, then the joints in 
+        #                     the hierarchy have world orientation, so create the spine controls in that fashion. If set to 1, 
+        #                     then the joints have local orientation.
+        #
+        # You may notice that there are other attributes as well, but they're for other internal use and are not necessary 
+        # when writing definitions for control rigging.
+
 
         # Get the colour index value of the control rig colour slider from modular rigging tools window.
         self.controlColour = cmds.colorIndexSliderGrp('__MRT_controlLayerColour_IndexSliderGrp', query=True, value=True) - 1
@@ -201,13 +242,13 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
         on the character root transform control.'''
 
         # Get the custom attributes on the character root transform.
-        ctrl_attribs = cmds.listAttr(self.ch_root_transform, userDefined=True)
+        ctrl_attribs = cmds.listAttr(self.ch_root_cntl, userDefined=True)
 
         # Find the attributes to toggle visibility and set them.
         if ctrl_attribs:
             for attr in ctrl_attribs[3:]:
                 if not attr.endswith('visibility'):
-                    cmds.setAttr(self.ch_root_transform+'.'+attr, value)
+                    cmds.setAttr(self.ch_root_cntl+'.'+attr, value)
 
 
     def resetAllControls(self):
@@ -242,14 +283,14 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
         '''Toggles the weight of all control rigs currently applied to a joint hierarchy.'''
 
         # Get the custom attributes on the character root transform control.
-        ctrl_attribs = cmds.listAttr(self.ch_root_transform, userDefined=True)
+        ctrl_attribs = cmds.listAttr(self.ch_root_cntl, userDefined=True)
         # Set the value of the attributes on the root transform to toggle weights for control rig layer(s).
         if ctrl_attribs:
             for attr in ctrl_attribs[3:]:
                 attrUserSpec = re.split('_[A-Z]', attr)[0]
                 if re.match('^%s$' % (self.userSpecName), attrUserSpec):
                     if not attr.endswith('visibility'):
-                        cmds.setAttr(self.ch_root_transform+'.'+attr, value)
+                        cmds.setAttr(self.ch_root_cntl+'.'+attr, value)
 
 
     def toggleHierarchyCtrlVisibility(self, value=0):
@@ -257,14 +298,14 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
         '''Toggles the visibility of all control rigs currently applied to a joint hierarchy.'''
 
         # Get the custom attributes on the character root transform control.
-        ctrl_attribs = cmds.listAttr(self.ch_root_transform, userDefined=True)
+        ctrl_attribs = cmds.listAttr(self.ch_root_cntl, userDefined=True)
         # Set the visibility of the controls currently applied to a joint hierarchy.
         if ctrl_attribs:
             for attr in ctrl_attribs[3:]:
                 attrUserSpec = re.split('_[A-Z]', attr)[0]
                 if re.match('^%s$' % (self.userSpecName), attrUserSpec):
                     if attr.endswith('visibility'):
-                        cmds.setAttr(self.ch_root_transform+'.'+attr, value)
+                        cmds.setAttr(self.ch_root_cntl+'.'+attr, value)
 
 
     def createCtrlRigWeightAttributeOnRootTransform(self, ctrlAttr, visibility_nodes=[]):
@@ -274,7 +315,7 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
         transform controls in the control rig (optional) to toggle visibility.'''
 
         # Add the custom attribute for the control rig layer on the character root transform control.
-        cmds.addAttr(self.ch_root_transform, attributeType='float', longName=ctrlAttr, hasMinValue=True, hasMaxValue=True, \
+        cmds.addAttr(self.ch_root_cntl, attributeType='float', longName=ctrlAttr, hasMinValue=True, hasMaxValue=True, \
                      minValue=0, maxValue=1, defaultValue=1, keyable=True)
 
         # Connect the control rig attribute to drive its joint layer.
@@ -287,15 +328,15 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
                 constrainResult = mfunc.returnConstraintWeightIndexForTransform(joint, constraint)
                 if constrainResult:
                     constraintAttr = constrainResult[1]
-                    cmds.connectAttr(self.ch_root_transform+'.'+ctrlAttr, constraint+'.'+constraintAttr)
+                    cmds.connectAttr(self.ch_root_cntl+'.'+ctrlAttr, constraint+'.'+constraintAttr)
 
         # If transform controls for the control rig is passed-in for toggling their visibility, create the necessary
         # attribute and connect it.
         if visibility_nodes:
-            cmds.addAttr(self.ch_root_transform, attributeType='bool', longName=ctrlAttr+'_visibility', defaultValue=1, \
+            cmds.addAttr(self.ch_root_cntl, attributeType='bool', longName=ctrlAttr+'_visibility', defaultValue=1, \
                          keyable=True)
             for node in visibility_nodes:
-                cmds.connectAttr(self.ch_root_transform+'.'+ctrlAttr+'_visibility', node+'.visibility')
+                cmds.connectAttr(self.ch_root_cntl+'.'+ctrlAttr+'_visibility', node+'.visibility')
 
                 
     def createParentSwitchGrpForTransform(self, *args, **kwargs):
@@ -367,19 +408,19 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
             
             # Constrain the character root control,
             if cmds.objectType(ctrl, isType='joint'):
-                constraint = cmds.orientConstraint(self.ch_root_transform, parentSwitch_grp, maintainOffset=True, \
+                constraint = cmds.orientConstraint(self.ch_root_cntl, parentSwitch_grp, maintainOffset=True, \
                                                    name=parentSwitch_grp+'_orientConstraint')[0]
             else:
-                constraint = cmds.parentConstraint(self.ch_root_transform, parentSwitch_grp, maintainOffset=True, \
+                constraint = cmds.parentConstraint(self.ch_root_cntl, parentSwitch_grp, maintainOffset=True, \
                                                    name=parentSwitch_grp+'_parentConstraint')[0]
                 
             # Add a custom attribute "targetParents" to store the target list, and for the user to switch them.
-            cmds.addAttr(ctrl+'.targetParents', edit=True, enumName='None:'+self.ch_root_transform)
+            cmds.addAttr(ctrl+'.targetParents', edit=True, enumName='None:'+self.ch_root_cntl)
             
             # Create a condition to set the weight of parent target based on the value of "targetParents".
             # Here the parent target is the character root control.
             parentSwitchCondition = cmds.createNode('condition',
-                                                    name=ctrl+'_'+self.ch_root_transform+'_parentSwitch_condition', 
+                                                    name=ctrl+'_'+self.ch_root_cntl+'_parentSwitch_condition', 
                                                     skipSelect=True)
             
             # Set/Connect the condition to set the target parent upon switching target(s) under "targetParents".
@@ -387,7 +428,7 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
             cmds.setAttr(parentSwitchCondition+'.colorIfTrueR', 1)
             cmds.setAttr(parentSwitchCondition+'.colorIfFalseR', 0)            
             cmds.connectAttr(ctrl+'.targetParents', parentSwitchCondition+'.secondTerm')
-            cmds.connectAttr(parentSwitchCondition+'.outColorR', constraint+'.'+self.ch_root_transform+'W0')
+            cmds.connectAttr(parentSwitchCondition+'.outColorR', constraint+'.'+self.ch_root_cntl+'W0')
             
             # Set the current target as the character root control, if set.
             if weight == 1:
@@ -395,15 +436,15 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
             
             # Update the "parentTargetList" on the parent switch group.
             cmds.setAttr(parentSwitch_grp+'.parentTargetList', lock=False)
-            cmds.setAttr(parentSwitch_grp+'.parentTargetList', self.ch_root_transform, type='string', lock=True)
+            cmds.setAttr(parentSwitch_grp+'.parentTargetList', self.ch_root_cntl, type='string', lock=True)
             
             self.collectedNodes.append(parentSwitchCondition)
 
         # Connect the scaling on the character root transform to the parent switch group node.
         if connectScaleWithRootCtrl:
-            cmds.connectAttr(self.ch_root_transform+'.globalScale', parentSwitch_grp+'.scaleX')
-            cmds.connectAttr(self.ch_root_transform+'.globalScale', parentSwitch_grp+'.scaleY')
-            cmds.connectAttr(self.ch_root_transform+'.globalScale', parentSwitch_grp+'.scaleZ')
+            cmds.connectAttr(self.ch_root_cntl+'.globalScale', parentSwitch_grp+'.scaleX')
+            cmds.connectAttr(self.ch_root_cntl+'.globalScale', parentSwitch_grp+'.scaleY')
+            cmds.connectAttr(self.ch_root_cntl+'.globalScale', parentSwitch_grp+'.scaleZ')
 
         return parentSwitch_grp
 
@@ -670,8 +711,8 @@ class CustomLegControl(BaseJointControl):
         transform1_end_vec = cmds.xform(origAnkleJoint, query=True, worldSpace=True, translation=True)
         transform2_end_vec = hip_pos = cmds.xform(self.rootJoint, query=True, worldSpace=True, translation=True)
         result = mfunc.returnCrossProductDirection(transform1_start_vec, transform1_end_vec, transform2_start_vec, transform2_end_vec)
-        leg_cross_pos = [round(item, 4) for item in result[1]]
-        leg_cross_vec = map(lambda x,y:x+y, leg_cross_pos, transform1_start_vec)
+        leg_cross_pos = [round(item, 4) for item in result[1]]          # << relative position of vector perpendicular to the leg plane.
+        leg_cross_vec = map(lambda x,y:x+y, leg_cross_pos, transform1_start_vec)       # << absolute position of vector perpendicular to the leg plane.
 
         # Get the positions of heel, toe and the ball joints to find the IK plane and hence the perpendicular vector for
         # the foot plane.
@@ -886,31 +927,43 @@ class CustomLegControl(BaseJointControl):
         cmds.parent(ballIkNodes[0], toeRoll_grp, absolute=True)
         cmds.parent(toeIkNodes[0], toeCurl_grp, absolute=True)
 
-        # Find the world positions for hip, knee and ankle, and then calculate the knee manual pole vector position,
-        # and start position for the no-flip pole vector.
+        # Calculate the knee manual pole vector position.
         
         # Get the "first-pass" position of the manual pole vector position.
         hip_ankle_mid_pos = eval(cmds.getAttr(self.rootJoint+'.ikSegmentMidPos'))
         knee_pos = cmds.xform(kneeJoint, query=True, worldSpace=True, translation=True)
-        ik_pv_offset_pos = mfunc.returnOffsetPositionBetweenTwoVectors(hip_ankle_mid_pos, knee_pos, 2.0)
+        ik_pv_offset_pos = mfunc.returnOffsetPositionBetweenTwoVectors(hip_ankle_mid_pos, knee_pos, 2.0)    # << manual pole vector position
         
+        # Get the hip and knee position, and hence the hip->knee vector.
         hip_pos = cmds.xform(hipJoint, query=True, worldSpace=True, translation=True)
         ankle_pos = cmds.xform(ankleJoint, query=True, worldSpace=True, translation=True)        
         hip_knee_vec = map(lambda x,y: x-y, hip_pos, knee_pos)
         hip_knee_vec_mag = math.sqrt(reduce(lambda x,y: x+y, [component**2 for component in hip_knee_vec]))
-        hip_ankle_vec = map(lambda x,y: x-y, hip_pos, ankle_pos)
-        hip_ankle_vec_mag = math.sqrt(reduce(lambda x,y: x+y, [component**2 for component in hip_ankle_vec]))
-
+        ##hip_ankle_vec = map(lambda x,y: x-y, hip_pos, ankle_pos)  << NOT NEEDED
+        ##hip_ankle_vec_mag = math.sqrt(reduce(lambda x,y: x+y, [component**2 for component in hip_ankle_vec]))  << NOT NEEDED
+        
+        # Now compare the first position of the knee manual pole vector position with the hip->knee vector,
+        # by comparing their lengths.        
         i = 1
         while True:
+
+            # Get the pv pos-> knee vector.
             ik_pv_pos_knee_vec = map(lambda x,y: x-y, ik_pv_offset_pos, knee_pos)
             ik_pv_pos_knee_mag = math.sqrt(reduce(lambda x,y: x+y, [component**2 for component in ik_pv_pos_knee_vec]))
+            
+            # Keep increasing the length of the pv pos->knee vector until it is more than the hip->knee vector length.
             if ik_pv_pos_knee_mag > hip_knee_vec_mag:
                 break
             else:
                 ik_pv_offset_pos = mfunc.returnOffsetPositionBetweenTwoVectors(hip_ankle_mid_pos, knee_pos, 2.0*i)
             i += 1
-
+        
+        
+        # Calculate the position for the no-flip pole vector.        
+        
+        # Create a temp transform to get the world space position for vector placed on the +plane axis for the 
+        # leg joint chain (from the knee joint), and then compare it with the leg cross vector calculated before,
+        # and use the result to get the ik twist value needed to set the no-flip pole vector mode.
         temp_ik_vec = cmds.group(empty=True)
         cmds.parent(temp_ik_vec, kneeJoint, relative=True)
         nodeAxes = cmds.getAttr(self.rootJoint+'.nodeAxes')
@@ -929,7 +982,8 @@ class CustomLegControl(BaseJointControl):
         # Create main group for containing pre-transforms for no-flip and manual pole vector transforms.
         pv_main_grp = self.namePrefix + '_poleVector_grp'
         cmds.group(empty=True, name=pv_main_grp, parent=self.ctrlGrp)
-
+        
+        # Place it.
         cmds.xform(pv_main_grp, worldSpace=True, translation=\
                    cmds.xform(ankleJoint, query=True, worldSpace=True, translation=True))
 
@@ -1026,12 +1080,17 @@ class CustomLegControl(BaseJointControl):
 
         # Now connect the custom attributes on the leg IK control, with utility nodes, as needed.
         # Also, set the rotation multipliers for the parent transforms for the foot IKs to ensure correct/preferred rotation.
+        
+        # BALL ROLL connections.
         ballRoll_setRange = cmds.createNode('setRange', name=self.namePrefix + '_ballRoll_setRange', skipSelect=True)
+        
         ballRoll_firstCondition = cmds.createNode('condition', name=self.namePrefix + '_ballRoll_firstCondition', skipSelect=True)
         cmds.setAttr(ballRoll_firstCondition+'.operation', 4)
+        
         ballRoll_secondCondition = cmds.createNode('condition', name=self.namePrefix + '_ballRoll_secondCondition', skipSelect=True)
         cmds.setAttr(ballRoll_secondCondition+'.operation', 2)
         cmds.setAttr(ballRoll_secondCondition+'.colorIfFalseR', 0)
+        
         cmds.connectAttr(legControl['transform']+'.Foot_Toe_Straight', ballRoll_setRange+'.oldMaxX')
         cmds.connectAttr(legControl['transform']+'.Foot_Toe_Lift', ballRoll_setRange+'.oldMinX')
         cmds.connectAttr(legControl['transform']+'.Foot_Toe_Lift', ballRoll_setRange+'.minX')
@@ -1043,6 +1102,7 @@ class CustomLegControl(BaseJointControl):
         cmds.connectAttr(ballRoll_firstCondition+'.outColorR', ballRoll_secondCondition+'.firstTerm')
         cmds.connectAttr(ballRoll_firstCondition+'.outColorR', ballRoll_secondCondition+'.colorIfTrueR')
         
+
         ballRollCrossAxMultiply = cmds.createNode('multDoubleLinear', name=self.namePrefix + '_ballRoll_cross_ax_multiply', 
                                                   skipSelect=True)
         cmds.connectAttr(ballRoll_secondCondition+'.outColorR', ballRollCrossAxMultiply+'.input1')
@@ -1051,7 +1111,8 @@ class CustomLegControl(BaseJointControl):
 
         cmds.connectAttr(legControl['transform']+'.Ball_Pivot', ballRoll_grp+'.rotate'+ballRoll_grp_axesInfoData['up'][0])
         self.collectedNodes.extend([ballRoll_setRange, ballRoll_firstCondition, ballRoll_secondCondition, ballRollCrossAxMultiply])
-
+        
+        # FOOT BANK PIVOT connections.
         bankPivot_1_condition = cmds.createNode('condition', name=self.namePrefix + '_bankPivot_1_condition', skipSelect=True)
         cmds.setAttr(bankPivot_1_condition+'.colorIfFalseR', 0)
         bankPivot_1_ctrl_axesInfo = mfunc.returnAxesInfoForFootTransform(bankPivot_1_ctrl['transform'], foot_vec_dict)
@@ -1082,6 +1143,7 @@ class CustomLegControl(BaseJointControl):
         cmds.connectAttr(bankPivot_2_ctrl['transform']+'.translate'+bankPivot_2_ctrl_axesInfo['cross'][0], \
                          bankPivot_2_condition+'.colorIfTrueR')
         
+        # TOE ROLL connections.
         toeRoll_rotCrossAxisPivotPlus = cmds.createNode('plusMinusAverage', name=self.namePrefix + '_toeRoll_rotatePivot%sPlus' \
                                                         % bankPivot_2_ctrl_axesInfo['cross'][0], skipSelect=True)
         cmds.connectAttr(bankPivot_1_condition+'.outColorR', toeRoll_rotCrossAxisPivotPlus+'.input1D[0]')
@@ -1134,6 +1196,7 @@ class CustomLegControl(BaseJointControl):
         cmds.connectAttr(toeRollCrossAxMultiply+'.output', toeRoll_grp+'.rotate'+toeRoll_grp_axesInfoData['cross'][0])
         cmds.connectAttr(legControl['transform']+'.Toe_Pivot', toeRoll_grp+'.rotate'+toeRoll_grp_axesInfoData['up'][0])
         
+        # TOE CURL connections.
         toeCurlCrossAxMultiply = cmds.createNode('multDoubleLinear', \
                                                  name=self.namePrefix + '_toeCurl_cross_ax_multiply', skipSelect=True)
         cmds.connectAttr(legControl['transform']+'.Toe_Curl', toeCurlCrossAxMultiply+'.input1')
@@ -1142,7 +1205,8 @@ class CustomLegControl(BaseJointControl):
         cmds.connectAttr(legControl['transform']+'.Ball_Pivot', toeCurl_grp+'.rotate'+toeCurl_grp_axesInfoData['up'][0])
         self.collectedNodes.extend([toeRoll_setRange, toeRoll_firstCondition, toeRoll_secondCondition,
                                toeRoll_thirdCondition, toeRollCrossAxMultiply, toeCurlCrossAxMultiply])
-
+        
+        # HEEL ROLL connections.
         heelRoll_condition = cmds.createNode('condition', name=self.namePrefix + '_heelRoll_condition', skipSelect=True)
         cmds.setAttr(heelRoll_condition+'.operation', 3)
         cmds.setAttr(heelRoll_condition+'.colorIfFalseR', 0)
@@ -1187,7 +1251,6 @@ class CustomLegControl(BaseJointControl):
         cmds.connectAttr(self.controlRigDisplayLayer + '.visibility', legControl['transform']+'.overrideVisibility')
         cmds.setAttr(knee_pv['transform']+'.overrideEnabled', 1)
         cmds.connectAttr(self.controlRigDisplayLayer + '.visibility', knee_pv['transform']+'.overrideVisibility')
-        
         
         # Create a custom keyable attribute on the character root transform by the control name to adjust the weight
         # of the driver joint layer by using the method "createCtrlRigWeightAttributeOnRootTransform".
@@ -1226,18 +1289,16 @@ class CustomLegControl(BaseJointControl):
         transform1_start_vec = transform2_start_vec = cmds.xform(origKneeJoint, query=True, worldSpace=True, translation=True)
         transform1_end_vec = cmds.xform(origAnkleJoint, query=True, worldSpace=True, translation=True)
         transform2_end_vec = hip_pos = cmds.xform(self.rootJoint, query=True, worldSpace=True, translation=True)
-        result = mfunc.returnCrossProductDirection(transform1_start_vec, transform1_end_vec, transform2_start_vec, \
-                                                   transform2_end_vec)
-        leg_cross_pos = [round(item, 4) for item in result[1]]
-        leg_cross_vec = map(lambda x,y:x+y, leg_cross_pos, transform1_start_vec)
+        result = mfunc.returnCrossProductDirection(transform1_start_vec, transform1_end_vec, transform2_start_vec, transform2_end_vec)
+        leg_cross_pos = [round(item, 4) for item in result[1]]          # << relative position of vector perpendicular to the leg plane.
+        leg_cross_vec = map(lambda x,y:x+y, leg_cross_pos, transform1_start_vec)       # << absolute position of vector perpendicular to the leg plane.
 
         # Get the positions of heel, toe and the ball joints to find the IK plane and hence the perpendicular vector for
         # the foot plane.
         transform1_start_vec = transform2_start_vec = cmds.xform(origHeelJoint, query=True, worldSpace=True, translation=True)
         transform1_end_vec = cmds.xform(origAnkleJoint, query=True, worldSpace=True, translation=True)
         transform2_end_vec = cmds.xform(origToeJoint, query=True, worldSpace=True, translation=True)
-        result = mfunc.returnCrossProductDirection(transform1_start_vec, transform1_end_vec, transform2_start_vec, \
-                                                   transform2_end_vec)
+        result = mfunc.returnCrossProductDirection(transform1_start_vec, transform1_end_vec, transform2_start_vec, transform2_end_vec)
         foot_cross_pos = [round(item, 4) for item in result[1]]
         foot_cross_vec = map(lambda x,y:x+y, foot_cross_pos, transform1_start_vec)
         foot_aim_vec = mfunc.returnOffsetPositionBetweenTwoVectors(transform2_start_vec, transform2_end_vec, 1.5)
@@ -1276,26 +1337,31 @@ class CustomLegControl(BaseJointControl):
         check = cmds.cycleCheck(query=True, evaluation=True)
         if check:
             cmds.cycleCheck(evaluation=False)
+            
         handleName = self.namePrefix + '_hipAnkleIkHandle'
         effName = self.namePrefix + '_hipAnkleIkEffector'
+        
         legIkNodes = cmds.ikHandle(startJoint=hipJoint, endEffector=ankleJoint, name=handleName, solver='ikRPsolver')
         cmds.rename(legIkNodes[1], effName)
         cmds.setAttr(legIkNodes[0]+'.visibility', 0)
-        tempConstraint = cmds.orientConstraint(ankleJoint, legIkNodes[0], maintainOffset=False)
-        cmds.delete(tempConstraint)
+        cmds.delete(cmds.orientConstraint(ankleJoint, legIkNodes[0], maintainOffset=False))
         mfunc.updateNodeList(legIkNodes[0])
 
         # Create IK SC solvers from ankle to ball, and from ball to toe, on the driver joint layer.
         handleName = self.namePrefix + '_ankleBallIkHandle'
         effName = self.namePrefix + '_ankleBallIkEffector'
+        
         ballIkNodes = cmds.ikHandle(startJoint=ankleJoint, endEffector=ballJoint, name=handleName, solver='ikSCsolver')
         cmds.rename(ballIkNodes[1], effName)
         cmds.setAttr(ballIkNodes[0]+'.visibility', 0)
+        
         handleName = self.namePrefix + '_ballToeIkHandle'
         effName = self.namePrefix + '_ballToeIkEffector'
+        
         toeIkNodes = cmds.ikHandle(startJoint=ballJoint, endEffector=toeJoint, name=handleName, solver='ikSCsolver')
         cmds.rename(toeIkNodes[1], effName)
         cmds.setAttr(toeIkNodes[0]+'.visibility', 0)
+        
         if check:
             cmds.cycleCheck(evaluation=True)
 
@@ -1321,7 +1387,8 @@ class CustomLegControl(BaseJointControl):
         cmds.addAttr(legControl['transform'], attributeType='double', longName='Heel_Pivot', defaultValue=0, keyable=True)
         cmds.addAttr(legControl['transform'], attributeType='enum', longName='Pole_Vector_Mode', minValue=0, maxValue=1, \
                      enumName=':No Flip:Manual', defaultValue=0, keyable=True)
-
+        
+        # Align the IK control handle based on the 'translation function' value, inherited from the module state.
         if cmds.attributeQuery('translationFunction', node=legControl['transform'], exists=True) and \
            cmds.getAttr(legControl['transform']+'.translationFunction') == 'local_orientation':
             cmds.xform(legControl['preTransform'], worldSpace=True, translation=\
@@ -1339,64 +1406,93 @@ class CustomLegControl(BaseJointControl):
         self.createParentSwitchGrpForTransform(legControl['transform'], constrainToRootCtrl=True, 
                                                weight=1, connectScaleWithRootCtrl=True)
 
-        # Create and place the foot group transforms for parenting IK handles and set their respective rotation orders.
+
+        # Create and place the foot group transforms for parenting the IK handles and set their respective rotation orders.
+        
+        # heelRoll transform.
         heel_grp_preTransform = self.namePrefix + '_heelRoll_preTransform'
         heel_grp = self.namePrefix + '_heelRoll_transform'
+        
         cmds.group(empty=True, name=heel_grp_preTransform)
         cmds.group(empty=True, name=heel_grp)
-        cmds.xform(heel_grp_preTransform, worldSpace=True, translation=cmds.xform(heelJoint, query=True, worldSpace=True, translation=True), \
+        
+        # Align the heelRoll transform.
+        cmds.xform(heel_grp_preTransform, worldSpace=True, 
+                   translation=cmds.xform(heelJoint, query=True, worldSpace=True, translation=True),
                    rotation=cmds.xform(heelJoint, query=True, worldSpace=True, rotation=True))
+        
+        # Place it.
         cmds.parent(heel_grp_preTransform, legControl['transform'], absolute=True)
         cmds.parent(heel_grp, heel_grp_preTransform, relative=True)
         cmds.makeIdentity(heel_grp, rotate=True, apply=True)
+        
+        # Set the rotation order for the heelRoll grp.
         heel_grp_axesInfoData = mfunc.returnAxesInfoForFootTransform(heel_grp, foot_vec_dict)
         if heel_grp_axesInfoData['cross'][1] > 0:
             heel_grp_cross_ax_rot_mult = 1
         else:
             heel_grp_cross_ax_rot_mult = -1
         mfunc.setRotationOrderForFootUtilTransform(heel_grp, heel_grp_axesInfoData)
-
+        
+        
+        # toeRoll transform.
         toeRoll_grp = self.namePrefix + '_toeRoll_transform'
         cmds.group(empty=True, name=toeRoll_grp)
-
-        cmds.xform(toeRoll_grp, worldSpace=True, translation=\
-                   cmds.xform(toeJoint, query=True, worldSpace=True, translation=True), rotation=\
-                   cmds.xform(toeJoint, query=True, worldSpace=True, rotation=True))
-
+        
+        # Align the toeRoll transform.
+        cmds.xform(toeRoll_grp, worldSpace=True, 
+                   translation=cmds.xform(toeJoint, query=True, worldSpace=True, translation=True), 
+                   rotation=cmds.xform(toeJoint, query=True, worldSpace=True, rotation=True))
+        
+        # Place it.
         cmds.parent(toeRoll_grp, heel_grp, absolute=True)
         cmds.makeIdentity(toeRoll_grp, rotate=True, apply=True)
+        
+        # Set the rotation order for the toeRoll grp.
         toeRoll_grp_axesInfoData = mfunc.returnAxesInfoForFootTransform(toeRoll_grp, foot_vec_dict)
         if toeRoll_grp_axesInfoData['cross'][1] > 0:
             toeRoll_grp_cross_ax_rot_mult = 1
         else:
             toeRoll_grp_cross_ax_rot_mult = -1
         mfunc.setRotationOrderForFootUtilTransform(toeRoll_grp, toeRoll_grp_axesInfoData)
-
+        
+        
+        # ballRoll transform.
         ballRoll_grp = self.namePrefix + '_ballRoll_transform'
         cmds.group(empty=True, name=ballRoll_grp)
-
+        
+        # Align the ballRoll transform.
         cmds.xform(ballRoll_grp, worldSpace=True, translation=\
                    cmds.xform(ballJoint, query=True, worldSpace=True, translation=True), rotation=\
                    cmds.xform(ballJoint, query=True, worldSpace=True, rotation=True))
-
+        
+        # Place it.
         cmds.parent(ballRoll_grp, toeRoll_grp, absolute=True)
         cmds.makeIdentity(ballRoll_grp, rotate=True, apply=True)
+        
+        # Set the rotation order for the ballRoll grp.
         ballRoll_grp_axesInfoData = mfunc.returnAxesInfoForFootTransform(toeRoll_grp, foot_vec_dict)
         if ballRoll_grp_axesInfoData['cross'][1] > 0:
             ballRoll_grp_cross_ax_rot_mult = 1
         else:
             ballRoll_grp_cross_ax_rot_mult = -1
         mfunc.setRotationOrderForFootUtilTransform(ballRoll_grp, ballRoll_grp_axesInfoData)
-
+        
+        
+        # toeCurl transform.
         toeCurl_grp = self.namePrefix + '_toeCurl_transform'
         cmds.group(empty=True, name=toeCurl_grp)
-
-        cmds.xform(toeCurl_grp, worldSpace=True, translation=\
-                   cmds.xform(ballJoint, query=True, worldSpace=True, translation=True), rotation=\
-                   cmds.xform(ballJoint, query=True, worldSpace=True, rotation=True))
-
+        
+        # Align the toeCurl transform.
+        cmds.xform(toeCurl_grp, worldSpace=True, 
+                   translation=cmds.xform(ballJoint, query=True, worldSpace=True, translation=True), 
+                   rotation=cmds.xform(ballJoint, query=True, worldSpace=True, rotation=True))
+        
+        # Place it.
         cmds.parent(toeCurl_grp, toeRoll_grp, absolute=True)
         cmds.makeIdentity(toeCurl_grp, rotate=True, apply=True)
+        
+        # Set the rotation order for the toeCurl grp.
         toeCurl_grp_axesInfoData = mfunc.returnAxesInfoForFootTransform(toeRoll_grp, foot_vec_dict)
         if toeCurl_grp_axesInfoData['cross'][1] > 0:
             toeCurl_grp_cross_ax_rot_mult = 1
@@ -1404,34 +1500,49 @@ class CustomLegControl(BaseJointControl):
             toeCurl_grp_cross_ax_rot_mult = -1
         mfunc.setRotationOrderForFootUtilTransform(toeCurl_grp, toeCurl_grp_axesInfoData)
 
+
         # Now parent the IKs to the foot gropus
         cmds.parent(legIkNodes[0], ballRoll_grp, absolute=True)
         cmds.parent(ballIkNodes[0], toeRoll_grp, absolute=True)
         cmds.parent(toeIkNodes[0], toeCurl_grp, absolute=True)
 
-        # Find the world positions for hip, knee and ankle, and then calculate the knee manual pole vector and start
-        # position for the no-flip pole vector.
-        hip_pos = cmds.xform(hipJoint, query=True, worldSpace=True, translation=True)
-        ankle_pos = cmds.xform(ankleJoint, query=True, worldSpace=True, translation=True)
+        # Calculate the knee manual pole vector position.
+        
+        # Get the "first-pass" position of the manual pole vector position.
         hip_ankle_mid_pos = eval(cmds.getAttr(self.rootJoint+'.ikSegmentMidPos'))
         knee_pos = cmds.xform(kneeJoint, query=True, worldSpace=True, translation=True)
-        ik_pv_offset_pos = mfunc.returnOffsetPositionBetweenTwoVectors(hip_ankle_mid_pos, knee_pos, 2.0)
-
+        ik_pv_offset_pos = mfunc.returnOffsetPositionBetweenTwoVectors(hip_ankle_mid_pos, knee_pos, 2.0)    # << manual pole vector position
+        
+        # Get the hip and knee position, and hence the hip->knee vector.
+        hip_pos = cmds.xform(hipJoint, query=True, worldSpace=True, translation=True)
+        ankle_pos = cmds.xform(ankleJoint, query=True, worldSpace=True, translation=True)        
         hip_knee_vec = map(lambda x,y: x-y, hip_pos, knee_pos)
-        hip_ankle_vec = map(lambda x,y: x-y, hip_pos, ankle_pos)
         hip_knee_vec_mag = math.sqrt(reduce(lambda x,y: x+y, [component**2 for component in hip_knee_vec]))
-        hip_ankle_vec_mag = math.sqrt(reduce(lambda x,y: x+y, [component**2 for component in hip_ankle_vec]))
-
+        ##hip_ankle_vec = map(lambda x,y: x-y, hip_pos, ankle_pos)  << NOT NEEDED
+        ##hip_ankle_vec_mag = math.sqrt(reduce(lambda x,y: x+y, [component**2 for component in hip_ankle_vec]))  << NOT NEEDED
+        
+        # Now compare the first position of the knee manual pole vector position with the hip->knee vector,
+        # by comparing their lengths.        
         i = 1
         while True:
+
+            # Get the pv pos-> knee vector.
             ik_pv_pos_knee_vec = map(lambda x,y: x-y, ik_pv_offset_pos, knee_pos)
             ik_pv_pos_knee_mag = math.sqrt(reduce(lambda x,y: x+y, [component**2 for component in ik_pv_pos_knee_vec]))
+            
+            # Keep increasing the length of the pv pos->knee vector until it is more than the hip->knee vector length.
             if ik_pv_pos_knee_mag > hip_knee_vec_mag:
                 break
             else:
                 ik_pv_offset_pos = mfunc.returnOffsetPositionBetweenTwoVectors(hip_ankle_mid_pos, knee_pos, 2.0*i)
             i += 1
-
+        
+        
+        # Calculate the position for the no-flip pole vector.        
+        
+        # Create a temp transform to get the world space position for vector placed on the +plane axis for the 
+        # leg joint chain (from the knee joint), and then compare it with the leg cross vector calculated before,
+        # and use the result to get the ik twist value needed to set the no-flip pole vector mode.
         temp_ik_vec = cmds.group(empty=True)
         cmds.parent(temp_ik_vec, kneeJoint, relative=True)
         nodeAxes = cmds.getAttr(self.rootJoint+'.nodeAxes')
@@ -1450,7 +1561,8 @@ class CustomLegControl(BaseJointControl):
         # Create main group for containing pre-transforms for no-flip and manual pole vector transforms.
         pv_main_grp = self.namePrefix + '_poleVector_grp'
         cmds.group(empty=True, name=pv_main_grp, parent=self.ctrlGrp)
-
+        
+        # Place it.
         cmds.xform(pv_main_grp, worldSpace=True, translation=\
                    cmds.xform(ankleJoint, query=True, worldSpace=True, translation=True))
 
@@ -1547,12 +1659,17 @@ class CustomLegControl(BaseJointControl):
 
         # Now connect the custom attributes on the leg IK control, with utility nodes, as needed.
         # Also, set the rotation multipliers for the parent transforms for the foot IKs to ensure correct/preferred rotation.
+        
+        # BALL ROLL connections.
         ballRoll_setRange = cmds.createNode('setRange', name=self.namePrefix + '_ballRoll_setRange', skipSelect=True)
+        
         ballRoll_firstCondition = cmds.createNode('condition', name=self.namePrefix + '_ballRoll_firstCondition', skipSelect=True)
         cmds.setAttr(ballRoll_firstCondition+'.operation', 4)
+        
         ballRoll_secondCondition = cmds.createNode('condition', name=self.namePrefix + '_ballRoll_secondCondition', skipSelect=True)
         cmds.setAttr(ballRoll_secondCondition+'.operation', 2)
         cmds.setAttr(ballRoll_secondCondition+'.colorIfFalseR', 0)
+        
         cmds.connectAttr(legControl['transform']+'.Foot_Toe_Straight', ballRoll_setRange+'.oldMaxX')
         cmds.connectAttr(legControl['transform']+'.Foot_Toe_Lift', ballRoll_setRange+'.oldMinX')
         cmds.connectAttr(legControl['transform']+'.Foot_Toe_Lift', ballRoll_setRange+'.minX')
@@ -1564,6 +1681,7 @@ class CustomLegControl(BaseJointControl):
         cmds.connectAttr(ballRoll_firstCondition+'.outColorR', ballRoll_secondCondition+'.firstTerm')
         cmds.connectAttr(ballRoll_firstCondition+'.outColorR', ballRoll_secondCondition+'.colorIfTrueR')
         
+
         ballRollCrossAxMultiply = cmds.createNode('multDoubleLinear', name=self.namePrefix + '_ballRoll_cross_ax_multiply', 
                                                   skipSelect=True)
         cmds.connectAttr(ballRoll_secondCondition+'.outColorR', ballRollCrossAxMultiply+'.input1')
@@ -1572,7 +1690,8 @@ class CustomLegControl(BaseJointControl):
 
         cmds.connectAttr(legControl['transform']+'.Ball_Pivot', ballRoll_grp+'.rotate'+ballRoll_grp_axesInfoData['up'][0])
         self.collectedNodes.extend([ballRoll_setRange, ballRoll_firstCondition, ballRoll_secondCondition, ballRollCrossAxMultiply])
-
+        
+        # FOOT BANK PIVOT connections.
         bankPivot_1_condition = cmds.createNode('condition', name=self.namePrefix + '_bankPivot_1_condition', skipSelect=True)
         cmds.setAttr(bankPivot_1_condition+'.colorIfFalseR', 0)
         bankPivot_1_ctrl_axesInfo = mfunc.returnAxesInfoForFootTransform(bankPivot_1_ctrl['transform'], foot_vec_dict)
@@ -1603,6 +1722,7 @@ class CustomLegControl(BaseJointControl):
         cmds.connectAttr(bankPivot_2_ctrl['transform']+'.translate'+bankPivot_2_ctrl_axesInfo['cross'][0], \
                          bankPivot_2_condition+'.colorIfTrueR')
         
+        # TOE ROLL connections.
         toeRoll_rotCrossAxisPivotPlus = cmds.createNode('plusMinusAverage', name=self.namePrefix + '_toeRoll_rotatePivot%sPlus' \
                                                         % bankPivot_2_ctrl_axesInfo['cross'][0], skipSelect=True)
         cmds.connectAttr(bankPivot_1_condition+'.outColorR', toeRoll_rotCrossAxisPivotPlus+'.input1D[0]')
@@ -1655,6 +1775,7 @@ class CustomLegControl(BaseJointControl):
         cmds.connectAttr(toeRollCrossAxMultiply+'.output', toeRoll_grp+'.rotate'+toeRoll_grp_axesInfoData['cross'][0])
         cmds.connectAttr(legControl['transform']+'.Toe_Pivot', toeRoll_grp+'.rotate'+toeRoll_grp_axesInfoData['up'][0])
         
+        # TOE CURL connections.
         toeCurlCrossAxMultiply = cmds.createNode('multDoubleLinear', \
                                                  name=self.namePrefix + '_toeCurl_cross_ax_multiply', skipSelect=True)
         cmds.connectAttr(legControl['transform']+'.Toe_Curl', toeCurlCrossAxMultiply+'.input1')
@@ -1663,7 +1784,8 @@ class CustomLegControl(BaseJointControl):
         cmds.connectAttr(legControl['transform']+'.Ball_Pivot', toeCurl_grp+'.rotate'+toeCurl_grp_axesInfoData['up'][0])
         self.collectedNodes.extend([toeRoll_setRange, toeRoll_firstCondition, toeRoll_secondCondition,
                                toeRoll_thirdCondition, toeRollCrossAxMultiply, toeCurlCrossAxMultiply])
-
+        
+        # HEEL ROLL connections.
         heelRoll_condition = cmds.createNode('condition', name=self.namePrefix + '_heelRoll_condition', skipSelect=True)
         cmds.setAttr(heelRoll_condition+'.operation', 3)
         cmds.setAttr(heelRoll_condition+'.colorIfFalseR', 0)
@@ -1679,48 +1801,59 @@ class CustomLegControl(BaseJointControl):
         self.collectedNodes.extend([heelRoll_condition, heelRollCrossAxMultiply])
 
         # Apply the stretch functionality.
-        cmds.select(clear=True)
-        extrasGrp = cmds.group(empty=True, name=self.namePrefix+'_stretchExtras', parent=self.ctrlGrp)
-        hipPosLocator = cmds.spaceLocator(name=self.namePrefix+'_hipPos_loc')[0]
+        
+        # Get the real-time world position of the hip joint.
+        hipPosLocator = cmds.createNode('locator', parent=hipJoint, name=self.namePrefix+'_hipPos_loc', skipSelect=True)
         cmds.setAttr(hipPosLocator+'.visibility', 0)
-        cmds.parent(hipPosLocator, extrasGrp, absolute=True)
-        cmds.xform(hipPosLocator, worldSpace=True, translation=cmds.xform(hipJoint, query=True, worldSpace=True, \
-                                                                          translation=True))
-        cmds.pointConstraint(hipJoint, hipPosLocator, maintainOffset=True, name=self.namePrefix+'_hipPos_pointConstraint')
+        
+        # Get the real-time length of the leg, from hip to ankle.
         distanceBtwn = cmds.createNode('distanceBetween', name=self.namePrefix+'_hipToAnkle_distance', skipSelect=True)
-        cmds.connectAttr(hipPosLocator+'Shape.worldPosition[0]', distanceBtwn+'.point1')
+        cmds.connectAttr(hipPosLocator+'.worldPosition[0]', distanceBtwn+'.point1')
         cmds.connectAttr(legControl['transform']+'Shape.worldPosition[0]', distanceBtwn+'.point2')
-        restLengthFactor = cmds.createNode('multiplyDivide', name=self.namePrefix+'_hipToAnkle_restLengthFactor', skipSelect=True)
-        cmds.connectAttr(self.ch_root_transform+'.globalScale', restLengthFactor+'.input2X')
-        cmds.connectAttr(distanceBtwn+'.distance', restLengthFactor+'.input1X')
-        cmds.setAttr(restLengthFactor+'.operation', 2)
+        
+        # Divide the real-time length of the leg by globalScale to normalize it.
+        legLengthNormalize = cmds.createNode('multiplyDivide', name=self.namePrefix+'_hipToAnkle_distance_normalize', skipSelect=True)
+        cmds.connectAttr(self.ch_root_cntl+'.globalScale', legLengthNormalize+'.input2X')
+        cmds.connectAttr(distanceBtwn+'.distance', legLengthNormalize+'.input1X')
+        cmds.setAttr(legLengthNormalize+'.operation', 2)
+        
+        # Get the default rest length of the leg.
         jointAxis =  cmds.getAttr(kneeJoint+'.nodeAxes')[0]
         upperLegLengthTranslate = cmds.getAttr(kneeJoint+'.translate'+jointAxis)
         lowerLegLengthTranslate = cmds.getAttr(ankleJoint+'.translate'+jointAxis)
         legLength = upperLegLengthTranslate + lowerLegLengthTranslate
-        stretchLengthDivide = cmds.createNode('multiplyDivide', name=self.namePrefix+'_hipToAnkle_stretchLengthDivide', \
-                                              skipSelect=True)
+        
+        # Divide the real-time length of the leg, hip to ankle by the default rest length, to get the stretch factor.
+        stretchLengthDivide = cmds.createNode('multiplyDivide', name=self.namePrefix+'_hipToAnkle_stretchLengthDivide', skipSelect=True)
         cmds.setAttr(stretchLengthDivide+'.input2X', abs(legLength), lock=True)
         cmds.setAttr(stretchLengthDivide+'.operation', 2)
-        cmds.connectAttr(restLengthFactor+'.outputX', stretchLengthDivide+'.input1X')
+        cmds.connectAttr(legLengthNormalize+'.outputX', stretchLengthDivide+'.input1X')
+        
+        # Use a condition node to check if the current length of the leg is more than the 
+        # default rest length of the leg, to allow the stretch factor.
         stretchCondition = cmds.createNode('condition', name=self.namePrefix+'_hipToAnkle_stretchCondition', skipSelect=True)
         cmds.setAttr(stretchCondition+'.operation', 2)
         cmds.connectAttr(stretchLengthDivide+'.outputX', stretchCondition+'.colorIfTrueR')
         cmds.connectAttr(stretchLengthDivide+'.input2X', stretchCondition+'.secondTerm')
         cmds.connectAttr(stretchLengthDivide+'.input1X', stretchCondition+'.firstTerm')
+        
+        # Multiply the current length of knee to ankle by the stretch factor.
         lowerLegTranslateMultiply = cmds.createNode('multDoubleLinear', \
-                                                    name=self.namePrefix+'_hipToAnkle_lowerLegTranslateMultiply', skipSelect=True)
+                                                    name=self.namePrefix+'_kneeToAnkle_lowerLegTranslateMultiply', skipSelect=True)
         cmds.connectAttr(stretchCondition+'.outColorR', lowerLegTranslateMultiply+'.input1')
         cmds.setAttr(lowerLegTranslateMultiply+'.input2', lowerLegLengthTranslate)
         cmds.connectAttr(lowerLegTranslateMultiply+'.output', ankleJoint+'.translate'+jointAxis)
+        
+        # Multiply the current length of hip to knee by the stretch factor.
         upperLegTranslateMultiply = cmds.createNode('multDoubleLinear', \
-                                                    name=self.namePrefix+'_hipToAnkle_upperLegTranslateMultiply', skipSelect=True)
+                                                    name=self.namePrefix+'_hipToKnee_upperLegTranslateMultiply', skipSelect=True)
         cmds.connectAttr(stretchCondition+'.outColorR', upperLegTranslateMultiply+'.input1')
         cmds.setAttr(upperLegTranslateMultiply+'.input2', upperLegLengthTranslate)
         cmds.connectAttr(upperLegTranslateMultiply+'.output', kneeJoint+'.translate'+jointAxis)
-        self.collectedNodes.extend([extrasGrp, distanceBtwn, restLengthFactor, stretchLengthDivide, stretchCondition,
+        
+        # Collect the utility nodes to be added to the control rig container.
+        self.collectedNodes.extend([distanceBtwn, legLengthNormalize, stretchLengthDivide, stretchCondition,
                                lowerLegTranslateMultiply, upperLegTranslateMultiply])
-
 
         # Check and correct the aim and hence the axial rotation of the toeRoll group along the length of the foot.
         bankPivot_1_restPos = cmds.getAttr(bankPivot_1_ctrl['transform']+'Shape.worldPosition')[0]
@@ -1752,7 +1885,6 @@ class CustomLegControl(BaseJointControl):
         cmds.connectAttr(self.controlRigDisplayLayer + '.visibility', legControl['transform']+'.overrideVisibility')
         cmds.setAttr(knee_pv['transform']+'.overrideEnabled', 1)
         cmds.connectAttr(self.controlRigDisplayLayer + '.visibility', knee_pv['transform']+'.overrideVisibility')
-        
         
         # Create a custom keyable attribute on the character root transform by the control name to adjust the weight
         # of the driver joint layer by using the method "createCtrlRigWeightAttributeOnRootTransform".
@@ -1952,9 +2084,9 @@ class JointChainControl(BaseJointControl):
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleX', shapeRadius)
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleY', shapeRadius)
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleZ', shapeRadius)
-        cmds.connectAttr(self.ch_root_transform+'.globalScale', dynSettingsCtrl['transform']+'.scaleX')
-        cmds.connectAttr(self.ch_root_transform+'.globalScale', dynSettingsCtrl['transform']+'.scaleY')
-        cmds.connectAttr(self.ch_root_transform+'.globalScale', dynSettingsCtrl['transform']+'.scaleZ')
+        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleX')
+        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleY')
+        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleZ')
         cmds.setAttr(dynSettingsCtrl['shape']+'.drawStyle', 2)
         cmds.setAttr(dynSettingsCtrl['shape']+'.drawStyle', keyable=False, lock=True)
         cmds.xform(dynSettingsCtrl['transform'], worldSpace=True, translation=cmds.xform(defJointSet[1], query=True, worldSpace=True, translation=True), 
@@ -2184,9 +2316,9 @@ class JointChainControl(BaseJointControl):
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleX', shapeRadius)
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleY', shapeRadius)
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleZ', shapeRadius)
-        cmds.connectAttr(self.ch_root_transform+'.globalScale', dynSettingsCtrl['transform']+'.scaleX')
-        cmds.connectAttr(self.ch_root_transform+'.globalScale', dynSettingsCtrl['transform']+'.scaleY')
-        cmds.connectAttr(self.ch_root_transform+'.globalScale', dynSettingsCtrl['transform']+'.scaleZ')
+        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleX')
+        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleY')
+        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleZ')
         cmds.setAttr(dynSettingsCtrl['shape']+'.drawStyle', 2)
         cmds.setAttr(dynSettingsCtrl['shape']+'.drawStyle', keyable=False, lock=True)
         cmds.xform(dynSettingsCtrl['transform'], worldSpace=True, translation=\
@@ -2447,9 +2579,9 @@ class JointChainControl(BaseJointControl):
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleX', dynHandleShapeRadius)
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleY', dynHandleShapeRadius)
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleZ', dynHandleShapeRadius)
-        cmds.connectAttr(self.ch_root_transform+'.globalScale', dynSettingsCtrl['transform']+'.scaleX')
-        cmds.connectAttr(self.ch_root_transform+'.globalScale', dynSettingsCtrl['transform']+'.scaleY')
-        cmds.connectAttr(self.ch_root_transform+'.globalScale', dynSettingsCtrl['transform']+'.scaleZ')
+        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleX')
+        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleY')
+        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleZ')
         cmds.setAttr(dynSettingsCtrl['shape']+'.drawStyle', 2)
         cmds.xform(dynSettingsCtrl['transform'], worldSpace=True, translation=\
                    cmds.xform(defJointSet[1], query=True, worldSpace=True, translation=True), rotation=\
@@ -2601,10 +2733,10 @@ class JointChainControl(BaseJointControl):
         distNode = cmds.createNode('distanceBetween', name=self.namePrefix+'_distance', skipSelect=True)
         cmds.connectAttr(ctrlRootJointPosLocator+'Shape.worldPosition[0]', distNode+'.point1')
         cmds.connectAttr(controlHandle['transform']+'Shape.worldPosition[0]', distNode+'.point2')
-        restLengthFactor = cmds.createNode('multiplyDivide', name=self.namePrefix+'_restLengthFactor', skipSelect=True)
-        cmds.connectAttr(self.ch_root_transform+'.globalScale', restLengthFactor+'.input2X')
-        cmds.connectAttr(distNode+'.distance', restLengthFactor+'.input1X')
-        cmds.setAttr(restLengthFactor+'.operation', 2)
+        legLengthNormalize = cmds.createNode('multiplyDivide', name=self.namePrefix+'_legLengthNormalize', skipSelect=True)
+        cmds.connectAttr(self.ch_root_cntl+'.globalScale', legLengthNormalize+'.input2X')
+        cmds.connectAttr(distNode+'.distance', legLengthNormalize+'.input1X')
+        cmds.setAttr(legLengthNormalize+'.operation', 2)
         jointAxis = cmds.getAttr(ctrlLayerRootJoint+'.nodeAxes')[0]
         
         stretchLengthDivide = cmds.createNode('multiplyDivide', name=self.namePrefix+'_stretchLengthDivide', skipSelect=True)
@@ -2613,7 +2745,7 @@ class JointChainControl(BaseJointControl):
             legLength += cmds.getAttr(joint+'.translate'+jointAxis)
         cmds.setAttr(stretchLengthDivide+'.input2X', abs(legLength), lock=True)
         cmds.setAttr(stretchLengthDivide+'.operation', 2)
-        cmds.connectAttr(restLengthFactor+'.outputX', stretchLengthDivide+'.input1X')
+        cmds.connectAttr(legLengthNormalize+'.outputX', stretchLengthDivide+'.input1X')
         
         stretchCondition = cmds.createNode('condition', name=self.namePrefix+'_stretchCondition', skipSelect=True)
         cmds.setAttr(stretchCondition+'.operation', 2)
@@ -2623,7 +2755,7 @@ class JointChainControl(BaseJointControl):
         cmds.connectAttr(stretchCondition+'.outColorR', ctrlLayerRootJoint+'.scale'+jointAxis)
         for joint in ctrlJointSet[2:]:
             cmds.connectAttr(stretchCondition+'.outColorR', joint+'.scale'+jointAxis)
-        self.collectedNodes.extend([distNode, restLengthFactor, stretchLengthDivide, stretchCondition])
+        self.collectedNodes.extend([distNode, legLengthNormalize, stretchLengthDivide, stretchCondition])
 
         # Create the driver curve, whose dynamic output curve will drive the splineIK for the driver joint layer.
         curveCVposString = '['
@@ -2742,9 +2874,9 @@ class JointChainControl(BaseJointControl):
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleX', dynHandleShapeRadius)
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleY', dynHandleShapeRadius)
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleZ', dynHandleShapeRadius)
-        cmds.connectAttr(self.ch_root_transform+'.globalScale', dynSettingsCtrl['transform']+'.scaleX')
-        cmds.connectAttr(self.ch_root_transform+'.globalScale', dynSettingsCtrl['transform']+'.scaleY')
-        cmds.connectAttr(self.ch_root_transform+'.globalScale', dynSettingsCtrl['transform']+'.scaleZ')
+        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleX')
+        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleY')
+        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleZ')
         cmds.setAttr(dynSettingsCtrl['shape']+'.drawStyle', 2)
         cmds.xform(dynSettingsCtrl['transform'], worldSpace=True, translation=\
                    cmds.xform(defJointSet[1], query=True, worldSpace=True, translation=True), rotation=\
@@ -3019,47 +3151,60 @@ class HingeControl(BaseJointControl):
                                                weight=1, connectScaleWithRootCtrl=True)
         
         # Add the stretch functionality.
-        shldrPosLocator = cmds.spaceLocator(name=self.namePrefix+'_shldrPos_loc')[0]
+        
+        # Get the real-time world position of the shoulder joint.
+        shldrPosLocator = cmds.createNode('locator', parent=layerRootJoint, name=self.namePrefix+'_shldrPos_loc', skipSelect=True)
         cmds.setAttr(shldrPosLocator+'.visibility', 0)
-        cmds.parent(shldrPosLocator, self.ctrlGrp, absolute=True)
-        cmds.pointConstraint(layerRootJoint, shldrPosLocator, maintainOffset=False, name=layerRootJoint+'_pointConstraint')
+        
+        # Get the real-time length of the arm, from shoulder to wrist.
         distanceBtwn = cmds.createNode('distanceBetween', name=self.namePrefix+'_shldrToWrist_distance', skipSelect=True)
-        cmds.connectAttr(shldrPosLocator+'Shape.worldPosition[0]', distanceBtwn+'.point1')
+        cmds.connectAttr(shldrPosLocator+'.worldPosition[0]', distanceBtwn+'.point1')
         cmds.connectAttr(controlHandle['transform']+'Shape.worldPosition[0]', distanceBtwn+'.point2')
-        restLengthFactor = cmds.createNode('multiplyDivide', name=self.namePrefix+'_shldrToWrist_restLengthFactor', \
-                                           skipSelect=True)
-        cmds.connectAttr(self.ch_root_transform+'.globalScale', restLengthFactor+'.input2X')
-        cmds.connectAttr(distanceBtwn+'.distance', restLengthFactor+'.input1X')
-        cmds.setAttr(restLengthFactor+'.operation', 2)
+        
+        # Divide the real-time length of the arm by globalScale to normalize it.
+        armLengthNormalize = cmds.createNode('multiplyDivide', name=self.namePrefix+'_shldrToWrist_distance_normalize', skipSelect=True)
+        cmds.connectAttr(self.ch_root_cntl+'.globalScale', armLengthNormalize+'.input2X')
+        cmds.connectAttr(distanceBtwn+'.distance', armLengthNormalize+'.input1X')
+        cmds.setAttr(armLengthNormalize+'.operation', 2)
+        
+        # Get the default rest length of the arm.
         jointAxis =  cmds.getAttr(layerRootJoint+'.nodeAxes')[0]
         upperArmLengthTranslate = cmds.getAttr(jointSet[2]+'.translate'+jointAxis)
         lowerArmLengthTranslate = cmds.getAttr(jointSet[1]+'.translate'+jointAxis)
         armLength = upperArmLengthTranslate + lowerArmLengthTranslate
-        stretchLengthDivide = cmds.createNode('multiplyDivide', name=self.namePrefix+'_shldrToWrist_stretchLengthDivide', \
-                                              skipSelect=True)
+        
+        # Divide the real-time length of the arm, shoulder to wrist by the default rest length, to get the stretch factor.
+        stretchLengthDivide = cmds.createNode('multiplyDivide', name=self.namePrefix+'_shldrToWrist_stretchLengthDivide', skipSelect=True)
         cmds.setAttr(stretchLengthDivide+'.input2X', abs(armLength), lock=True)
         cmds.setAttr(stretchLengthDivide+'.operation', 2)
-        cmds.connectAttr(restLengthFactor+'.outputX', stretchLengthDivide+'.input1X')
-        stretchCondition = cmds.createNode('condition', name=self.namePrefix+'_shldrToWrist_stretchCondition', \
-                                           skipSelect=True)
+        cmds.connectAttr(armLengthNormalize+'.outputX', stretchLengthDivide+'.input1X')
+        
+        # Use a condition node to check if the current length of the arm is more than the 
+        # default rest length of the arm, to allow the stretch factor.        
+        stretchCondition = cmds.createNode('condition', name=self.namePrefix+'_shldrToWrist_stretchCondition', skipSelect=True)
         cmds.setAttr(stretchCondition+'.operation', 2)
         cmds.connectAttr(stretchLengthDivide+'.outputX', stretchCondition+'.colorIfTrueR')
         cmds.connectAttr(stretchLengthDivide+'.input2X', stretchCondition+'.secondTerm')
         cmds.connectAttr(stretchLengthDivide+'.input1X', stretchCondition+'.firstTerm')
+        
+        # Multiply the current length of shoulder to elbow by the stretch factor.
         lowerArmTranslateMultiply = cmds.createNode('multDoubleLinear', \
-                                                    name=self.namePrefix+'_shldrToWrist_lowerArmTranslateMultiply', skipSelect=True)
+                                                    name=self.namePrefix+'_shldrToElbow_lowerArmTranslateMultiply', skipSelect=True)
         cmds.connectAttr(stretchCondition+'.outColorR', lowerArmTranslateMultiply+'.input1')
         cmds.setAttr(lowerArmTranslateMultiply+'.input2', lowerArmLengthTranslate)
         cmds.connectAttr(lowerArmTranslateMultiply+'.output', jointSet[1]+'.translate'+jointAxis)
+        
+        # Multiply the current length of elbow to wrist by the stretch factor.
         upperArmTranslateMultiply = cmds.createNode('multDoubleLinear', \
-                                                    name=self.namePrefix+'_shldrToWrist_upperArmTranslateMultiply', skipSelect=True)
+                                                    name=self.namePrefix+'_elbowToWrist_upperArmTranslateMultiply', skipSelect=True)
         cmds.connectAttr(stretchCondition+'.outColorR', upperArmTranslateMultiply+'.input1')
         cmds.setAttr(upperArmTranslateMultiply+'.input2', upperArmLengthTranslate)
         cmds.connectAttr(upperArmTranslateMultiply+'.output', jointSet[2]+'.translate'+jointAxis)
         
         # Collect the utility nodes.
-        self.collectedNodes.extend([distanceBtwn, restLengthFactor, stretchLengthDivide, stretchCondition,
+        self.collectedNodes.extend([distanceBtwn, armLengthNormalize, stretchLengthDivide, stretchCondition,
                                                    lowerArmTranslateMultiply, upperArmTranslateMultiply])
+        
         
         # Add all the rest of the nodes to the control rig container and publish necessary attributes.
         mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
@@ -3174,44 +3319,51 @@ class HingeControl(BaseJointControl):
         self.createParentSwitchGrpForTransform(elbow_pv['transform'], constrainToRootCtrl=True, 
                                                                weight=1, connectScaleWithRootCtrl=True)
         
+        
         # Add the stretch functionality, to work with the elbow mode as shown below.
-        shldrPosLocator = cmds.spaceLocator(name=self.namePrefix+'_shldrPos_loc')[0]
-        cmds.setAttr(shldrPosLocator+'.visibility', 0)
-        cmds.parent(shldrPosLocator, self.ctrlGrp, absolute=True)
-        cmds.pointConstraint(layerRootJoint, shldrPosLocator, maintainOffset=False, \
-                             name=self.namePrefix+'_shldrPos_pointConstraint')
-        shldrToWrist_distanceBtwn = cmds.createNode('distanceBetween', name=self.namePrefix+'_shldrToWrist_distance', \
-                                                    skipSelect=True)
-        shldrToElbow_distanceBtwn = cmds.createNode('distanceBetween', name=self.namePrefix+'_shldrToElbow_distance', \
-                                                    skipSelect=True)
-        elbowToWrist_distanceBtwn = cmds.createNode('distanceBetween', name=self.namePrefix+'_elbowToWrist_distance', \
-                                                    skipSelect=True)
-        cmds.connectAttr(shldrPosLocator+'Shape.worldPosition[0]', shldrToWrist_distanceBtwn+'.point1')
-        cmds.connectAttr(controlHandle['transform']+'Shape.worldPosition[0]', shldrToWrist_distanceBtwn+'.point2')
-        cmds.connectAttr(shldrPosLocator+'Shape.worldPosition[0]', shldrToElbow_distanceBtwn+'.point1')
-        cmds.connectAttr(elbow_pv['transform']+'Shape.worldPosition[0]', shldrToElbow_distanceBtwn+'.point2')
-        cmds.connectAttr(elbow_pv['transform']+'Shape.worldPosition[0]', elbowToWrist_distanceBtwn+'.point1')
+        
+        # Get the real-time world position of the shoulder joint.
+        shldrPosLocator = cmds.createNode('locator', parent=layerRootJoint, name=self.namePrefix+'_shldrPos_loc', skipSelect=True)
+        cmds.setAttr(shldrPosLocator+'.visibility', 0)        
+        
+        # Real-time shoulder to wrist distance.
+        shldrToWrist_distanceBtwn = cmds.createNode('distanceBetween', name=self.namePrefix+'_shldrToWrist_distance', skipSelect=True)
+        cmds.connectAttr(shldrPosLocator+'.worldPosition[0]', shldrToWrist_distanceBtwn+'.point1')
+        cmds.connectAttr(controlHandle['transform']+'.worldPosition[0]', shldrToWrist_distanceBtwn+'.point2')
+        
+        # Real-time shoulder to elbow distance.
+        shldrToElbow_distanceBtwn = cmds.createNode('distanceBetween', name=self.namePrefix+'_shldrToElbow_distance', skipSelect=True)
+        cmds.connectAttr(shldrPosLocator+'.worldPosition[0]', shldrToElbow_distanceBtwn+'.point1')
+        cmds.connectAttr(elbow_pv['transform']+'.worldPosition[0]', shldrToElbow_distanceBtwn+'.point2')
+        
+        # Real-time elbow to wrist distance.
+        elbowToWrist_distanceBtwn = cmds.createNode('distanceBetween', name=self.namePrefix+'_elbowToWrist_distance', skipSelect=True)
+        cmds.connectAttr(elbow_pv['transform']+'.worldPosition[0]', elbowToWrist_distanceBtwn+'.point1')
         cmds.connectAttr(controlHandle['transform']+'Shape.worldPosition[0]', elbowToWrist_distanceBtwn+'.point2')
-        restLengthFactor = cmds.createNode('multiplyDivide', name=self.namePrefix+'_shldrToWrist_restLengthFactor', \
-                                           skipSelect=True)
         
-        cmds.connectAttr(self.ch_root_transform+'.globalScale', restLengthFactor+'.input2X') # For distance from shoulder to wrist
-        cmds.connectAttr(self.ch_root_transform+'.globalScale', restLengthFactor+'.input2Y') # For distance from shoulder to elbow (to be used in elbow mode)
-        cmds.connectAttr(self.ch_root_transform+'.globalScale', restLengthFactor+'.input2Z') # For distance from elbow to wrist (to be used in elbow mode)
-        cmds.connectAttr(shldrToWrist_distanceBtwn+'.distance', restLengthFactor+'.input1X')
-        cmds.setAttr(restLengthFactor+'.operation', 2)
+        # Divide the real-time distances for arm parts by globalScale to normalize them.
+        armLengthNormalize = cmds.createNode('multiplyDivide', name=self.namePrefix+'_shldrToWrist_legLengthNormalize', skipSelect=True)
+        cmds.connectAttr(shldrToWrist_distanceBtwn+'.distance', armLengthNormalize+'.input1X')
+        cmds.connectAttr(self.ch_root_cntl+'.globalScale', armLengthNormalize+'.input2X') # For distance from shoulder to wrist
+        cmds.connectAttr(self.ch_root_cntl+'.globalScale', armLengthNormalize+'.input2Y') # For distance from shoulder to elbow (to be used in elbow mode)
+        cmds.connectAttr(self.ch_root_cntl+'.globalScale', armLengthNormalize+'.input2Z') # For distance from elbow to wrist (to be used in elbow mode)
+        cmds.setAttr(armLengthNormalize+'.operation', 2)
         
+        # Get the default rest length of the arm.
         jointAxis =  cmds.getAttr(layerRootJoint+'.nodeAxes')[0]
         upperArmLengthTranslate = cmds.getAttr(jointSet[2]+'.translate'+jointAxis)
         lowerArmLengthTranslate = cmds.getAttr(jointSet[1]+'.translate'+jointAxis)
         armLength = upperArmLengthTranslate + lowerArmLengthTranslate
-        stretchLengthDivide = cmds.createNode('multiplyDivide', name=self.namePrefix+'_shldrToWrist_stretchLengthDivide', \
-                                              skipSelect=True)
+        
+        # Divide the real-time length of the arm, shoulder to wrist by the default rest length, to get the stretch factor.
+        stretchLengthDivide = cmds.createNode('multiplyDivide', name=self.namePrefix+'_shldrToWrist_stretchLengthDivide', skipSelect=True)
         cmds.setAttr(stretchLengthDivide+'.input2X', abs(armLength), lock=True)
         cmds.setAttr(stretchLengthDivide+'.operation', 2)
-        cmds.connectAttr(restLengthFactor+'.outputX', stretchLengthDivide+'.input1X')
-        stretchCondition = cmds.createNode('condition', name=self.namePrefix+'_shldrToWrist_stretchCondition', \
-                                           skipSelect=True)
+        cmds.connectAttr(armLengthNormalize+'.outputX', stretchLengthDivide+'.input1X')
+        
+        # Use a condition node to check if the current length of the arm is more than the 
+        # default rest length of the arm, to allow the stretch factor.                
+        stretchCondition = cmds.createNode('condition', name=self.namePrefix+'_shldrToWrist_stretchCondition', skipSelect=True)
         cmds.setAttr(stretchCondition+'.operation', 2)
         cmds.connectAttr(stretchLengthDivide+'.outputX', stretchCondition+'.colorIfTrueR')
         cmds.connectAttr(stretchLengthDivide+'.input2X', stretchCondition+'.secondTerm')
@@ -3220,56 +3372,63 @@ class HingeControl(BaseJointControl):
         # Create the nodes/connections for elbow blend mode.
         
         # Lower arm, shoulder to elbow.
-        lowerArmTranslateMultiply = cmds.createNode('multDoubleLinear', \
-                                                    name=self.namePrefix+'_shldrToWrist_lowerArmTranslateMultiply', skipSelect=True)
+        
+        # Stretched length, from shoulder to elbow.
+        lowerArmTranslateMultiply = cmds.createNode('multDoubleLinear',
+                                                    name=self.namePrefix+'_shldrToElbow_lowerArmTranslateMultiply', skipSelect=True)
         cmds.connectAttr(stretchCondition+'.outColorR', lowerArmTranslateMultiply+'.input1')
         cmds.setAttr(lowerArmTranslateMultiply+'.input2', lowerArmLengthTranslate)
+        
+        # Shoulder to elbow distance, for use in elbow mode. Check for the aim axis translation sign.
+        lowerArmDistanceMultiply = cmds.createNode('multDoubleLinear',
+                                                    name=self.namePrefix+'_shoulderToElbow_lowerArmDistanceMultiply', skipSelect=True)
+        cmds.connectAttr(shldrToElbow_distanceBtwn+'.distance', lowerArmDistanceMultiply+'.input1')
+        cmds.setAttr(lowerArmDistanceMultiply+'.input2', math.copysign(lowerArmLengthTranslate, 1))
+        cmds.connectAttr(lowerArmDistanceMultiply+'.output', armLengthNormalize+'.input1Y')
+        
+        # Shoulder to elbow length blender from arm stretch to elbow mode.
         lowerArmTranslateBlend = cmds.createNode('blendTwoAttr', \
                                                  name=self.namePrefix+'_shldrToElbow_lowerArmTranslateBlend', skipSelect=True)
         cmds.connectAttr(lowerArmTranslateMultiply+'.output', lowerArmTranslateBlend+'.input[0]')
-        if lowerArmLengthTranslate < 0:
-            lowerArmDistanceReverseNode = cmds.createNode('multiplyDivide', \
-                                                          name=self.namePrefix+'_elbowToWrist_lowerArmTranslateReverse', skipSelect=True)
-            cmds.connectAttr(elbowToWrist_distanceBtwn+'.distance', lowerArmDistanceReverseNode+'.input1X')
-            cmds.setAttr(lowerArmDistanceReverseNode+'.input2X', -1)
-            cmds.connectAttr(lowerArmDistanceReverseNode+'.outputX', restLengthFactor+'.input1Y')
-            self.collectedNodes.extend([lowerArmDistanceReverseNode])
-        else:
-            cmds.connectAttr(elbowToWrist_distanceBtwn+'.distance', restLengthFactor+'.input1Y')
-        cmds.connectAttr(restLengthFactor+'.outputY', lowerArmTranslateBlend+'.input[1]')
+        cmds.connectAttr(armLengthNormalize+'.outputY', lowerArmTranslateBlend+'.input[1]')
         cmds.connectAttr(lowerArmTranslateBlend+'.output', jointSet[1]+'.translate'+jointAxis)
         
         # Upper arm, elbow to wrist.
-        upperArmTranslateMultiply = cmds.createNode('multDoubleLinear', \
-                                                    name=self.namePrefix+'_shldrToWrist_upperArmTranslateMultiply', skipSelect=True)
+        
+        # Stretched length, from elbow to wrist.
+        upperArmTranslateMultiply = cmds.createNode('multDoubleLinear',
+                                                    name=self.namePrefix+'_elbowToWrist_upperArmTranslateMultiply', skipSelect=True)
         cmds.connectAttr(stretchCondition+'.outColorR', upperArmTranslateMultiply+'.input1')
         cmds.setAttr(upperArmTranslateMultiply+'.input2', upperArmLengthTranslate)
+        
+        # Elbow to wrist distance, for use in elbow mode. Check for the aim axis translation sign.
+        upperArmDistanceMultiply = cmds.createNode('multDoubleLinear',
+                                                    name=self.namePrefix+'_elbowToWrist_upperArmDistanceMultiply', skipSelect=True)
+        cmds.connectAttr(elbowToWrist_distanceBtwn+'.distance', upperArmDistanceMultiply+'.input1')
+        cmds.setAttr(upperArmDistanceMultiply+'.input2', math.copysign(upperArmLengthTranslate, 1))
+        cmds.connectAttr(upperArmDistanceMultiply+'.output', armLengthNormalize+'.input1Z')
+        
+        # Elbow to wrist length blender from arm stretch to elbow mode.
         upperArmTranslateBlend = cmds.createNode('blendTwoAttr', \
                                                  name=self.namePrefix+'_elbowToWrist_upperArmTranslateBlend', skipSelect=True)
         cmds.connectAttr(upperArmTranslateMultiply+'.output', upperArmTranslateBlend+'.input[0]')
-        if upperArmLengthTranslate < 0:
-            upperArmDistanceReverseNode = cmds.createNode('multiplyDivide', \
-                                                          name=self.namePrefix+'_elbowToWrist_upperArmTranslateReverse', skipSelect=True)
-            cmds.connectAttr(shldrToElbow_distanceBtwn+'.distance', upperArmDistanceReverseNode+'.input1X')
-            cmds.setAttr(upperArmDistanceReverseNode+'.input2X', -1)
-            cmds.connectAttr(upperArmDistanceReverseNode+'.outputX', restLengthFactor+'.input1Z')
-            self.collectedNodes.extend([upperArmDistanceReverseNode])
-        else:
-            cmds.connectAttr(shldrToElbow_distanceBtwn+'.distance', restLengthFactor+'.input1Z')
-        cmds.connectAttr(restLengthFactor+'.outputZ', upperArmTranslateBlend+'.input[1]')
+        cmds.connectAttr(armLengthNormalize+'.outputZ', upperArmTranslateBlend+'.input[1]')
         cmds.connectAttr(upperArmTranslateBlend+'.output', jointSet[2]+'.translate'+jointAxis)
         
+        # Connect the 'Elbow Blend' to the blender nodes for lower and upper arms.
         cmds.connectAttr(controlHandle['transform']+'.Elbow_Blend', lowerArmTranslateBlend+'.attributesBlender')
         cmds.connectAttr(controlHandle['transform']+'.Elbow_Blend', upperArmTranslateBlend+'.attributesBlender')
+        
+        self.collectedNodes.extend([armLengthNormalize, stretchLengthDivide, stretchCondition, lowerArmTranslateMultiply, 
+                                    lowerArmDistanceMultiply, upperArmTranslateMultiply, upperArmDistanceMultiply, 
+                                    lowerArmTranslateBlend, upperArmTranslateBlend, shldrToElbow_distanceBtwn, 
+                                    elbowToWrist_distanceBtwn, shldrToWrist_distanceBtwn])       
+        
         
         # Prepare the elbow FK mode connections.
         elbowParentConstraintFK = cmds.parentConstraint(elbow_pv['transform'], elbowFKTransform, maintainOffset=True, \
                                                         name=elbow_pv['transform']+'_parentConstraint')[0]
         cmds.connectAttr(controlHandle['transform']+'.Forearm_FK', elbowParentConstraintFK+'.'+elbow_pv['transform']+'W0')
-        
-        self.collectedNodes.extend([restLengthFactor, stretchLengthDivide, stretchCondition, lowerArmTranslateMultiply, \
-                               upperArmTranslateMultiply, lowerArmTranslateBlend, upperArmTranslateBlend, \
-                               shldrToElbow_distanceBtwn, elbowToWrist_distanceBtwn, shldrToWrist_distanceBtwn])
 
         # Add all the rest of the nodes to the control rig container and publish necessary attributes.
         mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
@@ -3329,7 +3488,7 @@ class SplineControl(BaseJointControl):
         shapeRadius = cmds.getAttr(self.rootJoint+'.radius') * 0.35
 
         # Add the root control for the joint layer.
-        root_cntl = objects.load_xhandleShape(self.namePrefix+'_root_CNTL', colour=self.controlColour)
+        root_cntl = objects.load_xhandleShape(self.namePrefix+'_main_CNTL', colour=self.controlColour)
         cmds.xform(root_cntl['preTransform'], worldSpace=True, translation=\
                    cmds.xform(layerRootJoint, query=True, worldSpace=True, translation=True))
         cmds.parent(root_cntl['preTransform'], self.ctrlGrp, absolute=True)
@@ -3420,7 +3579,7 @@ class SplineControl(BaseJointControl):
         shapeRadius = cmds.getAttr(self.rootJoint+'.radius') * 0.35
 
         # Add the root control for the joint layer.
-        root_cntl = objects.load_xhandleShape(self.namePrefix+'_root_CNTL', colour=self.controlColour)
+        root_cntl = objects.load_xhandleShape(self.namePrefix+'_main_CNTL', colour=self.controlColour)
         cmds.xform(root_cntl['preTransform'], worldSpace=True, translation=\
                    cmds.xform(layerRootJoint, query=True, worldSpace=True, translation=True))
         cmds.parent(root_cntl['preTransform'], self.ctrlGrp, absolute=True)
@@ -3559,7 +3718,7 @@ class SplineControl(BaseJointControl):
             cmds.parentConstraint(r_fk_handles[i]['transform'], joints[j], maintainOffset=True, name=r_fk_handles[i]['transform']+'_parentConstraint')
 
         # Add the root control for the joint layer.
-        root_cntl = objects.load_xhandleShape(self.namePrefix+'_root_CNTL', colour=self.controlColour)
+        root_cntl = objects.load_xhandleShape(self.namePrefix+'_main_CNTL', colour=self.controlColour)
         cmds.xform(root_cntl['preTransform'], worldSpace=True, translation=\
                    cmds.xform(r_fk_handles[-1]['transform'], query=True, worldSpace=True, translation=True))
         cmds.parent(root_cntl['preTransform'], self.ctrlGrp, absolute=True)
@@ -3679,7 +3838,7 @@ class SplineControl(BaseJointControl):
             cmds.parentConstraint(r_fk_handles[i]['transform'], joints[j], maintainOffset=True, name=r_fk_handles[i]['transform']+'_parentConstraint')
 
         # Add the root control for the joint layer.
-        root_cntl = objects.load_xhandleShape(self.namePrefix+'_root_CNTL', colour=self.controlColour)
+        root_cntl = objects.load_xhandleShape(self.namePrefix+'_main_CNTL', colour=self.controlColour)
         cmds.xform(root_cntl['preTransform'], worldSpace=True, translation=\
                    cmds.xform(r_fk_handles[-1]['transform'], query=True, worldSpace=True, translation=True))
         cmds.parent(root_cntl['preTransform'], self.ctrlGrp, absolute=True)
@@ -3734,9 +3893,9 @@ class SplineControl(BaseJointControl):
         # Collect it to be added to the control rig container.
         self.collectedNodes.append(self.ctrlGrp)        
 
-        # Create the FK layer driver joints, collect them and add to the control container.
+        # Create the driver layer joints, collect them and add to the control container.
         defJointSet, driver_constraints, defLayerRootJoint = \
-            mfunc.createFKlayerDriverOnJointHierarchy(self.selCharacterHierarchy, self.ctrlRigName+'_fk', self.characterName, \
+            mfunc.createFKlayerDriverOnJointHierarchy(self.selCharacterHierarchy, self.ctrlRigName, self.characterName, \
                                                       False, 'None', True)
         defJoints = [defLayerRootJoint]
         defJoints.extend(defJointSet[-1:1:-1])
@@ -3771,7 +3930,6 @@ class SplineControl(BaseJointControl):
         
         self.collectedNodes.extend(ctlJoints)
 
-
         # Create and assign the shapes for FK control joints.
         shapeRadius = cmds.getAttr(self.rootJoint+'.radius') * 0.35
         for i in range(numCtls):
@@ -3781,7 +3939,7 @@ class SplineControl(BaseJointControl):
             cmds.setAttr(fk_ctrl['shape']+'.localScaleZ', shapeRadius*1.0)
             cmds.setAttr(fk_ctrl['shape']+'.drawStyle', 5)
 
-        # Collect the world space positions of the spine joints, starting from the root.
+        # Collect the world space positions of the spine joints in a list, starting from the root.
         curveCVposString = '['
         jointIt = self.rootJoint
         while jointIt:
@@ -3793,7 +3951,7 @@ class SplineControl(BaseJointControl):
 
         # Create a temporary curve along the spine to position the FK control layers by using pocinfo.
         tempCurve = cmds.curve(degree=1, point=curveCVposList)
-        tempCurve = cmds.rename(tempCurve, self.namePrefix+'tempCurve')
+        tempCurveShape = cmds.listRelatives(tempCurve, children=True, type='nurbsCurve')[0]
         cmds.rebuildCurve(tempCurve, constructionHistory=False, replaceOriginal=True, rebuildType=0, degree=1, \
                           endKnots=True, keepEndPoints=True, keepRange=0, keepControlPoints=True, keepTangents=True, \
                           spans=cmds.getAttr(tempCurve+'.spans'), tolerance=0.01)
@@ -3801,35 +3959,48 @@ class SplineControl(BaseJointControl):
         tempPointOnCurveInfoNodes = []
         for i, joint in zip(range(numCtls), ctlJoints):
             tempPointOnCurveInfo = cmds.createNode('pointOnCurveInfo', skipSelect=True)
-            cmds.connectAttr(tempCurve+'Shape.worldSpace[0]', tempPointOnCurveInfo+'.inputCurve')
+            cmds.connectAttr(tempCurveShape+'.worldSpace[0]', tempPointOnCurveInfo+'.inputCurve')
             cmds.setAttr(tempPointOnCurveInfo+'.parameter', u_offset_mult*i)
-            cmds.connectAttr(tempPointOnCurveInfo+'.position', joint+'.translate')
+            jointPos = cmds.getAttr(tempPointOnCurveInfo+'.position')[0]
+            
+            cmds.setAttr(joint+'.translate', *jointPos, type='double3')
+            #cmds.connectAttr(tempPointOnCurveInfo+'.position', joint+'.translate')
+            #cmds.connectAttr(tempPointOnCurveInfo+'.position', joint+'.translate')
             tempPointOnCurveInfoNodes.append(tempPointOnCurveInfo)
-        cmds.select(clear=True)
         mfunc.updateNodeList([tempCurve])
         cmds.delete(tempPointOnCurveInfoNodes)
         cmds.delete(tempCurve)
 
         # If the spline joints have local orientation, orient the FK control joints as well.
+        # Use the "splineOrientation" attribute on the root joint. This originated from the "node orientation type"
+        # attribute from its spline module state. It's an enum attribute with 0 as 'world' and 1 as 'local'.
         if cmds.getAttr(self.rootJoint+'.splineOrientation') == '1':
-            nodeAxes = cmds.getAttr(self.rootJoint+'.nodeAxes')
-            onPlane = cmds.getAttr(self.rootJoint+'.plane')
+            nodeAxes = cmds.getAttr(self.rootJoint+'.nodeAxes')     # Originated from module state, see node axes for module creation. 
+            onPlane = cmds.getAttr(self.rootJoint+'.plane')     # Originated from module state, see creation plane for module creation. 
+            
+            # Get the axes to be used for orientation.
             aimVector = {'X':[1.0, 0.0, 0.0], 'Y':[0.0, 1.0, 0.0], 'Z':[0.0, 0.0, 1.0]}[nodeAxes[0]]
             upVector = {'X':[1.0, 0.0, 0.0], 'Y':[0.0, 1.0, 0.0], 'Z':[0.0, 0.0, 1.0]}[nodeAxes[1]]
             worldUpVector = {'XY':[0.0, 0.0, 1.0], 'YZ':[1.0, 0.0, 0.0], 'XZ':[0.0, 1.0, 0.0]}[onPlane[1:]]
+            
+            # If the originating module for current spline joint hierarchy was created on the -ve side of the creation plane,
+            # modify the aim vector for orientation accordingly.
             if onPlane[0] == '-':
                 rotationFunction = cmds.getAttr(self.rootJoint+'.rotationFunction')
                 if rotationFunction == 'behaviour':
                     aimVector = [item*-1 for item in aimVector]
-            cmds.parent(ctlJoints[0], self.rootJoint, absolute=True)
-            cmds.parent(ctlJoints[-1], self.selCharacterHierarchy[0], absolute=True)
+            
+            # Orient the root and end fk control joints (They're separate from main driver joints).
+            cmds.parent(ctlJoints[0], self.rootJoint, absolute=True)    
             cmds.setAttr(ctlJoints[0]+'.jointOrient', 0, 0, 0, type='double3')
-            cmds.setAttr(ctlJoints[-1]+'.jointOrient', 0, 0, 0, type='double3')
             cmds.parent(ctlJoints[0], world=True, absolute=True)
+            
+            cmds.parent(ctlJoints[-1], self.selCharacterHierarchy[0], absolute=True)    # First item in self.selCharacterHierarchy is the *end_node_joint.
+            cmds.setAttr(ctlJoints[-1]+'.jointOrient', 0, 0, 0, type='double3')
             cmds.parent(ctlJoints[-1], world=True, absolute=True)
-
-            target = cmds.spaceLocator(absolute=True, position=cmds.xform(self.selCharacterHierarchy[0], query=True, \
-                                                                          worldSpace=True, translation=True))[0]
+            
+            ##target = cmds.spaceLocator(absolute=True, position=cmds.xform(self.selCharacterHierarchy[0], query=True, \
+                                                                          ##worldSpace=True, translation=True))[0]
             for i in range(1, 3):
                 ##tempConstraint = cmds.aimConstraint(ctlJoints[i+1], ctlJoints[i], aimVector=aimVector, upVector=upVector,
                 ##worldUpVector=worldUpVector, name=ctlJoints[i]+'_aimConstraint')
@@ -3837,7 +4008,7 @@ class SplineControl(BaseJointControl):
                                                     worldUpVector=worldUpVector)
                 cmds.delete(tempConstraint)
                 cmds.makeIdentity(ctlJoints[i], rotate=True, apply=True)
-            cmds.delete(target)
+            ##cmds.delete(target)
 
         # Parent the FK control joints.
         for i, joint in enumerate(ctlJoints[1:]):
@@ -3857,66 +4028,111 @@ class SplineControl(BaseJointControl):
             cmds.setAttr(joint+'.overrideColor', self.controlColour)
             cmds.connectAttr(self.controlRigDisplayLayer + '.visibility', joint+'.overrideVisibility')
 
-        # Add the root translation control for the joint layer.
-        root_translation_ctl = objects.load_xhandleShape(self.namePrefix+'_root_CNTL', colour=self.controlColour)
-        cmds.xform(root_translation_ctl['preTransform'], worldSpace=True, translation=\
+        # Add the root control for the joint layer.
+        root_cntl = objects.load_xhandleShape(self.namePrefix+'_main_CNTL', colour=self.controlColour)
+        cmds.xform(root_cntl['preTransform'], worldSpace=True, translation=\
                    cmds.xform(ctlJoints[0], query=True, worldSpace=True, translation=True))
-        cmds.parent(root_translation_ctl['preTransform'], self.ctrlGrp, absolute=True)
-        mfunc.lockHideChannelAttrs(root_translation_ctl['transform'], 's', keyable=False, lock=True)
-        mfunc.lockHideChannelAttrs(root_translation_ctl['transform'], 'v', visible=False)
-        cmds.setAttr(root_translation_ctl['shape']+'.localScaleX', shapeRadius*3)
-        cmds.setAttr(root_translation_ctl['shape']+'.localScaleY', shapeRadius*3)
-        cmds.setAttr(root_translation_ctl['shape']+'.localScaleZ', shapeRadius*3)
-        cmds.setAttr(root_translation_ctl['shape']+'.drawStyle', 3)
+        cmds.parent(root_cntl['preTransform'], self.ctrlGrp, absolute=True)
+        mfunc.lockHideChannelAttrs(root_cntl['transform'], 's', keyable=False, lock=True)
+        mfunc.lockHideChannelAttrs(root_cntl['transform'], 'v', visible=False)
+        cmds.setAttr(root_cntl['shape']+'.localScaleX', shapeRadius*3)
+        cmds.setAttr(root_cntl['shape']+'.localScaleY', shapeRadius*3)
+        cmds.setAttr(root_cntl['shape']+'.localScaleZ', shapeRadius*3)
+        cmds.setAttr(root_cntl['shape']+'.drawStyle', 3)
 
         # Create a parent switch group for the root translation handle.
-        root_ps_grp = self.createParentSwitchGrpForTransform(root_translation_ctl['transform'], constrainToRootCtrl=True, 
+        root_ps_grp = self.createParentSwitchGrpForTransform(root_cntl['transform'], constrainToRootCtrl=True, 
                                                                weight=1, connectScaleWithRootCtrl=True)
         
         # Constrain the parent group for the root FK control joint to the root translation control.
-        cmds.parentConstraint(root_translation_ctl['transform'], fk_ps_grp, maintainOffset=True, \
-                             name=root_translation_ctl['transform']+'_parentConstraint')[0]
+        cmds.parentConstraint(root_cntl['transform'], fk_ps_grp, maintainOffset=True, \
+                             name=root_cntl['transform']+'_parentConstraint')[0]
         
-        # Create and position the guide and up vector locators.
+        
+        
+        # Create and position the "guide" and "up vector" locators.
+        
+        # Calculate the relative translation needed to offset the up vector locators from their positions along the spine.
+        
+        # Get the root position of the spine.
+        startJointPos = cmds.xform(ctlJoints[0], query=True, worldSpace=True, translation=True)
+        
+        # Get the end/tip position of the spine.
+        endJointPos = cmds.xform(ctlJoints[-1], query=True, worldSpace=True, translation=True)
+        
+        # Get the tip->root vector.
+        spine_direction_vec = map(lambda x,y:x-y, endJointPos, startJointPos)
+        
+        # Get its magnitude.
+        spine_direction_vec_magnitude = math.sqrt(reduce(lambda x,y: x+y, [component**2 for component in spine_direction_vec]))
+        
+        # Get the offset length needed to displace the up vector locator positions.
+        off_val = spine_direction_vec_magnitude / float(numCtls)
+        
+        # The "spine_direction_vec" is a relative vector, and using that, we need to calculate the offset translation
+        # vector (relative) to re-position the up vector locators. Between the spine root and end positions, find the 
+        # world axis value which has minimum translation, and that axis will be used to create the offset translation vector
+        # to re-position the up vector locators towards the side of the spine.
+        # The idea is not to create an offset translation along the spine.
+        off_ax_val = {abs(spine_direction_vec[0]): [off_val, 0, 0],   # X
+                      abs(spine_direction_vec[1]): [0, off_val, 0],   # Y
+                      abs(spine_direction_vec[2]): [0, 0, off_val]}   # Z
+        
+        # Now, get the offset translation vector as described above.
+        off_ax = off_ax_val[min(off_ax_val)]        
+        
+        # To store the "guide" and "up vector" locators. 
         guide_loc_list = []
         upVec_loc_list = []
+        
+        # Now create the "guide" and "up vector" locators along the control positions.
         for i in range(numCtls):
+            
+            # Create the "guide" locator, to be placed along the spine.
             if i == 0:
                 g_locName = cmds.spaceLocator(name='%s_splineGuide_root_loc' % self.namePrefix)[0]
             elif i == (numCtls-1):
                 g_locName = cmds.spaceLocator(name='%s_splineGuide_end_loc' % self.namePrefix)[0]
             else:
                 g_locName = cmds.spaceLocator(name='%s_splineGuide_%s_loc' % (self.namePrefix, i))[0]
+                
             guide_loc_list.append(g_locName)
             cmds.setAttr(g_locName+'.visibility', 0)
+            
+            # Position it.
             cmds.xform(g_locName, worldSpace=True, translation=\
                        cmds.xform(ctlJoints[i], query=True, worldSpace=True, translation=True), rotation=\
                        cmds.xform(ctlJoints[i], query=True, worldSpace=True, rotation=True))
             cmds.parent(g_locName, self.ctrlGrp, absolute=True)
+            
+            # Create the "up vector" locator, to be placed towards the side of the spine.
             if i == 0:
                 u_locName = cmds.spaceLocator(name='%s_splineUpVec_root_loc' % self.namePrefix)[0]
             elif i == (numCtls-1):
                 u_locName = cmds.spaceLocator(name='%s_splineUpVec_end_loc' % self.namePrefix)[0]
             else:
                 u_locName = cmds.spaceLocator(name='%s_splineUpVec_%s_loc' % (self.namePrefix, i))[0]
+                
             cmds.setAttr(u_locName+'.visibility', 0)
             upVec_loc_list.append(u_locName)
+            
+            # First position it.
             cmds.xform(u_locName, worldSpace=True, translation=\
                        cmds.xform(ctlJoints[i], query=True, worldSpace=True, translation=True), rotation=\
                        cmds.xform(ctlJoints[i], query=True, worldSpace=True, rotation=True))
             cmds.parent(u_locName, self.ctrlGrp, absolute=True)
-            startJointPos = cmds.xform(ctlJoints[0], query=True, worldSpace=True, translation=True)
-            endJointPos = cmds.xform(ctlJoints[-1], query=True, worldSpace=True, translation=True)
-            spine_direction_vec = map(lambda x,y:x-y, endJointPos, startJointPos)
-            spine_direction_vec_magnitude = math.sqrt(reduce(lambda x,y: x+y, [component**2 for component in spine_direction_vec]))
-            off_val = spine_direction_vec_magnitude / float(numCtls)
-            off_ax_val = {abs(spine_direction_vec[0]): [off_val, 0, 0], \
-                          abs(spine_direction_vec[1]): [0, off_val, 0], \
-                          abs(spine_direction_vec[2]): [0, 0, off_val]}
-            off_ax = off_ax_val[min(off_ax_val)]
+            
+            # Now offset it to the side of the spine.
             cmds.move(off_ax[0], off_ax[1], off_ax[2], u_locName, relative=True, localSpace=True, worldSpaceDistance=True)
+            
+            # Constrain the up vector locator to the guide locator. 
+            cmds.parentConstraint(g_locName, u_locName, maintainOffset=True, name=u_locName+'_parentConstraint')            
 
-        # Create the 'driver' and the 'up' curve.
+
+        # Create the 'driver' and the 'up' curve for the spline controls.
+        
+        # Collect the world space positions of the spline controls in a list, starting from the root control.
+        # This list will be used to create the 'driver' and the 'up' curves.
         curveCVposString = '['
         jointIt = ctlJoints[0]
         while jointIt:
@@ -3925,81 +4141,45 @@ class SplineControl(BaseJointControl):
             jointIt = cmds.listRelatives(jointIt, children=True, type='joint')
         curveCVposString = curveCVposString[:-1] + ']'
         curveCVposList = eval(curveCVposString)
+        
+        # Now create the 'driver' curve.
         driverCurve = cmds.curve(degree=2, point=curveCVposList)
         driverCurve = cmds.rename(driverCurve, self.namePrefix + '_driverCurve')
         cmds.setAttr(driverCurve+'.visibility', 0)
-        cmds.select(clear=True)
-        upVecCurve = cmds.duplicate(driverCurve, returnRootsOnly=True, name=self.namePrefix + '_upVectorCurve')[0]
-        cmds.move(off_ax[0], off_ax[1], off_ax[2], upVecCurve, relative=True, localSpace=True, worldSpaceDistance=True)
         cmds.parent(driverCurve, self.ctrlGrp, absolute=True)
-        cmds.parent(upVecCurve, self.ctrlGrp, absolute=True)
-
-        # Create the clusters for 'driver' and 'up' curve CVs.
-        cmds.namespace(setNamespace=':')
-        tempNamespaceName = self.namePrefix+'_tempNamespace'
         
+        # Create the 'up' curve.
+        upVecCurve = cmds.duplicate(driverCurve, returnRootsOnly=True, name=self.namePrefix + '_upVectorCurve')[0]
+        
+        # Offset the 'up' curve, like the up vector locators.
+        cmds.move(off_ax[0], off_ax[1], off_ax[2], upVecCurve, relative=True, localSpace=True, worldSpaceDistance=True)
+        ##cmds.parent(upVecCurve, self.ctrlGrp, absolute=True)   # The duplicated 'driverCurve' is already under self.ctrlGrp.
+
+        # Connect the 'driver' and the 'up' curves to the guide and up vector locators.
         for i in range(numCtls):
-            cmds.namespace(addNamespace=tempNamespaceName)
-            cmds.namespace(setNamespace=tempNamespaceName)
-            cmds.select(driverCurve+'.cv['+str(i)+']')
-            drvClusterNodes = cmds.cluster(relative=True)
-            cmds.setAttr(drvClusterNodes[1]+'.visibility', 0)
-            cmds.pointConstraint(guide_loc_list[i], drvClusterNodes[1])
-            cmds.parent(drvClusterNodes[1], self.ctrlGrp, absolute=True)
-            cmds.select(clear=True)
-            namespaceNodes = cmds.namespaceInfo(listOnlyDependencyNodes=True)
-            namespaceNodes = [item for item in namespaceNodes if item.endswith('Shape') == False]
-            drv_csr_nodes = []
-            for node in namespaceNodes:
-                nodeName = node.partition(':')[2]
-                if nodeName.find('MRT_character') == -1:
-                    nameSeq = re.split('\d+', nodeName)
-                    name = cmds.rename(node, self.namePrefix+'_driverCurve_%s_csr_%s'%(i, ''.join(nameSeq)))
-                    drv_csr_nodes.append(name.partition(':')[2])
-            cmds.namespace(setNamespace=':')
-            cmds.namespace(moveNamespace=[tempNamespaceName, ':'], force=True)
-            cmds.namespace(removeNamespace=tempNamespaceName)
-            self.collectedNodes.extend(drv_csr_nodes)
-            cmds.select(clear=True)
-            
-        for i in range(numCtls):
-            cmds.namespace(addNamespace=tempNamespaceName)
-            cmds.namespace(setNamespace=tempNamespaceName)
-            cmds.select(upVecCurve+'.cv['+str(i)+']')
-            upVecClusterNodes = cmds.cluster(relative=True)
-            cmds.setAttr(upVecClusterNodes[1]+'.visibility', 0)
-            cmds.pointConstraint(upVec_loc_list[i], upVecClusterNodes[1], name=upVecClusterNodes[1]+'_pointConstraint')
-            cmds.parentConstraint(guide_loc_list[i], upVec_loc_list[i], maintainOffset=True, \
-                                  name=upVec_loc_list[i]+'_parentConstraint')
-            cmds.parent(upVecClusterNodes[1], self.ctrlGrp, absolute=True)
-            cmds.select(clear=True)
-            namespaceNodes = cmds.namespaceInfo(listOnlyDependencyNodes=True)
-            namespaceNodes = [item for item in namespaceNodes if item.endswith('Shape') == False]
-            up_csr_nodes = []
-            for node in namespaceNodes:
-                nodeName = node.partition(':')[2]
-                if nodeName.find('MRT_character') == -1:
-                    nameSeq = re.split('\d+', nodeName)
-                    name = cmds.rename(node, self.namePrefix+'_upVectorCurve_%s_csr_%s'%(i, ''.join(nameSeq)))
-                    up_csr_nodes.append(name.partition(':')[2])
-            cmds.namespace(setNamespace=':')
-            cmds.namespace(moveNamespace=[tempNamespaceName, ':'], force=True)
-            cmds.namespace(removeNamespace=tempNamespaceName)
-            self.collectedNodes.extend(up_csr_nodes)
-            cmds.select(clear=True)
+            cmds.connectAttr(guide_loc_list[i]+'Shape.worldPosition[0]', driverCurve+'Shape.controlPoints['+str(i)+']')
+            cmds.connectAttr(upVec_loc_list[i]+'Shape.worldPosition[0]', upVecCurve+'Shape.controlPoints['+str(i)+']')
+
 
         # Create the 'IK style' translation control handles.
+        
+        # Create the control group.
         ikCtlGrp = cmds.group(empty=True, name=self.namePrefix+'_ik_cntls_grp', parent=self.ctrlGrp)
-        cmds.connectAttr(self.ch_root_transform+'.globalScale', ikCtlGrp+'.scaleX')
-        cmds.connectAttr(self.ch_root_transform+'.globalScale', ikCtlGrp+'.scaleY')
-        cmds.connectAttr(self.ch_root_transform+'.globalScale', ikCtlGrp+'.scaleZ')
-
+        cmds.connectAttr(self.ch_root_cntl+'.globalScale', ikCtlGrp+'.scaleX')
+        cmds.connectAttr(self.ch_root_cntl+'.globalScale', ikCtlGrp+'.scaleY')
+        cmds.connectAttr(self.ch_root_cntl+'.globalScale', ikCtlGrp+'.scaleZ')
+        
+        # Now create the control handles.
         ik_controls = []
         
         for i in range(numCtls):
+            
+            # Get the control colour.
             colour = self.controlColour + 2
             if self.controlColour > 29:
                 colour = self.controlColour - 2
+            
+            # Create the control handles.
             if i == 0:
                 ik_ctrl = objects.load_xhandleShape(self.namePrefix+'_root_ik_CNTL', colour=colour, transformOnly=True)
                 cmds.setAttr(ik_ctrl['shape']+'.localScaleX', shapeRadius*2.0)
@@ -4018,31 +4198,35 @@ class SplineControl(BaseJointControl):
 
             cmds.setAttr(ik_ctrl['shape']+'.drawStyle', 3)
             cmds.setAttr(ik_ctrl['shape']+'.wireframeThickness', 2)
-
             cmds.setAttr(ik_ctrl['transform']+'.overrideEnabled', 1)
             cmds.connectAttr(self.controlRigDisplayLayer + '.visibility', ik_ctrl['transform']+'.overrideVisibility')
             
-            # Pre-ik_ctrl each handle separately in this case and orient it accordingly.
+            # Pre-transform each ik_CNTL handle separately in this case and orient it accordingly.
             ikHandleOriGrp = cmds.group(empty=True, name=ik_ctrl['transform']+'_transOriGrp')
             if self.transOriFunc == 'local_orientation':
-                cmds.xform(ikHandleOriGrp, worldSpace=True, translation=\
-                           cmds.xform(ctlJoints[i], query=True, worldSpace=True, translation=True), rotation=\
-                           cmds.xform(ctlJoints[i], query=True, worldSpace=True, rotation=True))
+                cmds.xform(ikHandleOriGrp, worldSpace=True, 
+                           translation=cmds.xform(ctlJoints[i], query=True, worldSpace=True, translation=True), 
+                           rotation=cmds.xform(ctlJoints[i], query=True, worldSpace=True, rotation=True))
             if self.transOriFunc == 'world':
-                cmds.xform(ikHandleOriGrp, worldSpace=True, translation=\
-                           cmds.xform(ctlJoints[i], query=True, worldSpace=True, translation=True))
+                cmds.xform(ikHandleOriGrp, worldSpace=True, 
+                           translation=cmds.xform(ctlJoints[i], query=True, worldSpace=True, translation=True))
+                
             cmds.parent(ik_ctrl['transform'], ikHandleOriGrp, relative=True)
             cmds.parent(ikHandleOriGrp, ikCtlGrp, absolute=True)
             mfunc.lockHideChannelAttrs(ik_ctrl['transform'], 'r', 's', keyable=False, lock=True)
             mfunc.lockHideChannelAttrs(ik_ctrl['transform'], 'v', visible=False)
+            
+            # Constrain the guide locators.
             cmds.parentConstraint(ik_ctrl['transform'], guide_loc_list[i], maintainOffset=True, name=ik_ctrl['transform']+'_parentConstraint')
+            
+            # Constrain the ik control pre-transform with the spline FK controls.
             cmds.parentConstraint(ctlJoints[i], ikHandleOriGrp, maintainOffset=True, name=ctlJoints[i]+'_parentConstraint')
             
             ik_controls.append(ik_ctrl['transform'])
             
         cmds.select(clear=True)
 
-        # Create the control joint layer (indirect, since it'll be driven by the curve), where each joint will
+        # Create the control joint layer (indirect, since it'll be driven by the curve, "driverCurve"), where each joint will
         # be unparented and drive the main joint layer using constraints (notice the connectLayer argument is False).
         crvJointSet, null, crvRootJoint = mfunc.createFKlayerDriverOnJointHierarchy(self.selCharacterHierarchy,
                                                                                     self.ctrlRigName+'_crv',
@@ -4057,23 +4241,33 @@ class SplineControl(BaseJointControl):
         # Collect it to be added to the control rig container.
         self.collectedNodes.extend(crvJointSet)
         
+        # Unparent each joint in this layer.
         for joint in crvJointSet:
-            cmds.parent(joint, world=True)
+            cmds.parent(joint, self.ctrlGrp, absolute=True)
 
         # The control joints will be driven by the 'driver' curve by constraining to it using motionPath for translation,
         # and then their orientation will be guided by offsetted locators on an 'up' vector curve using constraints.
         crvJoints = [crvRootJoint]
         crvJoints.extend(crvJointSet[-1:1:-1])
         crvJoints.append(crvJointSet[1])
-
+        
+        # Calculate the u-parameter offset needed to attach the joint(s) in this layer to the "driverCurve".
         u_offset_mult = (1.0/(self.numJoints-1))
+        
         for i in range(self.numJoints):
-            cmds.parent(crvJoints[i], self.ctrlGrp, absolute=True)
+            #cmds.parent(crvJoints[i], self.ctrlGrp, absolute=True)
+            # Attach each joint to the driver curve, using motion path.
             cmds.select([crvJoints[i], driverCurve])
             mp_node = cmds.pathAnimation(fractionMode=True, follow=False)
-            mel.eval('cutKey -t ":" -cl -f ":" -at "u" '+mp_node+';')
+            
+            # Remove the motionPath keys.
+            mel.eval('cutKey -t ":" -cl -f ":" -at "u" '+mp_node+';')       
+            
+            # Apply the u-parameter to attach at the desired position on the curve.
             cmds.getAttr(mp_node+'.uValue')
             cmds.setAttr(mp_node+'.uValue', i*u_offset_mult)
+            
+            # Rename the motion path nodes and collect them to be added to the control rig container.
             mp_connections = cmds.listConnections(crvJoints[i], destination=True, type='addDoubleLinear')
             mp_connections = list(set(mp_connections))
             mp_node = cmds.rename(mp_node, crvJoints[i]+'_motionPathNode')
@@ -4082,7 +4276,9 @@ class SplineControl(BaseJointControl):
             for j, node in enumerate(mp_connections):
                 name = cmds.rename(node, '%s_translateAdjust_%s_addDoubleLinear'%(crvJoints[i], j+1))
                 self.collectedNodes.append(name)
-
+            
+            # Create world up locators to be attached to the 'up' curve. This will drive the twist rotation for the 
+            # joints in the 'crvJoint' layer by using the locators as the world up objects.
             if i == 0:
                 u_crv_locName = cmds.spaceLocator(name='%s_curveUpVec_root_loc' % self.namePrefix)[0]
             elif i == (self.numJoints-1):
@@ -4093,11 +4289,15 @@ class SplineControl(BaseJointControl):
             cmds.setAttr(u_crv_locName+'.localScale', 0.25, 0.25, 0.25, type='double3')
             cmds.setAttr(u_crv_locName+'.visibility', 0)
             cmds.parent(u_crv_locName, self.ctrlGrp, absolute=True)
+            
+            # Now attach the world up locators to the 'up' curve using motion path.
             cmds.select([u_crv_locName, upVecCurve])
             mp_node = cmds.pathAnimation(fractionMode=True, follow=False)
             mel.eval('cutKey -t ":" -cl -f ":" -at "u" '+mp_node+';')
             cmds.getAttr(mp_node+'.uValue')
             cmds.setAttr(mp_node+'.uValue', i*u_offset_mult)
+            
+            # Rename the motion path nodes and collect them to be added to the control rig container.
             mp_connections = cmds.listConnections(u_crv_locName, destination=True, type='addDoubleLinear')
             mp_connections = list(set(mp_connections))
             mp_node = cmds.rename(mp_node, u_crv_locName+'_motionPathNode')
@@ -4106,22 +4306,33 @@ class SplineControl(BaseJointControl):
             for j, node in enumerate(mp_connections):
                 name = cmds.rename(node, '%s_translateAdjust_%s_addDoubleLinear' % (u_crv_locName, j))
                 self.collectedNodes.append(name)
-                
+            
+            # Drive the orientation of each joint in 'crvJoint' layer by aiming it to the next joint.
+            # Use the world up locators as the world up objects.
             if i > 0:
-                nodeAxes = cmds.getAttr(self.rootJoint+'.nodeAxes')
-                onPlane = cmds.getAttr(self.rootJoint+'.plane')
+                nodeAxes = cmds.getAttr(self.rootJoint+'.nodeAxes')  # Originated from spline module state, see node axes for module creation. 
+                onPlane = cmds.getAttr(self.rootJoint+'.plane')     # Originated from spline module state, see creation plane for module creation.
+                
+                # Get the aim and up vector axes for aim orientation.
                 aimVector={'X':[1.0, 0.0, 0.0], 'Y':[0.0, 1.0, 0.0], 'Z':[0.0, 0.0, 1.0]}[nodeAxes[0]]
                 upVector = {'X':[1.0, 0.0, 0.0], 'Y':[0.0, 1.0, 0.0], 'Z':[0.0, 0.0, 1.0]}[nodeAxes[1]]
+                
+                # If the originating module for current spline joint hierarchy was created on the -ve side of the creation plane,
+                # modify the aim vector for orientation accordingly.                
                 if onPlane[0] == '-':
                     rotationFunction = cmds.getAttr(self.rootJoint+'.rotationFunction')
                     if rotationFunction == 'behaviour':
                         aimVector = [item*-1 for item in aimVector]
+                
                 aimConstraint = cmds.aimConstraint(crvJoints[i], crvJoints[i-1], maintainOffset=True, aimVector=aimVector, \
                                                    upVector=upVector, worldUpType='object', worldUpObject=u_crv_locName, name=crvJoints[i]+'_aimConstraint')
+            
+            # Constrain the last crvJoint with the last FK control joint.
             if i == self.numJoints-1:
-                orientConstraint = cmds.orientConstraint(ctlJoints[-1], crvJoints[i], maintainOffset=True, \
+                cmds.orientConstraint(ctlJoints[-1], crvJoints[i], maintainOffset=True, \
                                                          name=crvJoints[-1]+'_orientConstraint')[0]
-
+            
+            # Now constrain the driver layer joints with the crvJoint layer.
             cmds.parentConstraint(crvJoints[i], defJoints[i], maintainOffset=True, name=crvJoints[i]+'_parentConstraint')
 
             # This could be done, but only if the fk control joints equal the number of hierarchy joints; it is not
@@ -4142,14 +4353,15 @@ class SplineControl(BaseJointControl):
                                [ctlJoints[i]+'.translate', transformName+'_translate'])
             cmds.container(self.ctrl_container, edit=True, publishAndBind=[ctlJoints[i]+'.rotate', transformName+'_rotate'])
             cmds.container(self.ctrl_container, edit=True, publishAndBind=[ctlJoints[i]+'.scale', transformName+'_scale'])
-        for joint in ik_controls:
-            jointName = self.getCtrlNiceNameForPublish(joint)
-            cmds.container(self.ctrl_container, edit=True, publishAndBind=[joint+'.translate', jointName+'_translate'])
+            
+        for cntl in ik_controls:
+            cntlName = self.getCtrlNiceNameForPublish(cntl)
+            cmds.container(self.ctrl_container, edit=True, publishAndBind=[cntl+'.translate', cntlName+'_translate'])
 
         # Create a custom keyable attribute on the character root transform by the control name to adjust the weight
         # of the driver joint layer by using the method "createCtrlRigWeightAttributeOnRootTransform".
         self.createCtrlRigWeightAttributeOnRootTransform(self.namePrefix, \
-                                                         ctlJoints+ik_controls+[root_translation_ctl['transform']])
+                                                         ctlJoints+ik_controls+[root_cntl['transform']])
 
 
-## End of file. Do not remove any newline or line breaks after this ##
+## End of file. Do not add any newline or line breaks after this >>
