@@ -678,13 +678,6 @@ def loadXhandleShapePlugin():
     '''
     maya_ver = returnMayaVersion()
 
-    if maya_ver > 2014:
-        Error('MRT is not supported on this version of Maya. Aborting.')
-        return False
-    if maya_ver < 2011:
-        Error('MRT is not supported on this version of Maya. Aborting.')
-        return False
-
     pluginBasePath = cmds.internalVar(userScriptDir=True) + 'MRT/plugin/'
 
     # Find the correct plugin built version.
@@ -2146,6 +2139,7 @@ def setupParentingForRawCharacterParts(characterJointSet, jointsMainGrp):
 
             # Create the "constrained" joint above the root joint of the hierarchy to receive constraints.
             d_joint = cmds.duplicate(item[1][0], parentOnly=True, returnRootsOnly=True, name=item[1][0]+'_constrained')[0]
+            cmds.setAttr(d_joint+'.drawStyle', 2)   # drawStyle to None
             cmds.setAttr(d_joint+'.overrideEnabled', 1)
             cmds.setAttr(d_joint+'.overrideDisplayType', 1)
             cmds.setAttr(d_joint+'.radius', 0)

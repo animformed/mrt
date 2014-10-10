@@ -264,12 +264,12 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
                       if re.match('^(WORLD|ROOT)_CNTL$', item)])
         nodes.extend([item for item in cmds.ls(type='container') \
                       if re.match('^MRT_\w+__[0-9a-zA-Z]*_container$', item)])
-        print 'NODES', nodes
+
         # Iterate through the nodes, remove all keyframes, and set the channel attributes.
         for node in nodes:
             mel.eval('cutKey -t ":" '+node+';')
             ctrlAttrs = cmds.listAttr(node, keyable=True, visible=True, unlocked=True) or []
-            print ctrlAttrs
+
             if ctrlAttrs:
                 for attr in ctrlAttrs:
                     if re.search('(translate|rotate){1}', attr):
@@ -3710,9 +3710,10 @@ class SplineControl(BaseJointControl):
         cmds.parent(r_fk_handles[0]['preTransform'], self.ctrlGrp, absolute=True)
 
         # Create a parent switch group for the reverse FK control.
-        r_fk_ps_grp = self.createParentSwitchGrpForTransform(r_fk_handles[0]['preTransform'], constrainToRootCtrl=True, 
-                                                               weight=1, connectScaleWithRootCtrl=True)
-        
+        self.createParentSwitchGrpForTransform(ctrl=r_fk_handles[0]['transform'], 
+                                               pivot=r_fk_handles[0]['preTransform'], constrainToRootCtrl=True, 
+                                               weight=1, connectScaleWithRootCtrl=True)            
+
         # Constrain the joint layer to the reverse FK handles.
         for i, j in zip(range(self.numJoints), range(self.numJoints-1, -1, -1)):
             cmds.parentConstraint(r_fk_handles[i]['transform'], joints[j], maintainOffset=True, name=r_fk_handles[i]['transform']+'_parentConstraint')
@@ -3732,10 +3733,10 @@ class SplineControl(BaseJointControl):
         # Create a parent switch group for the root control.
         self.createParentSwitchGrpForTransform(root_cntl['transform'], constrainToRootCtrl=True, 
                                                                weight=1, connectScaleWithRootCtrl=True)
-        
+
         # Constrain the parent group for the root FK control joint to the root control.
-        cmds.parentConstraint(root_cntl['transform'], r_fk_ps_grp, maintainOffset=True, \
-                             name=root_cntl['transform']+'_parentConstraint')[0]
+        cmds.parentConstraint(root_cntl['transform'], r_fk_handles[0]['preTransform'], maintainOffset=True, \
+                             name=root_cntl['transform']+'_parentConstraint')
 
         # Add the joint layer nodes to the control rig container.
         mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
@@ -3830,8 +3831,9 @@ class SplineControl(BaseJointControl):
         cmds.parent(r_fk_handles[0]['preTransform'], self.ctrlGrp, absolute=True)
 
         # Create a parent switch group for the reverse FK control.
-        r_fk_ps_grp = self.createParentSwitchGrpForTransform(r_fk_handles[0]['preTransform'], constrainToRootCtrl=True, 
-                                                               weight=1, connectScaleWithRootCtrl=True)
+        self.createParentSwitchGrpForTransform(ctrl=r_fk_handles[0]['transform'], 
+                                               pivot=r_fk_handles[0]['preTransform'], constrainToRootCtrl=True, 
+                                               weight=1, connectScaleWithRootCtrl=True)         
         
         # Constrain the joint layer to the reverse FK handles.
         for i, j in zip(range(self.numJoints), range(self.numJoints-1, -1, -1)):
@@ -3854,8 +3856,8 @@ class SplineControl(BaseJointControl):
                                                                weight=1, connectScaleWithRootCtrl=True)
         
         # Constrain the parent group for the root FK control joint to the root translation control.
-        cmds.parentConstraint(root_cntl['transform'], r_fk_ps_grp, maintainOffset=True, \
-                             name=root_cntl['transform']+'_parentConstraint')[0]
+        cmds.parentConstraint(root_cntl['transform'], r_fk_handles[0]['preTransform'], maintainOffset=True, \
+                              name=root_cntl['transform']+'_parentConstraint')
 
         # Add the joint layer nodes to the control rig container.
         mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
@@ -4079,7 +4081,7 @@ class SplineControl(BaseJointControl):
                       abs(spine_direction_vec[2]): [0, 0, off_val]}   # Z
         
         # Now, get the offset translation vector as described above.
-        off_ax = off_ax_val[min(off_ax_val)]        
+        off_ax = off_ax_val[min(off_ax_val)]
         
         # To store the "guide" and "up vector" locators. 
         guide_loc_list = []
@@ -4127,6 +4129,9 @@ class SplineControl(BaseJointControl):
             
             # Constrain the up vector locator to the guide locator. 
             cmds.parentConstraint(g_locName, u_locName, maintainOffset=True, name=u_locName+'_parentConstraint')            
+            
+            # Scale constrain the up vector locator to the guide locator. 
+            cmds.scaleConstraint(g_locName, u_locName, maintainOffset=True, name=u_locName+'_scaleConstraint')            
 
 
         # Create the 'driver' and the 'up' curve for the spline controls.
@@ -4150,10 +4155,6 @@ class SplineControl(BaseJointControl):
         
         # Create the 'up' curve.
         upVecCurve = cmds.duplicate(driverCurve, returnRootsOnly=True, name=self.namePrefix + '_upVectorCurve')[0]
-        
-        # Offset the 'up' curve, like the up vector locators.
-        cmds.move(off_ax[0], off_ax[1], off_ax[2], upVecCurve, relative=True, localSpace=True, worldSpaceDistance=True)
-        ##cmds.parent(upVecCurve, self.ctrlGrp, absolute=True)   # The duplicated 'driverCurve' is already under self.ctrlGrp.
 
         # Connect the 'driver' and the 'up' curves to the guide and up vector locators.
         for i in range(numCtls):
@@ -4218,6 +4219,7 @@ class SplineControl(BaseJointControl):
             
             # Constrain the guide locators.
             cmds.parentConstraint(ik_ctrl['transform'], guide_loc_list[i], maintainOffset=True, name=ik_ctrl['transform']+'_parentConstraint')
+            cmds.scaleConstraint(ik_ctrl['transform'], guide_loc_list[i], maintainOffset=True, name=ik_ctrl['transform']+'_scaleConstraint')
             
             # Constrain the ik control pre-transform with the spline FK controls.
             cmds.parentConstraint(ctlJoints[i], ikHandleOriGrp, maintainOffset=True, name=ctlJoints[i]+'_parentConstraint')
@@ -4255,13 +4257,13 @@ class SplineControl(BaseJointControl):
         u_offset_mult = (1.0/(self.numJoints-1))
         
         for i in range(self.numJoints):
-            #cmds.parent(crvJoints[i], self.ctrlGrp, absolute=True)
+
             # Attach each joint to the driver curve, using motion path.
             cmds.select([crvJoints[i], driverCurve])
             mp_node = cmds.pathAnimation(fractionMode=True, follow=False)
             
             # Remove the motionPath keys.
-            mel.eval('cutKey -t ":" -cl -f ":" -at "u" '+mp_node+';')       
+            mel.eval('cutKey -t ":" -cl -f ":" -at "u" '+mp_node+';')
             
             # Apply the u-parameter to attach at the desired position on the curve.
             cmds.getAttr(mp_node+'.uValue')
