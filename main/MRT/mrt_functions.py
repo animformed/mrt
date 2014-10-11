@@ -1799,7 +1799,7 @@ def createSkeletonFromModule(moduleAttrsDict):
     def joint(*args, **kwargs):
         '''
         Wrapper function for creating joint(s) to be used by character/control rigs (not for modules). 
-        Creates a custom attribute which can be used to identify the joint(s).
+        Creates a custom attribute which can be used to identify the joint(s) created by MRT.
         '''
         # Create the joint with the passed-in parameters.
         jnt = cmds.joint(*args, **kwargs)
@@ -2236,10 +2236,11 @@ def createProxyForSkeletonFromModule(characterJointSet, moduleAttrsDict, charact
             # Calculate and drive the aim axis scaling of the bone proxy geometry (which is between two joints).
             
             # Create the utility nodes.
-            distanceBetweenNode = cmds.createNode('distanceBetween', name=bone_proxy+'_scaleLengthDistance', skipSelect=True)
-            distanceBetween_1_vecPro = cmds.createNode('vectorProduct', name=bone_proxy+'_scaleLengthVector_1_point', skipSelect=True)
-            distanceBetween_2_vecPro = cmds.createNode('vectorProduct', name=bone_proxy+'_scaleLengthVector_2_point', skipSelect=True)
-            distanceScaleDivide = cmds.createNode('multiplyDivide', name=bone_proxy+'_distanceScaleDivide', skipSelect=True)
+            nodeNamePrefix = '%s_%s_proxy_bone' % (moduleAttrsDict['userSpecName'], namePrefix)
+            distanceBetweenNode = cmds.createNode('distanceBetween', name=nodeNamePrefix+'_scaleLengthDistance', skipSelect=True)
+            distanceBetween_1_vecPro = cmds.createNode('vectorProduct', name=nodeNamePrefix+'_scaleLengthVector_1_point', skipSelect=True)
+            distanceBetween_2_vecPro = cmds.createNode('vectorProduct', name=nodeNamePrefix+'_scaleLengthVector_2_point', skipSelect=True)
+            distanceScaleDivide = cmds.createNode('multiplyDivide', name=nodeNamePrefix+'_distanceScaleDivide', skipSelect=True)
             
             # Connect the joints for positions to get the distance between them.
             cmds.connectAttr(joint+'.worldMatrix', distanceBetween_1_vecPro+'.matrix')

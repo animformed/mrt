@@ -6638,13 +6638,18 @@ class MRT_UI(object):
                     Error('MRT: Cannot add a target parent control within the same hierarchy. ' \
                                  'Select and add another control handle.')
                     return
-            else:
+                
+            elif re.match('^ROOT_CNTL$', selection):
                 result = mfunc.traverseConstrainedParentHierarchiesForSkeleton(ins_control_rootJoint)
 
                 if not result:
-                    Error('MRT Warning: The joint hierarchy for the selected control rig has no parent hierarchy. '\
-                                 'If you\'re adding the character root control as a target parent for a root FK control '\
+                    cmds.warning('MRT: The selected control has no parent joint hierarchy. '\
+                                 'If you\'re adding ROOT_CNTL as a target parent for a root FK control '\
                                  'assigned to this hierarchy, it will have no effect.')
+            else:
+                Error('MRT: Cannot add the selected or the WORLD_CNTL. ' \
+                                                 'Select and add another control handle.')
+                return                
 
             # Now add the selection to the parent target list in the UI.
             if not cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], query=True, enable=True):
@@ -6665,7 +6670,7 @@ class MRT_UI(object):
 
         else:
             Error('MRT: Invalid control/object as a parent target. You can only select a control ' \
-                         'transform (with suffix \'handle\') or the character root control.')
+                         'transform (with suffix \'CNTL\') or the character root control.')
 
         self.updateRemoveAllButtonStatForParentSwitching()
 

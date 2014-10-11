@@ -516,7 +516,7 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
         jointSet, driver_constraints, layerRootJoint = mfunc.createFKlayerDriverOnJointHierarchy(self.selCharacterHierarchy,
                                                                                                  self.ctrlRigName,
                                                                                                  self.characterName,
-                                                                                                 True,
+                                                                                                 True,           # asControl=True
                                                                                                  'On',
                                                                                                  True,
                                                                                                  self.controlColour,
@@ -579,7 +579,7 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
         jointSet, driver_constraints, layerRootJoint = mfunc.createFKlayerDriverOnJointHierarchy(self.selCharacterHierarchy,
                                                                                                  self.ctrlRigName,
                                                                                                  self.characterName,
-                                                                                                 True,
+                                                                                                 True,           # asControl=True
                                                                                                  'On',
                                                                                                  True,
                                                                                                  self.controlColour,
@@ -1642,7 +1642,7 @@ class CustomLegControl(BaseJointControl):
                 cmds.setAttr(bankPivot_2_ctrl['transform']+'.translate'+axis, keyable=False, channelBox=False, lock=True)
 
         # Create the SDKs for knee pole vector control attributes on the leg IK control to drive the pole vector mode.
-        pvConstraint = cmds.poleVectorConstraint(kneePVnoFlip_transform, knee_pv['transform'], legIkNodes[0], \
+        pvConstraint = cmds.poleVectorConstraint(kneePVnoFlip_transform, knee_pv['transform'], legIkNodes[0],
                                                  name=legIkNodes[0]+'_poleVectorConstraint')[0]
         for driver, driven in [[0, ik_twist], [1, 0]]:
             cmds.setAttr(legControl['transform']+'.Pole_Vector_Mode', driver)
@@ -3498,7 +3498,7 @@ class SplineControl(BaseJointControl):
         jointSet, driver_constraints, layerRootJoint = mfunc.createFKlayerDriverOnJointHierarchy(self.selCharacterHierarchy,
                                                                                                  self.ctrlRigName,
                                                                                                  self.characterName,
-                                                                                                 True,
+                                                                                                 True,           # asControl=True
                                                                                                  'On',
                                                                                                  True,
                                                                                                  self.controlColour,
@@ -3539,6 +3539,11 @@ class SplineControl(BaseJointControl):
         
         # Create a parent switch group for the root FK control joint.
         ps_grp = self.createParentSwitchGrpForTransform(layerRootJoint, constrainToRootCtrl=True)
+        
+        # Create a pre-transform for the root FK control.
+        rootFKPreTransform = cmds.group(empty=True, parent=ps_grp, name=layerRootJoint.replace('_CNTL', '_preTransform'))
+        mfunc.align(layerRootJoint, rootFKPreTransform)
+        cmds.parent(layerRootJoint, rootFKPreTransform, absolute=True)
 
         # Set the attributes and assign shapes to the control joints.
         for joint in jointSet:
@@ -3555,7 +3560,7 @@ class SplineControl(BaseJointControl):
             cmds.setAttr(xhandle['shape']+'.drawStyle', 5)
 
         # Constrain the parent group for the root FK control joint to the root control.
-        cmds.parentConstraint(root_cntl['transform'], ps_grp, maintainOffset=True, \
+        cmds.parentConstraint(root_cntl['transform'], rootFKPreTransform, maintainOffset=True, \
                              name=root_cntl['transform']+'_parentConstraint')[0]
 
         # Add the joint layer nodes to the control rig container.
@@ -3589,7 +3594,7 @@ class SplineControl(BaseJointControl):
         jointSet, driver_constraints, layerRootJoint = mfunc.createFKlayerDriverOnJointHierarchy(self.selCharacterHierarchy,
                                                                                                  self.ctrlRigName,
                                                                                                  self.characterName,
-                                                                                                 True,
+                                                                                                 True,           # asControl=True
                                                                                                  'On',
                                                                                                  True,
                                                                                                  self.controlColour,
@@ -3630,6 +3635,11 @@ class SplineControl(BaseJointControl):
 
         # Create a parent switch group for the root FK control joint.
         ps_grp = self.createParentSwitchGrpForTransform(layerRootJoint, constrainToRootCtrl=True)
+        
+        # Create a pre-transform for the root FK control.
+        rootFKPreTransform = cmds.group(empty=True, parent=ps_grp, name=layerRootJoint.replace('_CNTL', '_preTransform'))
+        mfunc.align(layerRootJoint, rootFKPreTransform)
+        cmds.parent(layerRootJoint, rootFKPreTransform, absolute=True)        
 
         # Set the attributes and assign shapes to the control joints.
         for joint in jointSet:
@@ -3646,7 +3656,7 @@ class SplineControl(BaseJointControl):
             cmds.setAttr(xhandle['shape']+'.drawStyle', 5)
 
         # Constrain the parent group for the root FK control joint to the root control.
-        cmds.parentConstraint(root_cntl['transform'], ps_grp, maintainOffset=True, \
+        cmds.parentConstraint(root_cntl['transform'], rootFKPreTransform, maintainOffset=True, \
                              name=root_cntl['transform']+'_parentConstraint')[0]
 
         # Add the joint layer nodes to the control rig container.
@@ -4055,7 +4065,12 @@ class SplineControl(BaseJointControl):
 
         # Create a parent switch group for the FK root control.
         fk_ps_grp = self.createParentSwitchGrpForTransform(ctlJoints[0])
-
+        
+        # Create a pre-transform for the root FK control.
+        rootFKPreTransform = cmds.group(empty=True, parent=fk_ps_grp, name=ctlJoints[0].replace('_CNTL', '_preTransform'))
+        mfunc.align(ctlJoints[0], rootFKPreTransform)
+        cmds.parent(ctlJoints[0], rootFKPreTransform, absolute=True)
+        
         # Lock the translation channels for the FK control joints, add control rig display layer visibility.
         for joint in ctlJoints:
             mfunc.lockHideChannelAttrs(joint, 't', keyable=False, lock=True)
@@ -4075,12 +4090,12 @@ class SplineControl(BaseJointControl):
         cmds.setAttr(root_cntl['shape']+'.localScaleZ', shapeRadius*3)
         cmds.setAttr(root_cntl['shape']+'.drawStyle', 3)
 
-        # Create a parent switch group for the root translation handle.
-        root_ps_grp = self.createParentSwitchGrpForTransform(root_cntl['transform'], constrainToRootCtrl=True, 
-                                                               weight=1, connectScaleWithRootCtrl=True)
+        # Create a parent switch group for the root control handle.
+        self.createParentSwitchGrpForTransform(root_cntl['transform'], constrainToRootCtrl=True, 
+                                               weight=1, connectScaleWithRootCtrl=True)
         
         # Constrain the parent group for the root FK control joint to the root translation control.
-        cmds.parentConstraint(root_cntl['transform'], fk_ps_grp, maintainOffset=True, \
+        cmds.parentConstraint(root_cntl['transform'], rootFKPreTransform, maintainOffset=True, \
                              name=root_cntl['transform']+'_parentConstraint')[0]
         
         
@@ -4309,7 +4324,7 @@ class SplineControl(BaseJointControl):
             self.collectedNodes.append(mp_node)
             
             for j, node in enumerate(mp_connections):
-                name = cmds.rename(node, '%s_translateAdjust_%s_addDoubleLinear'%(crvJoints[i], j+1))
+                name = cmds.rename(node, '%s_translateAdjust_%s_addDoubleLinear'%(crvJoints[i].replace('_joint', ''), j+1))
                 self.collectedNodes.append(name)
             
             # Create world up locators to be attached to the 'up' curve. This will drive the twist rotation for the 
