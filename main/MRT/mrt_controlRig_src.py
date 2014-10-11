@@ -98,6 +98,9 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
 
         # Get the name of the character world transform control (Large grey-coloured control curve with four arrows).
         self.ch_world_cntl = 'WORLD_CNTL'
+        
+        # Get the global scaling attribute.
+        self.globalScaleAttr = 'ROOT_CNTL.globalScale'
 
         # Get the name of the root joint of the selected hierarchy.
         self.rootJoint = rootJoint
@@ -438,13 +441,18 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
             cmds.setAttr(parentSwitch_grp+'.parentTargetList', lock=False)
             cmds.setAttr(parentSwitch_grp+'.parentTargetList', self.ch_root_cntl, type='string', lock=True)
             
-            self.collectedNodes.append(parentSwitchCondition)
+            # Add the parent switch condition and the control to the control rig container, since 'targetParents' on ctrl needs to be published.
+            mfunc.addNodesToContainer(self.ctrl_container, [ctrl, parentSwitchCondition])
+            
+            # Publish the 'targetParents' attribute on the control.
+            ctrlName = self.getCtrlNiceNameForPublish(ctrl)
+            cmds.container(self.ctrl_container, edit=True, publishAndBind=[ctrl+'.targetParents', ctrlName+'_targetParents'])
 
         # Connect the scaling on the character root transform to the parent switch group node.
         if connectScaleWithRootCtrl:
-            cmds.connectAttr(self.ch_root_cntl+'.globalScale', parentSwitch_grp+'.scaleX')
-            cmds.connectAttr(self.ch_root_cntl+'.globalScale', parentSwitch_grp+'.scaleY')
-            cmds.connectAttr(self.ch_root_cntl+'.globalScale', parentSwitch_grp+'.scaleZ')
+            cmds.connectAttr(self.globalScaleAttr, parentSwitch_grp+'.scaleX')
+            cmds.connectAttr(self.globalScaleAttr, parentSwitch_grp+'.scaleY')
+            cmds.connectAttr(self.globalScaleAttr, parentSwitch_grp+'.scaleZ')
 
         return parentSwitch_grp
 
@@ -531,7 +539,7 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
         # For all the joints in the new layer, lock and hide the translation and scale attributes (only rotation for
         # FK control), attach a custom shape, and set colour and visibility.
         for joint in jointSet:
-            cmds.setAttr(joint+'.radius', 0)
+            cmds.setAttr(joint+'.drawStyle', 2)
             mfunc.lockHideChannelAttrs(joint, 't', 's', 'radi', keyable=False, lock=True)
             cmds.setAttr(joint+'.overrideEnabled', 1)
             cmds.setAttr(joint+'.overrideColor', self.controlColour)
@@ -594,7 +602,7 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
         # For all the joints in the new layer, lock and hide the translation attributes, attach a custom shape,
         # and set colour and visibility.
         for joint in jointSet:
-            cmds.setAttr(joint+'.radius', 0)
+            cmds.setAttr(joint+'.drawStyle', 2)
             mfunc.lockHideChannelAttrs(joint, 't', 'radi', keyable=False, lock=True)
             cmds.setAttr(joint+'.overrideEnabled', 1)
             cmds.setAttr(joint+'.overrideColor', self.controlColour)
@@ -755,9 +763,9 @@ class CustomLegControl(BaseJointControl):
                 heelJoint = child
 
         # Create an IK RP solver from hip to ankle on the driver joint layer.
-        check = cmds.cycleCheck(query=True, evaluation=True)
-        if check:
-            cmds.cycleCheck(evaluation=False)
+
+        # Disable check for cycle.
+        cmds.cycleCheck(evaluation=False)
             
         handleName = self.namePrefix + '_hipAnkleIkHandle'
         effName = self.namePrefix + '_hipAnkleIkEffector'
@@ -783,8 +791,8 @@ class CustomLegControl(BaseJointControl):
         cmds.rename(toeIkNodes[1], effName)
         cmds.setAttr(toeIkNodes[0]+'.visibility', 0)
         
-        if check:
-            cmds.cycleCheck(evaluation=True)
+        # Enable check for cycle.
+        cmds.cycleCheck(evaluation=True)
 
         # Create the IK control handle.
         shapeRadius = cmds.getAttr(self.rootJoint+'.radius') * 0.88
@@ -1241,12 +1249,12 @@ class CustomLegControl(BaseJointControl):
         legControlAttrs = cmds.listAttr(legControl['transform'], keyable=True, visible=True, unlocked=True)
         legControlName = self.getCtrlNiceNameForPublish(legControl['transform'])
         for attr in legControlAttrs:
-            if not re.search('Foot_Toe_Straight|Foot_Toe_Lift', attr):
+            if not re.search('Foot_Toe_Straight|Foot_Toe_Lift|targetParents', attr):
                 cmds.container(self.ctrl_container, edit=True, publishAndBind=[legControl['transform']+'.'+attr, \
                                                                           legControlName+'_'+attr])
         for axis in ['X', 'Y', 'Z']:
             cmds.container(self.ctrl_container, edit=True, publishAndBind=[knee_pv['transform']+'.translate'+axis, \
-                                                                      'kneePV_cntl_translate'+axis])
+                                                                           'kneePV_cntl_translate'+axis])
         cmds.setAttr(legControl['transform']+'.overrideEnabled', 1)
         cmds.connectAttr(self.controlRigDisplayLayer + '.visibility', legControl['transform']+'.overrideVisibility')
         cmds.setAttr(knee_pv['transform']+'.overrideEnabled', 1)
@@ -1334,9 +1342,9 @@ class CustomLegControl(BaseJointControl):
                 heelJoint = child
 
         # Create an IK RP solver from hip to ankle on the driver joint layer.
-        check = cmds.cycleCheck(query=True, evaluation=True)
-        if check:
-            cmds.cycleCheck(evaluation=False)
+        
+        # Disable check for cycle.
+        cmds.cycleCheck(evaluation=False)        
             
         handleName = self.namePrefix + '_hipAnkleIkHandle'
         effName = self.namePrefix + '_hipAnkleIkEffector'
@@ -1362,8 +1370,8 @@ class CustomLegControl(BaseJointControl):
         cmds.rename(toeIkNodes[1], effName)
         cmds.setAttr(toeIkNodes[0]+'.visibility', 0)
         
-        if check:
-            cmds.cycleCheck(evaluation=True)
+        # Enable check for cycle.
+        cmds.cycleCheck(evaluation=True)
 
         # Create the IK control handle.
         shapeRadius = cmds.getAttr(self.rootJoint+'.radius') * 0.88
@@ -1802,18 +1810,20 @@ class CustomLegControl(BaseJointControl):
 
         # Apply the stretch functionality.
         
-        # Get the real-time world position of the hip joint.
-        hipPosLocator = cmds.createNode('locator', parent=hipJoint, name=self.namePrefix+'_hipPos_loc', skipSelect=True)
+        # Get the real-time world position of the hip joint.        
+        hipPosLocator = cmds.spaceLocator(name=self.namePrefix+'_hipPos_loc')[0]
+        cmds.pointConstraint(hipJoint, hipPosLocator, maintainOffset=False, name=self.namePrefix+'_hipPosLoc_pointConstraint')
+        cmds.parent(hipPosLocator, self.ctrlGrp, absolute=True)       
         cmds.setAttr(hipPosLocator+'.visibility', 0)
-        
+
         # Get the real-time length of the leg, from hip to ankle.
         distanceBtwn = cmds.createNode('distanceBetween', name=self.namePrefix+'_hipToAnkle_distance', skipSelect=True)
-        cmds.connectAttr(hipPosLocator+'.worldPosition[0]', distanceBtwn+'.point1')
+        cmds.connectAttr(hipPosLocator+'Shape.worldPosition[0]', distanceBtwn+'.point1')
         cmds.connectAttr(legControl['transform']+'Shape.worldPosition[0]', distanceBtwn+'.point2')
         
         # Divide the real-time length of the leg by globalScale to normalize it.
         legLengthNormalize = cmds.createNode('multiplyDivide', name=self.namePrefix+'_hipToAnkle_distance_normalize', skipSelect=True)
-        cmds.connectAttr(self.ch_root_cntl+'.globalScale', legLengthNormalize+'.input2X')
+        cmds.connectAttr(self.globalScaleAttr, legLengthNormalize+'.input2X')
         cmds.connectAttr(distanceBtwn+'.distance', legLengthNormalize+'.input1X')
         cmds.setAttr(legLengthNormalize+'.operation', 2)
         
@@ -1833,6 +1843,7 @@ class CustomLegControl(BaseJointControl):
         # default rest length of the leg, to allow the stretch factor.
         stretchCondition = cmds.createNode('condition', name=self.namePrefix+'_hipToAnkle_stretchCondition', skipSelect=True)
         cmds.setAttr(stretchCondition+'.operation', 2)
+        cmds.setAttr(stretchCondition+'.colorIfFalseR', 1)
         cmds.connectAttr(stretchLengthDivide+'.outputX', stretchCondition+'.colorIfTrueR')
         cmds.connectAttr(stretchLengthDivide+'.input2X', stretchCondition+'.secondTerm')
         cmds.connectAttr(stretchLengthDivide+'.input1X', stretchCondition+'.firstTerm')
@@ -1875,7 +1886,7 @@ class CustomLegControl(BaseJointControl):
         legControlAttrs = cmds.listAttr(legControl['transform'], keyable=True, visible=True, unlocked=True)
         legControlName = self.getCtrlNiceNameForPublish(legControl['transform'])
         for attr in legControlAttrs:
-            if not re.search('Foot_Toe_Straight|Foot_Toe_Lift', attr):
+            if not re.search('Foot_Toe_Straight|Foot_Toe_Lift|targetParents', attr):
                 cmds.container(self.ctrl_container, edit=True, publishAndBind=[legControl['transform']+'.'+attr, \
                                                                           legControlName+'_'+attr])
         for axis in ['X', 'Y', 'Z']:
@@ -1936,7 +1947,7 @@ class JointChainControl(BaseJointControl):
         
         # Lock the translation and scale attributes of the control joints, and apply shapes to it.
         for joint in ctrlJointSet:
-            cmds.setAttr(joint+'.radius', 0)
+            cmds.setAttr(joint+'.drawStyle', 2)
             mfunc.lockHideChannelAttrs(joint, 't', 's', 'radi', keyable=False, lock=True)
             mfunc.lockHideChannelAttrs(joint, 'v', visible=False)
             xhandle = objects.load_xhandleShape(joint, colour=self.controlColour, transformOnly=True)
@@ -2084,9 +2095,9 @@ class JointChainControl(BaseJointControl):
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleX', shapeRadius)
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleY', shapeRadius)
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleZ', shapeRadius)
-        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleX')
-        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleY')
-        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleZ')
+        cmds.connectAttr(self.globalScaleAttr, dynSettingsCtrl['transform']+'.scaleX')
+        cmds.connectAttr(self.globalScaleAttr, dynSettingsCtrl['transform']+'.scaleY')
+        cmds.connectAttr(self.globalScaleAttr, dynSettingsCtrl['transform']+'.scaleZ')
         cmds.setAttr(dynSettingsCtrl['shape']+'.drawStyle', 2)
         cmds.setAttr(dynSettingsCtrl['shape']+'.drawStyle', keyable=False, lock=True)
         cmds.xform(dynSettingsCtrl['transform'], worldSpace=True, translation=cmds.xform(defJointSet[1], query=True, worldSpace=True, translation=True), 
@@ -2178,7 +2189,7 @@ class JointChainControl(BaseJointControl):
 
         # Lock the translation and scale attributes of the control joints, and apply shapes to it.
         for joint in ctrlJointSet:
-            cmds.setAttr(joint+'.radius', 0)
+            cmds.setAttr(joint+'.drawStyle', 2)
             mfunc.lockHideChannelAttrs(joint, 't', 'radi', keyable=False, lock=True)
             mfunc.lockHideChannelAttrs(joint, 'v', visible=False)
             xhandle = objects.load_xhandleShape(joint, colour=self.controlColour, transformOnly=True)
@@ -2316,9 +2327,9 @@ class JointChainControl(BaseJointControl):
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleX', shapeRadius)
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleY', shapeRadius)
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleZ', shapeRadius)
-        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleX')
-        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleY')
-        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleZ')
+        cmds.connectAttr(self.globalScaleAttr, dynSettingsCtrl['transform']+'.scaleX')
+        cmds.connectAttr(self.globalScaleAttr, dynSettingsCtrl['transform']+'.scaleY')
+        cmds.connectAttr(self.globalScaleAttr, dynSettingsCtrl['transform']+'.scaleZ')
         cmds.setAttr(dynSettingsCtrl['shape']+'.drawStyle', 2)
         cmds.setAttr(dynSettingsCtrl['shape']+'.drawStyle', keyable=False, lock=True)
         cmds.xform(dynSettingsCtrl['transform'], worldSpace=True, translation=\
@@ -2579,9 +2590,9 @@ class JointChainControl(BaseJointControl):
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleX', dynHandleShapeRadius)
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleY', dynHandleShapeRadius)
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleZ', dynHandleShapeRadius)
-        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleX')
-        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleY')
-        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleZ')
+        cmds.connectAttr(self.globalScaleAttr, dynSettingsCtrl['transform']+'.scaleX')
+        cmds.connectAttr(self.globalScaleAttr, dynSettingsCtrl['transform']+'.scaleY')
+        cmds.connectAttr(self.globalScaleAttr, dynSettingsCtrl['transform']+'.scaleZ')
         cmds.setAttr(dynSettingsCtrl['shape']+'.drawStyle', 2)
         cmds.xform(dynSettingsCtrl['transform'], worldSpace=True, translation=\
                    cmds.xform(defJointSet[1], query=True, worldSpace=True, translation=True), rotation=\
@@ -2685,7 +2696,7 @@ class JointChainControl(BaseJointControl):
         self.createCtrlGrp()
         
         # Collect it to be added to the control rig container.
-        self.collectedNodes.append(self.ctrlGrp)        
+        self.collectedNodes.append(self.ctrlGrp)
 
         # Create the RP IK on the first joint layer.
         ctrlIkHandleNodes = cmds.ikHandle(startJoint=ctrlLayerRootJoint, endEffector=ctrlJointSet[1], solver='ikRPsolver')
@@ -2727,35 +2738,54 @@ class JointChainControl(BaseJointControl):
         ctrlRootJointPosLocator = cmds.spaceLocator(name=self.namePrefix+'_rootJointPos_loc')[0]
         cmds.setAttr(ctrlRootJointPosLocator+'.visibility', 0)
         cmds.parent(ctrlRootJointPosLocator, self.ctrlGrp, absolute=True)
-        cmds.pointConstraint(ctrlLayerRootJoint, ctrlRootJointPosLocator, maintainOffset=False, \
+        cmds.pointConstraint(ctrlLayerRootJoint, ctrlRootJointPosLocator, maintainOffset=False,
                              name=ctrlLayerRootJoint+'_pointConstraint')
         
+        # Real-time distance between the base/root position and the end/tip.
         distNode = cmds.createNode('distanceBetween', name=self.namePrefix+'_distance', skipSelect=True)
         cmds.connectAttr(ctrlRootJointPosLocator+'Shape.worldPosition[0]', distNode+'.point1')
         cmds.connectAttr(controlHandle['transform']+'Shape.worldPosition[0]', distNode+'.point2')
-        legLengthNormalize = cmds.createNode('multiplyDivide', name=self.namePrefix+'_legLengthNormalize', skipSelect=True)
-        cmds.connectAttr(self.ch_root_cntl+'.globalScale', legLengthNormalize+'.input2X')
-        cmds.connectAttr(distNode+'.distance', legLengthNormalize+'.input1X')
-        cmds.setAttr(legLengthNormalize+'.operation', 2)
+        
+        # Divide the current length of the joint chain by the global scale to normalize it.
+        chainLengthNormalize = cmds.createNode('multiplyDivide', name=self.namePrefix+'_legLengthNormalize', skipSelect=True)
+        cmds.connectAttr(self.globalScaleAttr, chainLengthNormalize+'.input2X')
+        cmds.connectAttr(distNode+'.distance', chainLengthNormalize+'.input1X')
+        cmds.setAttr(chainLengthNormalize+'.operation', 2)
+        
+        # Get the default, total length of the joint chain.
         jointAxis = cmds.getAttr(ctrlLayerRootJoint+'.nodeAxes')[0]
-        
-        stretchLengthDivide = cmds.createNode('multiplyDivide', name=self.namePrefix+'_stretchLengthDivide', skipSelect=True)
-        legLength = 0.0
+        chainLength = 0.0
         for joint in ctrlJointSet[1:]:
-            legLength += cmds.getAttr(joint+'.translate'+jointAxis)
-        cmds.setAttr(stretchLengthDivide+'.input2X', abs(legLength), lock=True)
-        cmds.setAttr(stretchLengthDivide+'.operation', 2)
-        cmds.connectAttr(legLengthNormalize+'.outputX', stretchLengthDivide+'.input1X')
+            chainLength += cmds.getAttr(joint+'.translate'+jointAxis)
         
+        # Divide the current distance between the base-tip of the joint chain by its default length to get the stretch factor.
+        stretchLengthDivide = cmds.createNode('multiplyDivide', name=self.namePrefix+'_stretchLengthDivide', skipSelect=True)
+        cmds.setAttr(stretchLengthDivide+'.input2X', abs(chainLength), lock=True)
+        cmds.setAttr(stretchLengthDivide+'.operation', 2)
+        cmds.connectAttr(chainLengthNormalize+'.outputX', stretchLengthDivide+'.input1X')
+        
+        # Use a condition node to check if the current length of the chain is more than the 
+        # default rest length of the chain, to allow the stretch factor.
         stretchCondition = cmds.createNode('condition', name=self.namePrefix+'_stretchCondition', skipSelect=True)
         cmds.setAttr(stretchCondition+'.operation', 2)
+        cmds.setAttr(stretchCondition+'.colorIfFalseR', 1)
         cmds.connectAttr(stretchLengthDivide+'.outputX', stretchCondition+'.colorIfTrueR')
         cmds.connectAttr(stretchLengthDivide+'.input2X', stretchCondition+'.secondTerm')
         cmds.connectAttr(stretchLengthDivide+'.input1X', stretchCondition+'.firstTerm')
-        cmds.connectAttr(stretchCondition+'.outColorR', ctrlLayerRootJoint+'.scale'+jointAxis)
-        for joint in ctrlJointSet[2:]:
-            cmds.connectAttr(stretchCondition+'.outColorR', joint+'.scale'+jointAxis)
-        self.collectedNodes.extend([distNode, legLengthNormalize, stretchLengthDivide, stretchCondition])
+        
+        # Connect the stretch length multpliers to the aim translations for the control joints. 
+        for joint in ctrlJointSet[1:]:
+            stretchMultiply = cmds.createNode('multDoubleLinear', name=joint.replace('_joint', '_stretchMultiply'), skipSelect=True)
+            cmds.setAttr(stretchMultiply+'.input1', cmds.getAttr(joint+'.translate'+jointAxis))
+            cmds.connectAttr(stretchCondition+'.outColorR', stretchMultiply+'.input2')
+            cmds.connectAttr(stretchMultiply+'.output', joint+'.translate'+jointAxis)
+            self.collectedNodes.append(stretchMultiply)
+            
+        self.collectedNodes.extend([distNode, chainLengthNormalize, stretchLengthDivide, stretchCondition])
+        
+        # Connect the aim translate attribute between the control and driver joint layers.
+        for ctlJoint, defJoint in zip(ctrlJointSet, defJointSet):
+            cmds.connectAttr(ctlJoint+'.translate'+jointAxis, defJoint+'.translate'+jointAxis)
 
         # Create the driver curve, whose dynamic output curve will drive the splineIK for the driver joint layer.
         curveCVposString = '['
@@ -2834,10 +2864,6 @@ class JointChainControl(BaseJointControl):
         cmds.setAttr(follicle+'Shape.pointLock', 1)
         cmds.setAttr(follicle+'Shape.restPose', 3)
 
-        # Connect the scale attributes between the control and driver joint layers.
-        for ctlJoint, defJoint in zip(ctrlJointSet, defJointSet):
-            cmds.connectAttr(ctlJoint+'.scale', defJoint+'.scale')
-
         # Create the spline IK using the driver curve's dynamic output curve on the driver joint layer.
         defSplineIkHandleNodes = cmds.ikHandle(startJoint=defLayerRootJoint, endEffector=defJointSet[1], \
                                                solver='ikSplineSolver', createCurve=False, simplifyCurve=False, \
@@ -2874,9 +2900,9 @@ class JointChainControl(BaseJointControl):
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleX', dynHandleShapeRadius)
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleY', dynHandleShapeRadius)
         cmds.setAttr(dynSettingsCtrl['shape']+'.localScaleZ', dynHandleShapeRadius)
-        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleX')
-        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleY')
-        cmds.connectAttr(self.ch_root_cntl+'.globalScale', dynSettingsCtrl['transform']+'.scaleZ')
+        cmds.connectAttr(self.globalScaleAttr, dynSettingsCtrl['transform']+'.scaleX')
+        cmds.connectAttr(self.globalScaleAttr, dynSettingsCtrl['transform']+'.scaleY')
+        cmds.connectAttr(self.globalScaleAttr, dynSettingsCtrl['transform']+'.scaleZ')
         cmds.setAttr(dynSettingsCtrl['shape']+'.drawStyle', 2)
         cmds.xform(dynSettingsCtrl['transform'], worldSpace=True, translation=\
                    cmds.xform(defJointSet[1], query=True, worldSpace=True, translation=True), rotation=\
@@ -3043,7 +3069,7 @@ class HingeControl(BaseJointControl):
                                                weight=1, connectScaleWithRootCtrl=True)
         
         # Add all the rest of the nodes to the control rig container and publish necessary attributes.
-        mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, \
+        mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, 
                                   includeHierarchyBelow=True)
         cmds.container(self.ctrl_container, edit=True, publishAndBind=\
                        [elbow_pv['transform']+'.translate', 'ik_elbowPV_cntl_translate'])
@@ -3054,7 +3080,7 @@ class HingeControl(BaseJointControl):
 
         # Create a custom keyable attribute on the character root transform by the control name to adjust
         # the weight of the driver joint layer by using the method "createCtrlRigWeightAttributeOnRootTransform".
-        self.createCtrlRigWeightAttributeOnRootTransform(self.namePrefix, \
+        self.createCtrlRigWeightAttributeOnRootTransform(self.namePrefix,
                                                          [controlHandle['transform'], 
                                                           elbow_pv['transform']])
         cmds.select(clear=True)
@@ -3063,9 +3089,6 @@ class HingeControl(BaseJointControl):
     def applyIK_Stretchy(self):
 
         '''Create a simple rotate plane IK control with stretch functionality.'''
-
-        # Update the naming prefix for the control rig.
-        self.namePrefix = self.namePrefix + '_IK_Control_Stretchy'
 
         # We'll create a single driver joint layer with an IK RP solver on it.
         jointSet, driver_constraints, layerRootJoint = mfunc.createFKlayerDriverOnJointHierarchy(self.selCharacterHierarchy,
@@ -3151,19 +3174,21 @@ class HingeControl(BaseJointControl):
                                                weight=1, connectScaleWithRootCtrl=True)
         
         # Add the stretch functionality.
-        
+
         # Get the real-time world position of the shoulder joint.
-        shldrPosLocator = cmds.createNode('locator', parent=layerRootJoint, name=self.namePrefix+'_shldrPos_loc', skipSelect=True)
-        cmds.setAttr(shldrPosLocator+'.visibility', 0)
+        shldrPosVecLoc = cmds.spaceLocator(name=self.namePrefix+'_shldrPos_loc')[0]
+        cmds.pointConstraint(layerRootJoint, shldrPosVecLoc, maintainOffset=False, name=self.namePrefix+'_shldrPosLoc_pointConstraint')
+        cmds.parent(shldrPosVecLoc, self.ctrlGrp, absolute=True)
+        cmds.setAttr(shldrPosVecLoc+'.visibility', 0)
         
         # Get the real-time length of the arm, from shoulder to wrist.
         distanceBtwn = cmds.createNode('distanceBetween', name=self.namePrefix+'_shldrToWrist_distance', skipSelect=True)
-        cmds.connectAttr(shldrPosLocator+'.worldPosition[0]', distanceBtwn+'.point1')
+        cmds.connectAttr(shldrPosVecLoc+'Shape.worldPosition[0]', distanceBtwn+'.point1')
         cmds.connectAttr(controlHandle['transform']+'Shape.worldPosition[0]', distanceBtwn+'.point2')
         
         # Divide the real-time length of the arm by globalScale to normalize it.
         armLengthNormalize = cmds.createNode('multiplyDivide', name=self.namePrefix+'_shldrToWrist_distance_normalize', skipSelect=True)
-        cmds.connectAttr(self.ch_root_cntl+'.globalScale', armLengthNormalize+'.input2X')
+        cmds.connectAttr(self.globalScaleAttr, armLengthNormalize+'.input2X')
         cmds.connectAttr(distanceBtwn+'.distance', armLengthNormalize+'.input1X')
         cmds.setAttr(armLengthNormalize+'.operation', 2)
         
@@ -3183,27 +3208,28 @@ class HingeControl(BaseJointControl):
         # default rest length of the arm, to allow the stretch factor.        
         stretchCondition = cmds.createNode('condition', name=self.namePrefix+'_shldrToWrist_stretchCondition', skipSelect=True)
         cmds.setAttr(stretchCondition+'.operation', 2)
+        cmds.setAttr(stretchCondition+'.colorIfFalseR', 1)
         cmds.connectAttr(stretchLengthDivide+'.outputX', stretchCondition+'.colorIfTrueR')
         cmds.connectAttr(stretchLengthDivide+'.input2X', stretchCondition+'.secondTerm')
         cmds.connectAttr(stretchLengthDivide+'.input1X', stretchCondition+'.firstTerm')
         
         # Multiply the current length of shoulder to elbow by the stretch factor.
-        lowerArmTranslateMultiply = cmds.createNode('multDoubleLinear', \
+        lowerArmTranslateMultiply = cmds.createNode('multDoubleLinear',
                                                     name=self.namePrefix+'_shldrToElbow_lowerArmTranslateMultiply', skipSelect=True)
         cmds.connectAttr(stretchCondition+'.outColorR', lowerArmTranslateMultiply+'.input1')
         cmds.setAttr(lowerArmTranslateMultiply+'.input2', lowerArmLengthTranslate)
         cmds.connectAttr(lowerArmTranslateMultiply+'.output', jointSet[1]+'.translate'+jointAxis)
         
         # Multiply the current length of elbow to wrist by the stretch factor.
-        upperArmTranslateMultiply = cmds.createNode('multDoubleLinear', \
+        upperArmTranslateMultiply = cmds.createNode('multDoubleLinear',
                                                     name=self.namePrefix+'_elbowToWrist_upperArmTranslateMultiply', skipSelect=True)
         cmds.connectAttr(stretchCondition+'.outColorR', upperArmTranslateMultiply+'.input1')
         cmds.setAttr(upperArmTranslateMultiply+'.input2', upperArmLengthTranslate)
         cmds.connectAttr(upperArmTranslateMultiply+'.output', jointSet[2]+'.translate'+jointAxis)
-        
+
         # Collect the utility nodes.
-        self.collectedNodes.extend([distanceBtwn, armLengthNormalize, stretchLengthDivide, stretchCondition,
-                                                   lowerArmTranslateMultiply, upperArmTranslateMultiply])
+        self.collectedNodes.extend([distanceBtwn, armLengthNormalize, stretchLengthDivide, 
+                                    stretchCondition, lowerArmTranslateMultiply, upperArmTranslateMultiply])
         
         
         # Add all the rest of the nodes to the control rig container and publish necessary attributes.
@@ -3215,7 +3241,7 @@ class HingeControl(BaseJointControl):
 
         # Create a custom keyable attribute on the character root transform by the control name to adjust the weight
         # of the driver joint layer by using the method "createCtrlRigWeightAttributeOnRootTransform".
-        self.createCtrlRigWeightAttributeOnRootTransform(self.namePrefix, \
+        self.createCtrlRigWeightAttributeOnRootTransform(self.namePrefix,
                                                          [controlHandle['transform'], 
                                                           elbow_pv['transform']])
         cmds.select(clear=True)
@@ -3304,6 +3330,7 @@ class HingeControl(BaseJointControl):
         # Create and position the IK pole vector control.
         shapeRadius = cmds.getAttr(self.rootJoint+'.radius') * 0.32
         
+        # Create the elbow IK pole vector control.
         elbow_pv = objects.load_xhandleShape(self.namePrefix+'_elbowPV_CNTL', colour=self.controlColour)
         cmds.xform(elbow_pv['preTransform'], worldSpace=True, translation=ik_pv_offset_pos)
         cmds.setAttr(elbow_pv['shape']+'.localScaleX', shapeRadius)
@@ -3319,21 +3346,23 @@ class HingeControl(BaseJointControl):
         self.createParentSwitchGrpForTransform(elbow_pv['transform'], constrainToRootCtrl=True, 
                                                                weight=1, connectScaleWithRootCtrl=True)
         
-        
+
         # Add the stretch functionality, to work with the elbow mode as shown below.
         
         # Get the real-time world position of the shoulder joint.
-        shldrPosLocator = cmds.createNode('locator', parent=layerRootJoint, name=self.namePrefix+'_shldrPos_loc', skipSelect=True)
-        cmds.setAttr(shldrPosLocator+'.visibility', 0)        
+        shldrPosVecLoc = cmds.spaceLocator(name=self.namePrefix+'_shldrPos_loc')[0]
+        cmds.pointConstraint(layerRootJoint, shldrPosVecLoc, maintainOffset=False, name=self.namePrefix+'_shldrPosLoc_pointConstraint')
+        cmds.parent(shldrPosVecLoc, self.ctrlGrp, absolute=True)
+        cmds.setAttr(shldrPosVecLoc+'.visibility', 0)
         
         # Real-time shoulder to wrist distance.
         shldrToWrist_distanceBtwn = cmds.createNode('distanceBetween', name=self.namePrefix+'_shldrToWrist_distance', skipSelect=True)
-        cmds.connectAttr(shldrPosLocator+'.worldPosition[0]', shldrToWrist_distanceBtwn+'.point1')
+        cmds.connectAttr(shldrPosVecLoc+'Shape.worldPosition[0]', shldrToWrist_distanceBtwn+'.point1')  
         cmds.connectAttr(controlHandle['transform']+'.worldPosition[0]', shldrToWrist_distanceBtwn+'.point2')
         
         # Real-time shoulder to elbow distance.
         shldrToElbow_distanceBtwn = cmds.createNode('distanceBetween', name=self.namePrefix+'_shldrToElbow_distance', skipSelect=True)
-        cmds.connectAttr(shldrPosLocator+'.worldPosition[0]', shldrToElbow_distanceBtwn+'.point1')
+        cmds.connectAttr(shldrPosVecLoc+'Shape.worldPosition[0]', shldrToElbow_distanceBtwn+'.point1')  
         cmds.connectAttr(elbow_pv['transform']+'.worldPosition[0]', shldrToElbow_distanceBtwn+'.point2')
         
         # Real-time elbow to wrist distance.
@@ -3344,9 +3373,9 @@ class HingeControl(BaseJointControl):
         # Divide the real-time distances for arm parts by globalScale to normalize them.
         armLengthNormalize = cmds.createNode('multiplyDivide', name=self.namePrefix+'_shldrToWrist_legLengthNormalize', skipSelect=True)
         cmds.connectAttr(shldrToWrist_distanceBtwn+'.distance', armLengthNormalize+'.input1X')
-        cmds.connectAttr(self.ch_root_cntl+'.globalScale', armLengthNormalize+'.input2X') # For distance from shoulder to wrist
-        cmds.connectAttr(self.ch_root_cntl+'.globalScale', armLengthNormalize+'.input2Y') # For distance from shoulder to elbow (to be used in elbow mode)
-        cmds.connectAttr(self.ch_root_cntl+'.globalScale', armLengthNormalize+'.input2Z') # For distance from elbow to wrist (to be used in elbow mode)
+        cmds.connectAttr(self.globalScaleAttr, armLengthNormalize+'.input2X') # For distance from shoulder to wrist
+        cmds.connectAttr(self.globalScaleAttr, armLengthNormalize+'.input2Y') # For distance from shoulder to elbow (to be used in elbow mode)
+        cmds.connectAttr(self.globalScaleAttr, armLengthNormalize+'.input2Z') # For distance from elbow to wrist (to be used in elbow mode)
         cmds.setAttr(armLengthNormalize+'.operation', 2)
         
         # Get the default rest length of the arm.
@@ -3365,6 +3394,7 @@ class HingeControl(BaseJointControl):
         # default rest length of the arm, to allow the stretch factor.                
         stretchCondition = cmds.createNode('condition', name=self.namePrefix+'_shldrToWrist_stretchCondition', skipSelect=True)
         cmds.setAttr(stretchCondition+'.operation', 2)
+        cmds.setAttr(stretchCondition+'.colorIfFalseR', 1)
         cmds.connectAttr(stretchLengthDivide+'.outputX', stretchCondition+'.colorIfTrueR')
         cmds.connectAttr(stretchLengthDivide+'.input2X', stretchCondition+'.secondTerm')
         cmds.connectAttr(stretchLengthDivide+'.input1X', stretchCondition+'.firstTerm')
@@ -3383,7 +3413,7 @@ class HingeControl(BaseJointControl):
         lowerArmDistanceMultiply = cmds.createNode('multDoubleLinear',
                                                     name=self.namePrefix+'_shoulderToElbow_lowerArmDistanceMultiply', skipSelect=True)
         cmds.connectAttr(shldrToElbow_distanceBtwn+'.distance', lowerArmDistanceMultiply+'.input1')
-        cmds.setAttr(lowerArmDistanceMultiply+'.input2', math.copysign(lowerArmLengthTranslate, 1))
+        cmds.setAttr(lowerArmDistanceMultiply+'.input2', math.copysign(1, lowerArmLengthTranslate))
         cmds.connectAttr(lowerArmDistanceMultiply+'.output', armLengthNormalize+'.input1Y')
         
         # Shoulder to elbow length blender from arm stretch to elbow mode.
@@ -3391,7 +3421,11 @@ class HingeControl(BaseJointControl):
                                                  name=self.namePrefix+'_shldrToElbow_lowerArmTranslateBlend', skipSelect=True)
         cmds.connectAttr(lowerArmTranslateMultiply+'.output', lowerArmTranslateBlend+'.input[0]')
         cmds.connectAttr(armLengthNormalize+'.outputY', lowerArmTranslateBlend+'.input[1]')
-        cmds.connectAttr(lowerArmTranslateBlend+'.output', jointSet[1]+'.translate'+jointAxis)
+        cmds.connectAttr(lowerArmTranslateBlend+'.output', jointSet[2]+'.translate'+jointAxis)
+        
+        # In the jointSet, first element is the root joint, second is the end joint, and then beginning from the second 
+        # joint to the second last. In this case, there's only three joints in jointSet.
+        
         
         # Upper arm, elbow to wrist.
         
@@ -3405,7 +3439,7 @@ class HingeControl(BaseJointControl):
         upperArmDistanceMultiply = cmds.createNode('multDoubleLinear',
                                                     name=self.namePrefix+'_elbowToWrist_upperArmDistanceMultiply', skipSelect=True)
         cmds.connectAttr(elbowToWrist_distanceBtwn+'.distance', upperArmDistanceMultiply+'.input1')
-        cmds.setAttr(upperArmDistanceMultiply+'.input2', math.copysign(upperArmLengthTranslate, 1))
+        cmds.setAttr(upperArmDistanceMultiply+'.input2', math.copysign(1, upperArmLengthTranslate))
         cmds.connectAttr(upperArmDistanceMultiply+'.output', armLengthNormalize+'.input1Z')
         
         # Elbow to wrist length blender from arm stretch to elbow mode.
@@ -3413,18 +3447,18 @@ class HingeControl(BaseJointControl):
                                                  name=self.namePrefix+'_elbowToWrist_upperArmTranslateBlend', skipSelect=True)
         cmds.connectAttr(upperArmTranslateMultiply+'.output', upperArmTranslateBlend+'.input[0]')
         cmds.connectAttr(armLengthNormalize+'.outputZ', upperArmTranslateBlend+'.input[1]')
-        cmds.connectAttr(upperArmTranslateBlend+'.output', jointSet[2]+'.translate'+jointAxis)
+        cmds.connectAttr(upperArmTranslateBlend+'.output', jointSet[1]+'.translate'+jointAxis)
         
         # Connect the 'Elbow Blend' to the blender nodes for lower and upper arms.
         cmds.connectAttr(controlHandle['transform']+'.Elbow_Blend', lowerArmTranslateBlend+'.attributesBlender')
         cmds.connectAttr(controlHandle['transform']+'.Elbow_Blend', upperArmTranslateBlend+'.attributesBlender')
         
-        self.collectedNodes.extend([armLengthNormalize, stretchLengthDivide, stretchCondition, lowerArmTranslateMultiply, 
-                                    lowerArmDistanceMultiply, upperArmTranslateMultiply, upperArmDistanceMultiply, 
-                                    lowerArmTranslateBlend, upperArmTranslateBlend, shldrToElbow_distanceBtwn, 
-                                    elbowToWrist_distanceBtwn, shldrToWrist_distanceBtwn])       
-        
-        
+        self.collectedNodes.extend([armLengthNormalize, stretchLengthDivide, stretchCondition, 
+                                    lowerArmTranslateMultiply, lowerArmDistanceMultiply, upperArmTranslateMultiply, 
+                                    upperArmDistanceMultiply, lowerArmTranslateBlend, upperArmTranslateBlend, 
+                                    shldrToElbow_distanceBtwn, elbowToWrist_distanceBtwn, shldrToWrist_distanceBtwn])       
+
+
         # Prepare the elbow FK mode connections.
         elbowParentConstraintFK = cmds.parentConstraint(elbow_pv['transform'], elbowFKTransform, maintainOffset=True, \
                                                         name=elbow_pv['transform']+'_parentConstraint')[0]
@@ -3508,7 +3542,7 @@ class SplineControl(BaseJointControl):
 
         # Set the attributes and assign shapes to the control joints.
         for joint in jointSet:
-            cmds.setAttr(joint+'.radius', 0)
+            cmds.setAttr(joint+'.drawStyle', 2)
             mfunc.lockHideChannelAttrs(joint, 't', 's', 'radi', keyable=False, lock=True)
             mfunc.lockHideChannelAttrs(joint, 'v', visible=False)
             cmds.setAttr(joint+'.overrideEnabled', 1)
@@ -3599,7 +3633,7 @@ class SplineControl(BaseJointControl):
 
         # Set the attributes and assign shapes to the control joints.
         for joint in jointSet:
-            cmds.setAttr(joint+'.radius', 0)
+            cmds.setAttr(joint+'.drawStyle', 2)
             mfunc.lockHideChannelAttrs(joint, 't', 'radi', keyable=False, lock=True)
             mfunc.lockHideChannelAttrs(joint, 'v', visible=False)
             cmds.setAttr(joint+'.overrideEnabled', 1)
@@ -3925,8 +3959,9 @@ class SplineControl(BaseJointControl):
                 jointName = cmds.joint(name=self.namePrefix+'_end_fk_CNTL', radius=jointRadius)
             else:
                 jointName = cmds.joint(name=self.namePrefix+'_%s_fk_CNTL' % i, radius=jointRadius)
-            cmds.setAttr(jointName+'.radius', 0, keyable=False, channelBox=False)
+            cmds.setAttr(jointName+'.radius', keyable=False, channelBox=False)
             cmds.setAttr(jointName+'.visibility', keyable=False)
+            cmds.setAttr(jointName+'.drawStyle', 2)
             cmds.select(clear=True)
             ctlJoints.append(jointName)
         
@@ -3964,11 +3999,9 @@ class SplineControl(BaseJointControl):
             cmds.connectAttr(tempCurveShape+'.worldSpace[0]', tempPointOnCurveInfo+'.inputCurve')
             cmds.setAttr(tempPointOnCurveInfo+'.parameter', u_offset_mult*i)
             jointPos = cmds.getAttr(tempPointOnCurveInfo+'.position')[0]
-            
             cmds.setAttr(joint+'.translate', *jointPos, type='double3')
-            #cmds.connectAttr(tempPointOnCurveInfo+'.position', joint+'.translate')
-            #cmds.connectAttr(tempPointOnCurveInfo+'.position', joint+'.translate')
             tempPointOnCurveInfoNodes.append(tempPointOnCurveInfo)
+            
         mfunc.updateNodeList([tempCurve])
         cmds.delete(tempPointOnCurveInfoNodes)
         cmds.delete(tempCurve)
@@ -4166,9 +4199,9 @@ class SplineControl(BaseJointControl):
         
         # Create the control group.
         ikCtlGrp = cmds.group(empty=True, name=self.namePrefix+'_ik_cntls_grp', parent=self.ctrlGrp)
-        cmds.connectAttr(self.ch_root_cntl+'.globalScale', ikCtlGrp+'.scaleX')
-        cmds.connectAttr(self.ch_root_cntl+'.globalScale', ikCtlGrp+'.scaleY')
-        cmds.connectAttr(self.ch_root_cntl+'.globalScale', ikCtlGrp+'.scaleZ')
+        cmds.connectAttr(self.globalScaleAttr, ikCtlGrp+'.scaleX')
+        cmds.connectAttr(self.globalScaleAttr, ikCtlGrp+'.scaleY')
+        cmds.connectAttr(self.globalScaleAttr, ikCtlGrp+'.scaleZ')
         
         # Now create the control handles.
         ik_controls = []

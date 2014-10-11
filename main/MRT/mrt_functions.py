@@ -2694,50 +2694,50 @@ def createModuleFromAttributes(moduleAttrsDict, createFromUI=False):
         # Set the module to be created as a 'mirror'.
         moduleAttrsDict['mirrorModule'] = True
 
-        # Create the mirror module and collect it
+        # Create the mirror module and collect it.
         mirrorModuleInst = MRT_Module(moduleAttrsDict)
         eval('mirrorModuleInst.create%sModule()' % moduleAttrsDict['node_type'])
         modules.append(moduleAttrsDict['module_Namespace'])
         del mirrorModuleInst
 
-    # Lock the module containers
+    # Lock the module containers.
     for module in modules:
         cmds.lockNode(module+':module_container', lock=True, lockUnpublished=True)
 
     cmds.select(clear=True)
 
-    # Reset the working module namespace in moduleAttrsDict
+    # Reset the working module namespace in moduleAttrsDict.
     if moduleAttrsDict['creation_plane'][0] == '+' and moduleAttrsDict['mirror_options'][0] == 'On':
         name = moduleAttrsDict['module_Namespace'] 
         moduleAttrsDict['module_Namespace'] = moduleAttrsDict['mirror_module_Namespace']
         moduleAttrsDict['mirror_module_Namespace'] = name
 
 
-    # If a duplicate module is to be created, or not from the UI
+    # If a duplicate module is to be created, or not from the UI.
     if not createFromUI:
 
         # Collect the nodes that have to be updated later for mirroring.
         selectionNodes = []
 
-        # Set the additional module attributes according to their type
+        # Set the additional module attributes according to their type.
 
         if moduleAttrsDict['node_type'] == 'JointNode':
 
-            # Set the translate / rotate on the module transform
+            # Set the translate / rotate on the module transform.
             module_transform = moduleAttrsDict['module_Namespace']+':module_transform'
             selectionNodes.append(module_transform)
             cmds.setAttr(module_transform+'.translate', *moduleAttrsDict['module_translation_values'])
             cmds.setAttr(module_transform+'.rotate', *moduleAttrsDict['module_transform_orientation'])
 
-            # Set the module transform attributes
+            # Set the module transform attributes.
             module_transform_attrs = cmds.listAttr(module_transform, keyable=True, visible=True, unlocked=True)[6:]
             for attr in module_transform_attrs:
                 cmds.setAttr(module_transform+'.'+attr, moduleAttrsDict[str(attr)])
 
-            # Apply module transform values to the mirror module (if it exists)
+            # Apply module transform values to the mirror module (if it exists).
             if moduleAttrsDict['mirror_options'][0] == 'On':
 
-                # Apply rotation multipliers to mirror module transform
+                # Apply rotation multipliers to mirror module transform.
                 mirrorAxisMultiply = {'XY':[-1, -1, 1], 'YZ':[1, -1, -1], 'XZ':[-1, 1, -1]}[moduleAttrsDict['creation_plane'][-2:]]
                 module_orientation_values = [x*y for x,y in zip(mirrorAxisMultiply, moduleAttrsDict['module_transform_orientation'])]
 
@@ -2775,20 +2775,20 @@ def createModuleFromAttributes(moduleAttrsDict, createFromUI=False):
                         mirrorNode = '%s:%s' % (moduleAttrsDict['mirror_module_Namespace'], orientation_node)
                         cmds.setAttr(mirrorNode+'.'+attr, node_orientation_value)
 
-            if moduleAttrsDict['num_nodes'] == 1:   # Joint module with a single node
+            if moduleAttrsDict['num_nodes'] == 1:   # Joint module with a single node.
                 
-                # Get the single orientation representation control for a joint module with a single node
+                # Get the single orientation representation control for a joint module with a single node.
                 node = moduleAttrsDict['module_Namespace']+':root_node_transform'
                 orientation_repr = moduleAttrsDict['module_Namespace']+':single_orient_repr_transform'
                 selectionNodes.append(node)
                 
-                # Set the node translation
+                # Set the node translation.
                 cmds.xform(node, worldSpace=True, translation=moduleAttrsDict['node_world_translation_values'][0][1])
                 
-                # Set it's orientation
+                # Set it's orientation.
                 cmds.setAttr(orientation_repr+'.rotate', *moduleAttrsDict['orientation_repr_values'][0][1])
 
-                # Set the value for orientation representation control's mirror
+                # Set the value for orientation representation control's mirror.
                 if moduleAttrsDict['mirror_options'][0] == 'On':
                     orientation_repr = moduleAttrsDict['mirror_module_Namespace']+':single_orient_repr_transform'
                     cmds.setAttr(orientation_repr+'.rotate', *moduleAttrsDict['orientation_repr_values'][0][1])
@@ -2796,16 +2796,16 @@ def createModuleFromAttributes(moduleAttrsDict, createFromUI=False):
 
         if moduleAttrsDict['node_type'] == 'SplineNode':
 
-            # Get the start and end module transforms
+            # Get the start and end module transforms.
             splineStartHandleTransform = moduleAttrsDict['module_Namespace']+':splineStartHandleTransform'
             splineEndHandleTransform = moduleAttrsDict['module_Namespace']+':splineEndHandleTransform'
             selectionNodes.extend([splineStartHandleTransform, splineEndHandleTransform])
 
-            # Set their translations
+            # Set their translations.
             cmds.setAttr(splineStartHandleTransform+'.translate', *moduleAttrsDict['splineStartHandleTransform_translation_values'])
             cmds.setAttr(splineEndHandleTransform+'.translate', *moduleAttrsDict['splineEndHandleTransform_translation_values'])
             
-            # Set the start module transform attributes
+            # Set the start module transform attributes.
             splineStartHandleTransform_attrs = cmds.listAttr(splineStartHandleTransform, keyable=True, visible=True, unlocked=True)[3:]
             for attr in splineStartHandleTransform_attrs:
                 try:cmds.setAttr(splineStartHandleTransform+'.'+attr, moduleAttrsDict[str(attr)])
@@ -2813,7 +2813,7 @@ def createModuleFromAttributes(moduleAttrsDict, createFromUI=False):
             
             changeSplineJointOrientationType(moduleAttrsDict['module_Namespace'])
 
-            # Set the mirror start module attributes
+            # Set the mirror start module attributes.
             if moduleAttrsDict['mirror_options'][0] == 'On':
 
                 mirror_splineStartHandleTransform = moduleAttrsDict['mirror_module_Namespace']+':splineStartHandleTransform'
@@ -2832,31 +2832,31 @@ def createModuleFromAttributes(moduleAttrsDict, createFromUI=False):
 
         if moduleAttrsDict['node_type'] == 'HingeNode':
 
-            # Get the module transform
+            # Get the module transform.
             module_transform = moduleAttrsDict['module_Namespace']+':module_transform'
             selectionNodes.append(module_transform)
 
-            # Set the translate / rotate for the module transform
+            # Set the translate / rotate for the module transform.
             cmds.setAttr(module_transform+'.translate', *moduleAttrsDict['module_translation_values'])
             cmds.setAttr(module_transform+'.rotate', *moduleAttrsDict['module_transform_orientation'])
 
-            # Set the values for module transform attributes
+            # Set the values for module transform attributes.
             module_transform_attrs = cmds.listAttr(module_transform, keyable=True, visible=True, unlocked=True)[6:]
             for attr in module_transform_attrs:
                 cmds.setAttr(module_transform+'.'+attr, moduleAttrsDict[str(attr)])
 
-            # If mirroring is enabled, get the rotation multipliers for the mirror module transform and set it
+            # If mirroring is enabled, get the rotation multipliers for the mirror module transform and set it.
             if moduleAttrsDict['mirror_options'][0] == 'On':
 
-                # Apply rotation multipliers to mirror module transform
+                # Apply rotation multipliers to mirror module transform.
                 mirrorAxisMultiply = {'XY':[-1, -1, 1], 'YZ':[1, -1, -1], 'XZ':[-1, 1, -1]}[moduleAttrsDict['creation_plane'][-2:]]
                 module_orientation_values = [x*y for x,y in zip(mirrorAxisMultiply, moduleAttrsDict['module_transform_orientation'])]
 
-                # Get the mirror module transform and set its orientation
+                # Get the mirror module transform and set its orientation.
                 mirror_module_transform = moduleAttrsDict['mirror_module_Namespace']+':module_transform'
                 cmds.setAttr(mirror_module_transform+'.rotate', *module_orientation_values)
 
-                # Set the mirror module transform attributes
+                # Set the mirror module transform attributes.
                 for attr in module_transform_attrs:
                     cmds.setAttr(mirror_module_transform+'.'+attr, moduleAttrsDict[str(attr)])
 
@@ -2871,7 +2871,7 @@ def createModuleFromAttributes(moduleAttrsDict, createFromUI=False):
             for node in selectionNodes:
                 cmds.evalDeferred(partial(cmds.select, node, replace=True), lowestPriority=True)
 
-    # Re-set the current namespace
+    # Re-set the current namespace.
     cmds.namespace(setNamespace=currentNamespace)
 
     return modules

@@ -934,7 +934,7 @@ class MRT_UI(object):
         selection = cmds.ls(selection=True)
 
         if not selection:
-            sys.stderr.write('Please select a hinge node module.\n')
+            Error('Please select a hinge node module.')
             return
 
         if selection:
@@ -943,7 +943,7 @@ class MRT_UI(object):
             namespaceInfo = mfunc.stripMRTNamespace(selection)
             if namespaceInfo:
                 if not 'HingeNode' in namespaceInfo[0]:
-                    sys.stderr.write('Please select a hinge node module.\n')
+                    Error('Please select a hinge node module.')
                     return
 
                 rootPos = \
@@ -959,7 +959,7 @@ class MRT_UI(object):
                              namespaceInfo[0]+':node_1_transform_control']:
                     cmds.evalDeferred(partial(cmds.select, item), lowestPriority=True)
             else:
-                sys.stderr.write('Please select a hinge node module.\n')
+                Error('Please select a hinge node module.')
                 return
 
 
@@ -1045,7 +1045,7 @@ class MRT_UI(object):
                 os.remove(itemPath)
             sys.stderr.write('%s file(s) were removed.\n'%(len(autoCollectionFiles)))
         else:
-            sys.stderr.write('No auto-collection file(s) found.\n')
+            Error('No auto-collection file(s) found.')
 
 
     def openWebPage(self, urlString, *args):
@@ -1764,7 +1764,7 @@ class MRT_UI(object):
         cmds.setParent(self.uiVars['c_rig_prntSwitch_fLayout'])
 
         self.uiVars['c_rig_prntSwitch_createButton'] = cmds.button(label='Create / Update parent switch for' \
-                                                                         'inserted control', enable=False,
+                                                                         ' inserted control', enable=False,
                                                                     command=self.create_update_parentSwitchTargetsForControl)
         # Save frames under rig tab ---
 
@@ -2259,6 +2259,7 @@ class MRT_UI(object):
 
         # Collect module info from the create UI tab.
         self.moduleInfo = {}
+        
         self.moduleInfo['node_type'] = nodeType = cmds.radioCollection(self.uiVars['moduleType_radioColl'],
                                                                        query=True,
                                                                        select=True)
@@ -5212,7 +5213,7 @@ class MRT_UI(object):
             cmds.button(self.uiVars['charTemplate_button_edit'], edit=True, enable=True)
             cmds.button(self.uiVars['charTemplate_button_delete'], edit=True, enable=True)
 
-        # If no character template is to be loaded
+        # If no character template is to be loaded.
         if not len(self.charTemplateList):
 
             # Clear the saved character template data
@@ -6103,6 +6104,8 @@ class MRT_UI(object):
         
         # Apply the control rig definition to the selected joint hierarchy.
         eval('controlRigInst.%s()' % controlRigApplyFunc)
+        
+        # Remove the instance reference for gc collection.
         del controlRigInst
         
         # Add the new control rig definition to the "rigLayers" attribute
@@ -6181,7 +6184,7 @@ class MRT_UI(object):
                     for attr in ctrlAttrs:
                         if re.search('(translate|rotate){1}', attr):
                             cmds.setAttr(node+'.'+attr, 0)
-                        if re.search('scale|globalScale', attr):
+                        if re.search('(scale|globalScale){1}', attr):
                             cmds.setAttr(node+'.'+attr, 1)
 
         # Get all character joints.
@@ -6194,7 +6197,7 @@ class MRT_UI(object):
             cmds.getAttr(joint+'.rotate')
             cmds.getAttr(joint+'.scale')
 
-        # Remove the control rig container.
+        # Get the control rig container.
         ctrl_container = 'MRT_{0}__{1}_container'.format(userSpecName, ctrlRigNiceName)
 
         # Get all character controls for the control rig to be removed.
@@ -6434,8 +6437,8 @@ class MRT_UI(object):
         '''
         parent = cmds.listRelatives(ctrl, parent=True) or None
         while parent:
-            if re.match('^%s_parentSwitch_grp$' % ctrl, parent):
-                return parent
+            if re.match('^%s_parentSwitch_grp$' % ctrl, parent[0]):
+                return parent[0]
             parent = cmds.listRelatives(parent, parent=True) or None
         return None
         
@@ -6599,18 +6602,26 @@ class MRT_UI(object):
             # Get the control to which parent target(s) are to be added.
             ins_control = cmds.textField(self.uiVars['c_rig_prntSwitch_textField'], query=True, text=True)
             
-            # Get the control rig name.
-            controlRigName = ins_control.partition('_')[0]
+            # Find the container for the inserted control.
+            insControlContainer = cmds.container(query=True, findContainer=ins_control)
+
+            # Get its control rig naming prefix.
+            namePrefix = insControlContainer.partition('__')[0].replace('MRT_', '')
             
             # Get the root joint in its joint hierarchy.
-            ins_control_rootJoint = '%s_root_node_joint' % controlRigName
+            ins_control_rootJoint = '%s_root_node_joint' % namePrefix
             
-            # If the selected control is not the character root control.
-            if not re.match('^ROOT_CNTL$', selection):
+            # If the selected control is not the character root|world control.
+            if not re.match('^(ROOT|WORLD)_CNTL$', selection):
+                
+                # Find the container for the selected control.
+                controlContainer = cmds.container(query=True, findContainer=selection)
+                
+                # Get its control rig naming prefix.
+                namePrefix = controlContainer.partition('__')[0].replace('MRT_', '')
 
-                selectionName = selection.partition('__')[2]
-                selectionUserSpecName = re.split('_[A-Z]', selectionName)[0]
-                rootJoint = '%s_root_node_joint' % selectionUserSpecName
+                # Get the root joint in its joint hierarchy.
+                rootJoint = '%s_root_node_joint' % namePrefix
                 
                 # If the root joint for the joint hierarchy belonging to the selected control doesn't match.
                 if rootJoint != ins_control_rootJoint:
@@ -6696,7 +6707,7 @@ class MRT_UI(object):
                 scrollHeight = 40
             cmds.textScrollList(self.uiVars['c_rig_prntSwitch_target_txScList'], edit=True, height=scrollHeight)
 
-            #self.postSelectionParentSwitchListItem()
+            ##self.postSelectionParentSwitchListItem()
 
         # Update state for "Remove All" parent targets button.
         self.updateRemoveAllButtonStatForParentSwitching()
@@ -6746,18 +6757,18 @@ class MRT_UI(object):
             selection = selection[-1]
 
         # Check if the selected object is a character control
-        if re.match('^\w+_CNTL$', selection):
+        if re.match('^\w+[_]+[a-zA-Z0-9]*_CNTL$', selection):   # WORLD_CNTL or ROOT_CNTL not allowed.
 
             # Check if the character control has a parent switch group.
-            if checkCharacterControlForParentSwitchGrp(selection):
-                Error('MRT: The selected control handle already has parent switch group. Skipping.')
+            if self.checkCharacterControlForParentSwitchGrp(selection):
+                Error('MRT: The selected control handle already has a parent switch group. Skipping.')
                 return
         else:
             Error('MRT: Invalid selection. Please select a valid character control.')
             return
-
-        selectionUserSpecName = selectionName.partition('_')[0]
-        rootJoint = '%s_root_node_joint' % selectionUserSpecName
+        
+        # Find the control rig container for the selected control.
+        controlContainer = cmds.container(query=True, findContainer=selection)
 
         # Create the parent switch group node which will receive the constraints from parent transforms.
         parentSwitch_grp = cmds.group(empty=True, name=selection + '_parentSwitch_grp')
@@ -6769,6 +6780,10 @@ class MRT_UI(object):
         # Create an enum attribute on the character control (to be updated later to add parent names for user switching)
         cmds.addAttr(selection, attributeType='enum', longName='targetParents', enumName=' ', keyable=True)
         cmds.setAttr(selection+'.targetParents', lock=True)
+        
+        # Publish the 'targetParents' attribute on the selected control.
+        ctrlName = self.getCtrlNiceNameForPublish(selection)
+        cmds.container(controlContainer, edit=True, publishAndBind=[selection+'.targetParents', ctrlName+'_targetParents'])
 
         # Create string attribute on parent switch group node to store parent node list
         cmds.addAttr(parentSwitch_grp, dataType='string', longName='parentTargetList', keyable=False)
@@ -6783,7 +6798,6 @@ class MRT_UI(object):
         cmds.parent(selection, parentSwitch_grp, absolute=True)
 
         # Add the control pre-transform and the parent switch group to the control's container.
-        controlContainer = cmds.container(selection, query=True, findContainer=True)
         mfunc.addNodesToContainer(controlContainer, parentSwitch_grp)
 
 
@@ -6833,7 +6847,7 @@ class MRT_UI(object):
                 for attr in ctrlAttrs:
                     if re.search('(translate|rotate){1}', attr):
                         cmds.setAttr(node+'.'+attr, 0)
-                    if re.search('scale', attr):
+                    if re.search('(scale|globalScale){1}', attr):
                         cmds.setAttr(node+'.'+attr, 1)
 
         if targetsToBeRemoved:
