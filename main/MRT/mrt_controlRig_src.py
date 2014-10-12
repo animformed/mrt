@@ -411,11 +411,11 @@ class BaseJointControl(object):       # <object> For DP inheritance search order
             
             # Constrain the character root control,
             if cmds.objectType(ctrl, isType='joint'):
-                constraint = cmds.orientConstraint(self.ch_root_cntl, parentSwitch_grp, maintainOffset=True, \
-                                                   name=parentSwitch_grp+'_orientConstraint')[0]
+                constraint = mfunc.orientConstraint(self.ch_root_cntl, parentSwitch_grp, maintainOffset=True, 
+                                                    name=parentSwitch_grp+'_orient')
             else:
-                constraint = cmds.parentConstraint(self.ch_root_cntl, parentSwitch_grp, maintainOffset=True, \
-                                                   name=parentSwitch_grp+'_parentConstraint')[0]
+                constraint = mfunc.parentConstraint(self.ch_root_cntl, parentSwitch_grp, maintainOffset=True, 
+                                                    name=parentSwitch_grp+'_parent')
                 
             # Add a custom attribute "targetParents" to store the target list, and for the user to switch them.
             cmds.addAttr(ctrl+'.targetParents', edit=True, enumName='None:'+self.ch_root_cntl)
@@ -1812,7 +1812,7 @@ class CustomLegControl(BaseJointControl):
         
         # Get the real-time world position of the hip joint.        
         hipPosLocator = cmds.spaceLocator(name=self.namePrefix+'_hipPos_loc')[0]
-        cmds.pointConstraint(hipJoint, hipPosLocator, maintainOffset=False, name=self.namePrefix+'_hipPosLoc_pointConstraint')
+        mfunc.pointConstraint(hipJoint, hipPosLocator, maintainOffset=False)
         cmds.parent(hipPosLocator, self.ctrlGrp, absolute=True)       
         cmds.setAttr(hipPosLocator+'.visibility', 0)
 
@@ -2106,8 +2106,8 @@ class JointChainControl(BaseJointControl):
         translation = {'X':[shapeRadius*10.0, 0, 0], 'Y':[0, shapeRadius*10.0, 0], 'Z':[0, 0, shapeRadius*10.0]}[upAxis]
         cmds.xform(dynSettingsCtrl['transform'], relative=True, translation=translation)
         cmds.parent(dynSettingsCtrl['transform'], self.ctrlGrp, absolute=True)
-        cmds.parentConstraint(defJointSet[1], dynSettingsCtrl['transform'], maintainOffset=True, \
-                              name='%s_Dynamic_FK_dynSettingsCntl_parentConstraint' % self.userSpecName)
+        mfunc.parentConstraint(defJointSet[1], dynSettingsCtrl['transform'], maintainOffset=True)
+
         cmds.setAttr(dynSettingsCtrl['transform']+'.overrideEnabled', 1)
         cmds.connectAttr(self.controlRigDisplayLayer + '.visibility', dynSettingsCtrl['transform']+'.overrideVisibility')
         mfunc.lockHideChannelAttrs(dynSettingsCtrl['transform'], 't', 'r', 's', keyable=False, lock=True)
@@ -2339,8 +2339,8 @@ class JointChainControl(BaseJointControl):
         translation = {'X':[shapeRadius*10.0, 0, 0], 'Y':[0, shapeRadius*10.0, 0], 'Z':[0, 0, shapeRadius*10.0]}[upAxis]
         cmds.xform(dynSettingsCtrl['transform'], relative=True, translation=translation)
         cmds.parent(dynSettingsCtrl['transform'], self.ctrlGrp, absolute=True)
-        cmds.parentConstraint(defJointSet[1], dynSettingsCtrl['transform'], maintainOffset=True, \
-                              name='%s_Dynamic_FK_dynSettingsCntl_parentConstraint' % self.userSpecName)
+        mfunc.parentConstraint(defJointSet[1], dynSettingsCtrl['transform'], maintainOffset=True)
+
         cmds.setAttr(dynSettingsCtrl['transform']+'.overrideEnabled', 1)
         cmds.connectAttr(self.controlRigDisplayLayer + '.visibility', dynSettingsCtrl['transform']+'.overrideVisibility')
         mfunc.lockHideChannelAttrs(dynSettingsCtrl['transform'], 't', 'r', 's', keyable=False, lock=True)
@@ -2463,7 +2463,7 @@ class JointChainControl(BaseJointControl):
         cmds.setAttr(controlHandle['shape']+'.localScaleZ', shapeRadius)
         cmds.setAttr(controlHandle['shape']+'.drawStyle', 6)
         cmds.setAttr(controlHandle['transform']+'.rotateOrder', 3)
-        cmds.pointConstraint(controlHandle['transform'], ctrlIkHandle, maintainOffset=False, name=controlHandle['transform']+'_pointConstraint')
+        mfunc.pointConstraint(controlHandle['transform'], ctrlIkHandle, maintainOffset=False)
         cmds.addAttr(controlHandle['transform'], attributeType='float', longName='IK_Twist', defaultValue=0, keyable=True)
         cmds.connectAttr(controlHandle['transform']+'.IK_Twist', ctrlIkHandle+'.twist')
         cmds.setAttr(controlHandle['transform']+'.overrideEnabled', 1)
@@ -2601,7 +2601,7 @@ class JointChainControl(BaseJointControl):
         translation = {'X':[shapeRadius*6.5, 0, 0], 'Y':[0, shapeRadius*6.5, 0], 'Z':[0, 0, shapeRadius*6.5]}[upAxis]
         cmds.xform(dynSettingsCtrl['transform'], relative=True, translation=translation)
         cmds.parent(dynSettingsCtrl['transform'], self.ctrlGrp, absolute=True)
-        cmds.parentConstraint(defJointSet[1], dynSettingsCtrl['transform'], maintainOffset=True, name=defJointSet[1]+'_parentConstraint')
+        mfunc.parentConstraint(defJointSet[1], dynSettingsCtrl['transform'], maintainOffset=True)
         cmds.setAttr(dynSettingsCtrl['transform']+'.overrideEnabled', 1)
         cmds.connectAttr(self.controlRigDisplayLayer + '.visibility', dynSettingsCtrl['transform']+'.overrideVisibility')
         mfunc.lockHideChannelAttrs(dynSettingsCtrl['transform'], 't', 'r', 's', keyable=False, lock=True)
@@ -2720,7 +2720,7 @@ class JointChainControl(BaseJointControl):
         cmds.setAttr(controlHandle['shape']+'.localScaleZ', shapeRadius)
         cmds.setAttr(controlHandle['shape']+'.drawStyle', 6)
         cmds.setAttr(controlHandle['transform']+'.rotateOrder', 3)
-        cmds.pointConstraint(controlHandle['transform'], ctrlIkHandle, maintainOffset=False, name=controlHandle['transform']+'_pointConstraint')
+        mfunc.pointConstraint(controlHandle['transform'], ctrlIkHandle, maintainOffset=False)
         cmds.addAttr(controlHandle['transform'], attributeType='float', longName='IK_Twist', defaultValue=0, keyable=True)
         cmds.connectAttr(controlHandle['transform']+'.IK_Twist', ctrlIkHandle+'.twist')
         cmds.setAttr(controlHandle['transform']+'.overrideEnabled', 1)
@@ -2738,8 +2738,7 @@ class JointChainControl(BaseJointControl):
         ctrlRootJointPosLocator = cmds.spaceLocator(name=self.namePrefix+'_rootJointPos_loc')[0]
         cmds.setAttr(ctrlRootJointPosLocator+'.visibility', 0)
         cmds.parent(ctrlRootJointPosLocator, self.ctrlGrp, absolute=True)
-        cmds.pointConstraint(ctrlLayerRootJoint, ctrlRootJointPosLocator, maintainOffset=False,
-                             name=ctrlLayerRootJoint+'_pointConstraint')
+        mfunc.pointConstraint(ctrlLayerRootJoint, ctrlRootJointPosLocator, maintainOffset=False)
         
         # Real-time distance between the base/root position and the end/tip.
         distNode = cmds.createNode('distanceBetween', name=self.namePrefix+'_distance', skipSelect=True)
@@ -2911,7 +2910,7 @@ class JointChainControl(BaseJointControl):
         translation = {'X':[shapeRadius*6.5, 0, 0], 'Y':[0, shapeRadius*6.5, 0], 'Z':[0, 0, shapeRadius*6.5]}[upAxis]
         cmds.xform(dynSettingsCtrl['transform'], relative=True, translation=translation)
         cmds.parent(dynSettingsCtrl['transform'], self.ctrlGrp, absolute=True)
-        cmds.parentConstraint(defJointSet[1], dynSettingsCtrl['transform'], maintainOffset=True, name=defJointSet[1]+'_parentConstraint')
+        mfunc.parentConstraint(defJointSet[1], dynSettingsCtrl['transform'], maintainOffset=True)
         cmds.setAttr(dynSettingsCtrl['transform']+'.overrideEnabled', 1)
         cmds.connectAttr(self.controlRigDisplayLayer + '.visibility', dynSettingsCtrl['transform']+'.overrideVisibility')
         mfunc.lockHideChannelAttrs(dynSettingsCtrl['transform'], 't', 'r', 's', keyable=False, lock=True)
@@ -3029,8 +3028,8 @@ class HingeControl(BaseJointControl):
         cmds.setAttr(controlHandle['shape']+'.localScaleZ', shapeRadius)
         cmds.setAttr(controlHandle['shape']+'.drawStyle', 6)
         cmds.setAttr(controlHandle['transform']+'.rotateOrder', 3)
-        cmds.pointConstraint(controlHandle['transform'], ctrlIkHandle, maintainOffset=False, name=controlHandle['transform']+'_pointConstraint')
-        cmds.orientConstraint(controlHandle['transform'], jointSet[1], maintainOffset=True, name=controlHandle['transform']+'_orientConstraint')
+        mfunc.pointConstraint(controlHandle['transform'], ctrlIkHandle, maintainOffset=False)
+        mfunc.orientConstraint(controlHandle['transform'], jointSet[1], maintainOffset=True)
         cmds.setAttr(controlHandle['transform']+'.overrideEnabled', 1)
         cmds.connectAttr(self.controlRigDisplayLayer + '.visibility', controlHandle['transform']+'.overrideVisibility')
         cmds.setAttr(controlHandle['transform']+'.scaleX', keyable=False, lock=True)
@@ -3136,8 +3135,8 @@ class HingeControl(BaseJointControl):
         cmds.setAttr(controlHandle['shape']+'.localScaleZ', shapeRadius)
         cmds.setAttr(controlHandle['shape']+'.drawStyle', 6)
         cmds.setAttr(controlHandle['transform']+'.rotateOrder', 3)
-        cmds.pointConstraint(controlHandle['transform'], ctrlIkHandle, maintainOffset=False, name=controlHandle['transform']+'_pointConstraint')
-        cmds.orientConstraint(controlHandle['transform'], jointSet[1], maintainOffset=True, name=controlHandle['transform']+'_orientConstraint')
+        mfunc.pointConstraint(controlHandle['transform'], ctrlIkHandle, maintainOffset=False)
+        mfunc.orientConstraint(controlHandle['transform'], jointSet[1], maintainOffset=True)
         cmds.setAttr(controlHandle['transform']+'.overrideEnabled', 1)
         cmds.connectAttr(self.controlRigDisplayLayer + '.visibility', controlHandle['transform']+'.overrideVisibility')
         mfunc.lockHideChannelAttrs(controlHandle['transform'], 's', keyable=False, lock=True)
@@ -3177,7 +3176,7 @@ class HingeControl(BaseJointControl):
 
         # Get the real-time world position of the shoulder joint.
         shldrPosVecLoc = cmds.spaceLocator(name=self.namePrefix+'_shldrPos_loc')[0]
-        cmds.pointConstraint(layerRootJoint, shldrPosVecLoc, maintainOffset=False, name=self.namePrefix+'_shldrPosLoc_pointConstraint')
+        mfunc.pointConstraint(layerRootJoint, shldrPosVecLoc, maintainOffset=False)
         cmds.parent(shldrPosVecLoc, self.ctrlGrp, absolute=True)
         cmds.setAttr(shldrPosVecLoc+'.visibility', 0)
         
@@ -3303,8 +3302,8 @@ class HingeControl(BaseJointControl):
         cmds.setAttr(controlHandle['shape']+'.localScaleZ', shapeRadius)
         cmds.setAttr(controlHandle['shape']+'.drawStyle', 6)
         cmds.setAttr(controlHandle['transform']+'.rotateOrder', 3)
-        cmds.pointConstraint(controlHandle['transform'], ctrlIkHandle, maintainOffset=False, name=controlHandle['transform']+'_pointConstraint')
-        cmds.orientConstraint(controlHandle['transform'], jointSet[1], maintainOffset=True, name=controlHandle['transform']+'_orientConstraint')
+        mfunc.pointConstraint(controlHandle['transform'], ctrlIkHandle, maintainOffset=False)
+        mfunc.orientConstraint(controlHandle['transform'], jointSet[1], maintainOffset=True)
         cmds.addAttr(controlHandle['transform'], attributeType='float', longName='Elbow_Blend', minValue=0, maxValue=1, \
                      defaultValue=0, keyable=True)
         cmds.addAttr(controlHandle['transform'], attributeType='enum', longName='Forearm_FK', enumName='Off:On:', defaultValue=0, \
@@ -3351,7 +3350,7 @@ class HingeControl(BaseJointControl):
         
         # Get the real-time world position of the shoulder joint.
         shldrPosVecLoc = cmds.spaceLocator(name=self.namePrefix+'_shldrPos_loc')[0]
-        cmds.pointConstraint(layerRootJoint, shldrPosVecLoc, maintainOffset=False, name=self.namePrefix+'_shldrPosLoc_pointConstraint')
+        mfunc.pointConstraint(layerRootJoint, shldrPosVecLoc, maintainOffset=False)
         cmds.parent(shldrPosVecLoc, self.ctrlGrp, absolute=True)
         cmds.setAttr(shldrPosVecLoc+'.visibility', 0)
         
@@ -3460,8 +3459,7 @@ class HingeControl(BaseJointControl):
 
 
         # Prepare the elbow FK mode connections.
-        elbowParentConstraintFK = cmds.parentConstraint(elbow_pv['transform'], elbowFKTransform, maintainOffset=True, \
-                                                        name=elbow_pv['transform']+'_parentConstraint')[0]
+        elbowParentConstraintFK = mfunc.parentConstraint(elbow_pv['transform'], elbowFKTransform, maintainOffset=True)
         cmds.connectAttr(controlHandle['transform']+'.Forearm_FK', elbowParentConstraintFK+'.'+elbow_pv['transform']+'W0')
 
         # Add all the rest of the nodes to the control rig container and publish necessary attributes.
@@ -3560,8 +3558,7 @@ class SplineControl(BaseJointControl):
             cmds.setAttr(xhandle['shape']+'.drawStyle', 5)
 
         # Constrain the parent group for the root FK control joint to the root control.
-        cmds.parentConstraint(root_cntl['transform'], rootFKPreTransform, maintainOffset=True, \
-                             name=root_cntl['transform']+'_parentConstraint')[0]
+        mfunc.parentConstraint(root_cntl['transform'], rootFKPreTransform, maintainOffset=True)
 
         # Add the joint layer nodes to the control rig container.
         mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
@@ -3656,8 +3653,7 @@ class SplineControl(BaseJointControl):
             cmds.setAttr(xhandle['shape']+'.drawStyle', 5)
 
         # Constrain the parent group for the root FK control joint to the root control.
-        cmds.parentConstraint(root_cntl['transform'], rootFKPreTransform, maintainOffset=True, \
-                             name=root_cntl['transform']+'_parentConstraint')[0]
+        mfunc.parentConstraint(root_cntl['transform'], rootFKPreTransform, maintainOffset=True)
 
         # Add the joint layer nodes to the control rig container.
         mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
@@ -3760,7 +3756,7 @@ class SplineControl(BaseJointControl):
 
         # Constrain the joint layer to the reverse FK handles.
         for i, j in zip(range(self.numJoints), range(self.numJoints-1, -1, -1)):
-            cmds.parentConstraint(r_fk_handles[i]['transform'], joints[j], maintainOffset=True, name=r_fk_handles[i]['transform']+'_parentConstraint')
+            mfunc.parentConstraint(r_fk_handles[i]['transform'], joints[j], maintainOffset=True)
 
         # Add the root control for the joint layer.
         root_cntl = objects.load_xhandleShape(self.namePrefix+'_main_CNTL', colour=self.controlColour)
@@ -3779,8 +3775,7 @@ class SplineControl(BaseJointControl):
                                                                weight=1, connectScaleWithRootCtrl=True)
 
         # Constrain the parent group for the root FK control joint to the root control.
-        cmds.parentConstraint(root_cntl['transform'], r_fk_handles[0]['preTransform'], maintainOffset=True, \
-                             name=root_cntl['transform']+'_parentConstraint')
+        mfunc.parentConstraint(root_cntl['transform'], r_fk_handles[0]['preTransform'], maintainOffset=True)
 
         # Add the joint layer nodes to the control rig container.
         mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
@@ -3881,7 +3876,7 @@ class SplineControl(BaseJointControl):
         
         # Constrain the joint layer to the reverse FK handles.
         for i, j in zip(range(self.numJoints), range(self.numJoints-1, -1, -1)):
-            cmds.parentConstraint(r_fk_handles[i]['transform'], joints[j], maintainOffset=True, name=r_fk_handles[i]['transform']+'_parentConstraint')
+            mfunc.parentConstraint(r_fk_handles[i]['transform'], joints[j], maintainOffset=True)
 
         # Add the root control for the joint layer.
         root_cntl = objects.load_xhandleShape(self.namePrefix+'_main_CNTL', colour=self.controlColour)
@@ -3900,8 +3895,7 @@ class SplineControl(BaseJointControl):
                                                                weight=1, connectScaleWithRootCtrl=True)
         
         # Constrain the parent group for the root FK control joint to the root translation control.
-        cmds.parentConstraint(root_cntl['transform'], r_fk_handles[0]['preTransform'], maintainOffset=True, \
-                              name=root_cntl['transform']+'_parentConstraint')
+        mfunc.parentConstraint(root_cntl['transform'], r_fk_handles[0]['preTransform'], maintainOffset=True)
 
         # Add the joint layer nodes to the control rig container.
         mfunc.addNodesToContainer(self.ctrl_container, self.collectedNodes, includeHierarchyBelow=True)
@@ -4095,9 +4089,7 @@ class SplineControl(BaseJointControl):
                                                weight=1, connectScaleWithRootCtrl=True)
         
         # Constrain the parent group for the root FK control joint to the root translation control.
-        cmds.parentConstraint(root_cntl['transform'], rootFKPreTransform, maintainOffset=True, \
-                             name=root_cntl['transform']+'_parentConstraint')[0]
-        
+        mfunc.parentConstraint(root_cntl['transform'], rootFKPreTransform, maintainOffset=True)        
         
         
         # Create and position the "guide" and "up vector" locators.
@@ -4176,10 +4168,10 @@ class SplineControl(BaseJointControl):
             cmds.move(off_ax[0], off_ax[1], off_ax[2], u_locName, relative=True, localSpace=True, worldSpaceDistance=True)
             
             # Constrain the up vector locator to the guide locator. 
-            cmds.parentConstraint(g_locName, u_locName, maintainOffset=True, name=u_locName+'_parentConstraint')            
+            mfunc.parentConstraint(g_locName, u_locName, maintainOffset=True)
             
             # Scale constrain the up vector locator to the guide locator. 
-            cmds.scaleConstraint(g_locName, u_locName, maintainOffset=True, name=u_locName+'_scaleConstraint')            
+            mfunc.scaleConstraint(g_locName, u_locName, maintainOffset=True)
 
 
         # Create the 'driver' and the 'up' curve for the spline controls.
@@ -4266,11 +4258,11 @@ class SplineControl(BaseJointControl):
             mfunc.lockHideChannelAttrs(ik_ctrl['transform'], 'v', visible=False)
             
             # Constrain the guide locators.
-            cmds.parentConstraint(ik_ctrl['transform'], guide_loc_list[i], maintainOffset=True, name=ik_ctrl['transform']+'_parentConstraint')
-            cmds.scaleConstraint(ik_ctrl['transform'], guide_loc_list[i], maintainOffset=True, name=ik_ctrl['transform']+'_scaleConstraint')
+            mfunc.parentConstraint(ik_ctrl['transform'], guide_loc_list[i], maintainOffset=True)
+            mfunc.scaleConstraint(ik_ctrl['transform'], guide_loc_list[i], maintainOffset=True)
             
             # Constrain the ik control pre-transform with the spline FK controls.
-            cmds.parentConstraint(ctlJoints[i], ikHandleOriGrp, maintainOffset=True, name=ctlJoints[i]+'_parentConstraint')
+            mfunc.parentConstraint(ctlJoints[i], ikHandleOriGrp, maintainOffset=True)
             
             ik_controls.append(ik_ctrl['transform'])
             
@@ -4374,20 +4366,19 @@ class SplineControl(BaseJointControl):
                     if rotationFunction == 'behaviour':
                         aimVector = [item*-1 for item in aimVector]
                 
-                aimConstraint = cmds.aimConstraint(crvJoints[i], crvJoints[i-1], maintainOffset=True, aimVector=aimVector, \
-                                                   upVector=upVector, worldUpType='object', worldUpObject=u_crv_locName, name=crvJoints[i]+'_aimConstraint')
+                aimConstraint = mfunc.aimConstraint(crvJoints[i], crvJoints[i-1], maintainOffset=True, aimVector=aimVector,
+                                                   upVector=upVector, worldUpType='object', worldUpObject=u_crv_locName)
             
             # Constrain the last crvJoint with the last FK control joint.
             if i == self.numJoints-1:
-                cmds.orientConstraint(ctlJoints[-1], crvJoints[i], maintainOffset=True, \
-                                                         name=crvJoints[-1]+'_orientConstraint')[0]
+                mfunc.orientConstraint(ctlJoints[-1], crvJoints[i], maintainOffset=True)
             
             # Now constrain the driver layer joints with the crvJoint layer.
-            cmds.parentConstraint(crvJoints[i], defJoints[i], maintainOffset=True, name=crvJoints[i]+'_parentConstraint')
+            mfunc.parentConstraint(crvJoints[i], defJoints[i], maintainOffset=True)
 
             # This could be done, but only if the fk control joints equal the number of hierarchy joints; it is not
             # completely necessary. If done, you'd have to create a switch for toggling stretch.
-            ##cmds.parentConstraint(ctlJoints[i], defJoints[i], maintainOffset=True)##
+            ##mfunc.parentConstraint(ctlJoints[i], defJoints[i], maintainOffset=True)##
 
             cmds.select(clear=True)
 

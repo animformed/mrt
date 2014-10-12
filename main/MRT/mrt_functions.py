@@ -726,6 +726,16 @@ def selection_sort_by_length(list_sequence):
                 min_index = j
         list_sequence[i] = list_sequence[min_index]
         list_sequence[min_index] = list_sequence[i]
+        
+        
+def capitalize(string):
+    '''
+    Alternative for str.capitalize, since it doesn't always work as expected.
+    '''
+    if len(string) > 1:
+        return string[0].upper() + string[1:]
+    else:
+        return string[0].upper()
 
 
 def runDeferredFunction_wrapper(function):
@@ -865,6 +875,81 @@ def cmpCustomHierarchyStructureStrings(clsAttrString='', hierarchyString=''):
 #   SCENE FUNCTIONS
 #
 # -------------------------------------------------------------------------------------------------------------
+
+def applyConstraint(*args, **kwargs):
+    '''
+    Common wrapper function for maya constraints. It names the constraint node
+    by looking at the input/output connected nodes without providing a name value.
+    
+    Accepts a 'constraintType' keyword argument to specify the maya constraint type.
+    eg., point, parent, etc.
+    '''
+    if not 'constraintType' in kwargs:
+        cmds.error('No constraint type specified for applyConstraint().')
+    
+    constraintType = kwargs['constraintType']
+    kwargs.pop('constraintType')
+    
+    if len(args) < 2:
+        cmds.error('Check node inputs for applyConstraint().')
+    
+    # Get the target transform and the object transform(s) from args.
+    targetNode = args[-1]
+    objectNodes = args[:-1]
+    
+    # Look for a namespace in the target transform.
+    targetNamespaceTokens = [i for i in targetNode.split(':') if i]
+    namespace = ':'.join(targetNamespaceTokens[:-1]) if len(targetNamespaceTokens) > 1 else ''
+    targetNodeName = targetNamespaceTokens[-1]
+
+    targetStringTokens = [i for i in targetNodeName.split('_') if i]
+    targetStringTokens = targetStringTokens[:-1] if len(targetStringTokens) > 1 else targetStringTokens
+    
+    targetString = ''.join([capitalize(i) for i in targetStringTokens])
+    
+    objectString = ''
+    for node in objectNodes:
+        
+        objNamespaceTokens = [i for i in node.split(':') if i]
+        
+        if not namespace:
+            namespace = ':'.join(objNamespaceTokens[:-1]) if len(objNamespaceTokens) > 1 else ''
+            
+        objNodeName = objNamespaceTokens[-1]
+        objectStringTokens = [i for i in objNodeName.split('_') if i]
+        objectStringTokens = objectStringTokens[:-1] if len(objectStringTokens) > 1 else objectStringTokens        
+
+        string = ''.join([capitalize(i) for i in objectStringTokens])
+        objectString += '_' + string if objectString else string
+        
+    if 'namespace' in kwargs:
+        namespace = kwargs['namespace']
+        kwargs.pop('namespace')
+    
+    if not 'remove' in kwargs:
+        if not 'name' in kwargs:
+            kwargs['name'] = '%s:%s_to_%s_%s' % (namespace, objectString, targetString, constraintType)
+    
+    # For debug -
+    print 'applyConstraint() - \nNAME = "%s"\nTARGET = "%s"\nOBJECTS = "%s"\n' % (kwargs['name'], targetNode, objectNodes)
+    
+    eval('cmds.%sConstraint(*args, **kwargs)' % constraintType)
+    
+    if not 'remove' in kwargs:
+        return kwargs['name']
+
+
+# Specify the equivalent wrapper functions below for maya constraint commands, using applyConstraint().
+def pointConstraint(*args, **kwargs): kwargs['constraintType']='point'; return applyConstraint(*args, **kwargs)
+def parentConstraint(*args, **kwargs): kwargs['constraintType']='parent'; return applyConstraint(*args, **kwargs)
+def orientConstraint(*args, **kwargs): kwargs['constraintType']='orient'; return applyConstraint(*args, **kwargs)
+def scaleConstraint(*args, **kwargs): kwargs['constraintType']='scale'; return applyConstraint(*args, **kwargs)
+def aimConstraint(*args, **kwargs): kwargs['constraintType']='aim'; return applyConstraint(*args, **kwargs)
+def geometryConstraint(*args, **kwargs): kwargs['constraintType']='geometry'; return applyConstraint(*args, **kwargs)
+def normalConstraint(*args, **kwargs): kwargs['constraintType']='normal'; return applyConstraint(*args, **kwargs)
+def tangentConstraint(*args, **kwargs): kwargs['constraintType']='tangent'; return applyConstraint(*args, **kwargs)
+def poleVectorConstraint(*args, **kwargs): kwargs['constraintType']='poleVector'; return applyConstraint(*args, **kwargs)
+
 
 def returnHierarchyTreeListStringForCustomControlRigging(rootJoint, prefix=''):
     '''
@@ -1976,7 +2061,7 @@ def createSkeletonFromModule(moduleAttrsDict):
                 # Aim and orient to the next joint, except the last joint.
                 for i in xrange(len(joints)):
                     if not joints[i] == joints[-1]:
-                        tempConstraint = cmds.aimConstraint(joints[i+1], joints[i], aimVector=aimVector, upVector=upVector, \
+                        tempConstraint = cmds.aimConstraint(joints[i+1], joints[i], aimVector=aimVector, upVector=upVector,
                                                                                                 worldUpVector=worldUpVector)
                         cmds.delete(tempConstraint) 
                         cmds.makeIdentity(joints[i], rotate=True, apply=True)        
@@ -2076,6 +2161,7 @@ def setupParentingForRawCharacterParts(characterJointSet, jointsMainGrp):
 
     "Constrained" parenting uses parent constraint, "DG parenting". "Hierarchical" parenting uses DAG parenting.
     '''
+    
     # To collect all "constrained" root joints for joint hierarchies. This is the joint above the root joint
     # for a joint hierarchy and it is used to receive constraints.
     all_root_joints = []
@@ -2152,7 +2238,7 @@ def setupParentingForRawCharacterParts(characterJointSet, jointsMainGrp):
                 cmds.setAttr(item[1][0]+'.constrainedParent', parentInfo[0], type='string', lock=True)
                 
                 # Constrain this joint with its parent.
-                cmds.parentConstraint(parentInfo[0], d_joint, maintainOffset=True, name=parentInfo[0]+'_parentConstraint')
+                parentConstraint(parentInfo[0], d_joint, maintainOffset=True)
                 
             # Parent the root joint to it.
             cmds.parent(item[1][0], d_joint, absolute=True)
@@ -2212,10 +2298,8 @@ def createProxyForSkeletonFromModule(characterJointSet, moduleAttrsDict, charact
             cmds.makeIdentity(elbow_proxy, scale=True, apply=True)
             
             # Constrain it to the root joint and palce it under proxy group.
-            cmds.parentConstraint(joint, elbow_proxy, maintainOffset=True, \
-                                    name=joint+'_%s_proxy_elbow_preTransform_parentConstraint' % namePrefix)
-            cmds.scaleConstraint(joint, elbow_proxy, maintainOffset=True, \
-                                     name=joint+'_%s_proxy_elbow_preTransform_scaleConstraint' % namePrefix)
+            parentConstraint(joint, elbow_proxy, maintainOffset=True)
+            scaleConstraint(joint, elbow_proxy, maintainOffset=True)
             cmds.parent(elbow_proxy, proxyGrp)
             
         # If bone proxy geometry exists for the module.
@@ -2230,8 +2314,7 @@ def createProxyForSkeletonFromModule(characterJointSet, moduleAttrsDict, charact
             cmds.makeIdentity(bone_proxy, scale=True, apply=True)
             
             # Parent constrain the bone proxy geo to the joint.
-            cmds.parentConstraint(joint, bone_proxy, maintainOffset=True, \
-                                      name=joint+'_%s_proxy_bone_preTransform_parentConstraint' % namePrefix)
+            parentConstraint(joint, bone_proxy, maintainOffset=True)
                                       
             # Calculate and drive the aim axis scaling of the bone proxy geometry (which is between two joints).
             
@@ -2258,8 +2341,7 @@ def createProxyForSkeletonFromModule(characterJointSet, moduleAttrsDict, charact
             cmds.connectAttr(distanceScaleDivide+'.outputX', bone_proxy+'.scale'+moduleAttrsDict['node_axes'][0].upper())
             
             # Scale constrain the bone proxy geometry for the joint (skip the aim axis).
-            cmds.scaleConstraint(joint, bone_proxy, maintainOffset=True, skip=moduleAttrsDict['node_axes'][0].lower(), \
-                                        name=joint+'_%s_proxy_bone_preTransform_scaleConstraint' % namePrefix)
+            scaleConstraint(joint, bone_proxy, maintainOffset=True, skip=moduleAttrsDict['node_axes'][0].lower())
                                         
             # Place it under proxy group.
             cmds.parent(bone_proxy, proxyGrp)
@@ -2514,11 +2596,9 @@ def createFKlayerDriverOnJointHierarchy(*args, **kwargs):
     # Connect the new joint layer to drive the input joint hierarchy.
     if connectLayer:
         for (joint, layerJoint) in zip(sorted(characterJointSet), sorted(layerJointSet)):
-            parentConstraint = cmds.parentConstraint(layerJoint, joint, maintainOffset=transFilter, \
-                                                     name=joint+'_all_FK_layer_parentConstraint')[0]
-            scaleConstraint = cmds.scaleConstraint(layerJoint, joint, maintainOffset=transFilter, \
-                                                   name=joint+'_all_FK_layer_scaleConstraint')[0]
-            driver_constraints.extend([parentConstraint, scaleConstraint])
+            parent_constraint = parentConstraint(layerJoint, joint, maintainOffset=transFilter)
+            scale_constraint = scaleConstraint(layerJoint, joint, maintainOffset=transFilter)
+            driver_constraints.extend([parent_constraint, scale_constraint])
 
     # Disconnect the "all_joints" display to the driver layer joints (inherited by duplicating the input joint hierarchy).
     for joint in layerJointSet:
@@ -2876,56 +2956,6 @@ def createModuleFromAttributes(moduleAttrsDict, createFromUI=False):
     cmds.namespace(setNamespace=currentNamespace)
 
     return modules
-
-
-def applyConstraint(*args, **kwargs):
-    '''
-    Common wrapper function for maya constraints. It names the constraint node
-    by looking at the input/output connected nodes without providing a name value.
-    
-    Accepts a 'constraintType' keyword argument to specify the maya constraint type.
-    eg., point, parent, etc.
-    '''
-    if not 'constraintType' in kwargs:
-        cmds.error('No constraint type specified for applyConstraint().')
-    
-    constraintType = kwargs['constraintType']
-    kwargs.pop('constraintType')
-    
-    if len(args) < 2:
-        cmds.error('Check node inputs for applyConstraint().')
-    
-    targetNode = args[-1]
-    objectNodes = args[:-1]
-    
-    targetStringTokens = [i for i in targetNode.split('_') if i]
-    targetStringTokens = targetStringTokens[:-1] if len(targetStringTokens) > 1 else targetStringTokens
-    
-    targetString = ''.join([i.title() for i in targetStringTokens])
-    
-    objectString = ''
-    for node in objectNodes:
-        
-        objectStringTokens = [i for i in node.split('_') if i]
-        objectStringTokens = objectStringTokens[:-1] if len(objectStringTokens) > 1 else objectStringTokens        
-
-        string = ''.join([i.title() for i in objectStringTokens])
-        objectString += '_' + string if objectString else string
-        
-    kwargs['name'] = '%s_to_%s_%s' % (objectString, targetString, constraintType)
-    
-    eval('cmds.%sConstraint(*args, **kwargs)' % constraintType)
-    
-# Specify the equivalent wrapper functions below for maya constraint commands, using applyConstraint().
-def pointConstraint(*args, **kwargs): kwargs['constraintType']='point'; applyConstraint(*args, **kwargs)
-def parentConstraint(*args, **kwargs): kwargs['constraintType']='parent'; applyConstraint(*args, **kwargs)
-def orientConstraint(*args, **kwargs): kwargs['constraintType']='orient'; applyConstraint(*args, **kwargs)
-def scaleConstraint(*args, **kwargs): kwargs['constraintType']='scale'; applyConstraint(*args, **kwargs)
-def aimConstraint(*args, **kwargs): kwargs['constraintType']='aim'; applyConstraint(*args, **kwargs)
-def geometryConstraint(*args, **kwargs): kwargs['constraintType']='geometry'; applyConstraint(*args, **kwargs)
-def normalConstraint(*args, **kwargs): kwargs['constraintType']='normal'; applyConstraint(*args, **kwargs)
-def tangentConstraint(*args, **kwargs): kwargs['constraintType']='tangent'; applyConstraint(*args, **kwargs)
-def poleVectorConstraint(*args, **kwargs): kwargs['constraintType']='poleVector'; applyConstraint(*args, **kwargs)
 
     
 

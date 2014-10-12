@@ -3616,10 +3616,10 @@ class MRT_UI(object):
             # Re-create the module parenting constraints, which were temporarily removed (see above).
             if modulesToBeUnparented:
                 for module in modulesToBeUnparented:
-                    pointConstraint = cmds.pointConstraint(modulesToBeUnparented[module],
-                        module+':moduleParentReprSegment_segmentCurve_endLocator', maintainOffset=False,
-                                    name=module+':moduleParentReprSegment_endLocator_pointConstraint')[0]
-                    mfunc.addNodesToContainer(module+':module_container', [pointConstraint])
+                    pointConstraint = mfunc.pointConstraint(modulesToBeUnparented[module],
+                        module+':moduleParentReprSegment_segmentCurve_endLocator', maintainOffset=False)
+                    
+                    mfunc.addNodesToContainer(module+':module_container', pointConstraint)
                     cmds.setAttr(module+':moduleGrp.moduleParent', modulesToBeUnparented[module], type='string')
                     cmds.lockNode(module+':module_container', lock=True, lockUnpublished=True)
 
@@ -3979,10 +3979,9 @@ class MRT_UI(object):
 
                     # Connect the module parent representation to the parent module node.
                     pointConstraint = \
-                    cmds.pointConstraint(parentModuleNodeAttr[0],
+                    mfunc.pointConstraint(parentModuleNodeAttr[0],
                                          module+':moduleParentReprSegment_segmentCurve_endLocator',
-                                         maintainOffset=False,
-                                         name=module+':moduleParentReprSegment_endLocator_pointConstraint')[0]
+                                         maintainOffset=False)
 
                     # Update the "moduleParent" attribute on the new module with the parent module node.
                     cmds.setAttr(module+':moduleGrp.moduleParent', parentModuleNode, type='string')
@@ -4684,8 +4683,8 @@ class MRT_UI(object):
 
         # Set-up module parenting connections.
         moduleParentingConstraint = \
-        cmds.pointConstraint(parentFieldInfo, childFieldInfo+':moduleParentReprSegment_segmentCurve_endLocator',
-                             maintainOffset=False, name=childFieldInfo+':moduleParentReprSegment_endLocator_pointConstraint')[0]
+        mfunc.pointConstraint(parentFieldInfo, childFieldInfo+':moduleParentReprSegment_segmentCurve_endLocator',
+                             maintainOffset=False)
 
         mfunc.addNodesToContainer(childFieldInfo+':module_container', [moduleParentingConstraint])
 
@@ -5012,7 +5011,7 @@ class MRT_UI(object):
         # Constrain all root joint hierarchies in a character to the character root control.
         # Usually, there's only one root joint hierarchy (like spine in a biped). But there can be multiple.
         for joint in all_root_joints:
-            cmds.parentConstraint(transforms[0], joint, maintainOffset=True, name=transforms[0]+'_'+joint+'_parentConstraint')
+            mfunc.parentConstraint(transforms[0], joint, maintainOffset=True)
 
         # Connect the character "globalScale" to main joints group.
         cmds.connectAttr(transforms[0]+'.globalScale', characterName+'|joints.scaleX')
@@ -6892,11 +6891,11 @@ class MRT_UI(object):
 
                 # Apply the constraint from the parent target.
                 if cmds.objectType(ss_control, isType='joint'):
-                    constraint = cmds.orientConstraint(target, self.controlParentSwitchGrp, maintainOffset=True,
-                                                            name=self.controlParentSwitchGrp+'_orientConstraint')[0]
+                    constraint = mfunc.orientConstraint(target, self.controlParentSwitchGrp, maintainOffset=True,
+                                                        name=self.controlParentSwitchGrp+'_orient')
                 else:
-                    constraint = cmds.parentConstraint(target, self.controlParentSwitchGrp, maintainOffset=True,
-                                                            name=self.controlParentSwitchGrp+'_parentConstraint')[0]
+                    constraint = mfunc.parentConstraint(target, self.controlParentSwitchGrp, maintainOffset=True,
+                                                        name=self.controlParentSwitchGrp+'_parent')
 
                 # Update the parent target options enum list on the control.
                 attrs = cmds.addAttr(ss_control+'.targetParents', query=True, enumName=True)

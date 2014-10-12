@@ -167,9 +167,7 @@ class MRT_Module(object):
                 cmds.makeIdentity(orientationReprNodes[0], scale=True, apply=True)
             
             # Point constrain the orientation representation pre-transform to the joint in iteration.
-            cmds.pointConstraint(joint, orientationReprNodes[1], maintainOffset=False,
-                                                    name='%s:%s_orient_repr_transformGroup_pointConstraint' \
-                                                        % (self.moduleTypespace, mfunc.stripMRTNamespace(joint)[1]))
+            mfunc.pointConstraint(joint, orientationReprNodes[1], maintainOffset=False, namespace=self.moduleTypespace)
             
             # Get the name(reference) for the 'start' and 'end' locators(while creating the node segment representations).
             # These locators are on the node handle shape surfaces via CPS.
@@ -177,28 +175,23 @@ class MRT_Module(object):
             endLocator = self.nodeJoints[index+1] + '_segmentCurve_endLocator'
             
             # Point constrain the hierarchy representation to the start and end locators.
-            cmds.pointConstraint(startLocator, endLocator, hierarchyRepr, maintainOffset=False,
-                                                                            name=joint+'_hierarchy_repr_pointConstraint')
+            mfunc.pointConstraint(startLocator, endLocator, hierarchyRepr, maintainOffset=False, namespace=self.moduleTypespace)
             
             # Scale constrain the hierarchy representation to the joint in iteration.
-            cmds.scaleConstraint(joint, hierarchyRepr, maintainOffset=False, name=joint+'_hierarchy_repr_scaleConstraint')
+            mfunc.scaleConstraint(joint, hierarchyRepr, maintainOffset=False, namespace=self.moduleTypespace)
             
             # Aim constrain the orientation representation pre-transform and the hierarchy representation
             # with the next joint in iteration.
             aimVector = {'X':[1.0, 0.0, 0.0], 'Y':[0.0, 1.0, 0.0], 'Z':[0.0, 0.0, 1.0]}[self.nodeAxes[0]]
             upVector = {'X':[1.0, 0.0, 0.0], 'Y':[0.0, 1.0, 0.0], 'Z':[0.0, 0.0, 1.0]}[self.nodeAxes[1]]
             
-            cmds.aimConstraint(self.nodeJoints[index+1], orientationReprNodes[1], maintainOffset=False,
+            mfunc.aimConstraint(self.nodeJoints[index+1], orientationReprNodes[1], maintainOffset=False,
                                aimVector=aimVector, upVector=upVector, worldUpVector=upVector, worldUpType='objectRotation',
-                               worldUpObject=joint, name='%s:%s_orient_repr_transformGroup_aimConstraint' \
-                                                            % (self.moduleTypespace,
-                                                               mfunc.stripMRTNamespace(self.nodeJoints[index+1])[1]))
+                               worldUpObject=joint, namespace=self.moduleTypespace)
             
-            cmds.aimConstraint(self.nodeJoints[index+1], hierarchyRepr, maintainOffset=False, aimVector=aimVector,
-                                    upVector=upVector, worldUpVector=upVector, worldUpType='objectRotation', worldUpObject=joint,
-                                        name='%s:%s_hierarchy_repr_aimConstraint' \
-                                                % (self.moduleTypespace,
-                                                   mfunc.stripMRTNamespace(self.nodeJoints[index+1])[1]))
+            mfunc.aimConstraint(self.nodeJoints[index+1], hierarchyRepr, maintainOffset=False, aimVector=aimVector,
+                                upVector=upVector, worldUpVector=upVector, worldUpType='objectRotation', 
+                                worldUpObject=joint, namespace=self.moduleTypespace)
             
             # Parent the orientation representation pre-transform and the hierarchy representation to their appropriate group.
             cmds.parent(hierarchyRepr, self.moduleOrientationHierarchyReprGrp, absolute=True)
@@ -206,8 +199,8 @@ class MRT_Module(object):
             
             # Point constrain the orientation representation to the start locator, on the surface of the shape
             # node of the joint in iteration.
-            cmds.pointConstraint(joint+'_segmentCurve_startLocator', orientationReprNodes[0], maintainOffset=True,
-                                            name=self.moduleTypespace+':'+orientationReprNodes[0]+'_basePointConstraint')
+            mfunc.pointConstraint(joint+'_segmentCurve_startLocator', orientationReprNodes[0], 
+                                  maintainOffset=True, namespace=self.moduleTypespace)
                                             
             # Depending on the node aim axis, connect the scale attributes for the orientation representation.
             # The scaling along the aim axis will be the size of the orientation representation, proportional to the arc
@@ -365,23 +358,20 @@ class MRT_Module(object):
                                                         
         # Constrain the start handle for the hierarchy "module parenting" representation
         # to the root node of the current module.
-        cmds.pointConstraint(self.nodeJoints[0], segment['startLoc'], maintainOffset=False,
-                            name=self.moduleTypespace+':moduleParentRepresentationSegment_startLocator_pointConstraint')
+        mfunc.pointConstraint(self.nodeJoints[0], segment['startLoc'], maintainOffset=False, namespace=self.moduleTypespace)
         
         # Constrain the module parenting hierarchy representation arrow (So that it stays at the mid
         # position of the segment curve as created above.
-        cmds.pointConstraint(segment['startLoc'], segment['endLoc'], hierarchyRepr, maintainOffset=False,
-                                        name=self.moduleTypespace+':moduleParentReprSegment_hierarchyRepr_pointConstraint')
+        mfunc.pointConstraint(segment['startLoc'], segment['endLoc'], hierarchyRepr, 
+                              maintainOffset=False, namespace=self.moduleTypespace)
 
         # Scale constrain the hierarchy representation to the joint in iteration.
-        cmds.scaleConstraint(self.nodeJoints[0], hierarchyRepr, maintainOffset=False,
-                             name=self.moduleTypespace+':moduleParentReprSegment_hierarchyRepr_scaleConstraint')
+        mfunc.scaleConstraint(self.nodeJoints[0], hierarchyRepr, maintainOffset=False, namespace=self.moduleTypespace)
 
         # Aim the hierarchy representation "arrow" with the segment curve's start locator.
-        cmds.aimConstraint(segment['startLoc'], hierarchyRepr, maintainOffset=False, aimVector=[1.0, 0.0, 0.0],
+        mfunc.aimConstraint(segment['startLoc'], hierarchyRepr, maintainOffset=False, aimVector=[1.0, 0.0, 0.0],
                            upVector=[0.0, 1.0, 0.0], worldUpVector=[0.0, 1.0, 0.0], worldUpType='objectRotation',
-                           worldUpObject=segment['startLoc'],
-                           name=self.moduleTypespace+':moduleParentReprSegment_hierarchyRepr_aimConstraint')
+                           worldUpObject=segment['startLoc'], namespace=self.moduleTypespace)
 
         # Place the hierarchy representation "arrow" under the module parenting representation group.
         cmds.parent(hierarchyRepr, self.moduleParentReprGrp, absolute=True)
@@ -548,10 +538,10 @@ class MRT_Module(object):
         cmds.parent(moduleHandle['preTransform'], self.moduleGrp, absolute=True)
 
         # Set up constraints for the module transform.
-        module_node_parentConstraint = cmds.parentConstraint(self.moduleTransform, self.moduleNodesGrp,
-                                maintainOffset=True, name=self.moduleTypespace+':moduleTransform_rootNode_parentConstraint')
-        module_node_scaleConstraint = cmds.scaleConstraint(self.moduleTransform, self.moduleNodesGrp,
-                                maintainOffset=False, name=self.moduleTypespace+':moduleTransform_rootNode_scaleConstraint')
+        module_node_parentConstraint = mfunc.parentConstraint(self.moduleTransform, self.moduleNodesGrp, 
+                                                              maintainOffset=True, namespace=self.moduleTypespace)
+        module_node_scaleConstraint = mfunc.scaleConstraint(self.moduleTransform, self.moduleNodesGrp, 
+                                                            maintainOffset=False, namespace=self.moduleTypespace)
         
         # Create hierarchy/orientation representation on joint node(s), depending on number of nodes in the module.
         self.createJointNodeControlHandleRepr()
@@ -567,10 +557,10 @@ class MRT_Module(object):
             cmds.rename(singleOrientationTransform, self.moduleTypespace+':'+singleOrientationTransform)
             cmds.xform(self.moduleSingleOrientationReprGrp, worldSpace=True, absolute=True,
                                 translation=cmds.xform(self.nodeJoints[0], query=True, worldSpace=True, translation=True))
-            cmds.parentConstraint(self.nodeJoints[0], self.moduleSingleOrientationReprGrp, maintainOffset=False,
-                                                        name=self.moduleSingleOrientationReprGrp+'_parentConstraint')
-            cmds.scaleConstraint(self.moduleTransform, self.moduleSingleOrientationReprGrp, maintainOffset=False,
-                                                        name=self.moduleSingleOrientationReprGrp+'_scaleConstraint')
+            mfunc.parentConstraint(self.nodeJoints[0], self.moduleSingleOrientationReprGrp, 
+                                   maintainOffset=False, namespace=self.moduleTypespace)
+            mfunc.scaleConstraint(self.moduleTransform, self.moduleSingleOrientationReprGrp, 
+                                  maintainOffset=False, namespace=self.moduleTypespace)
         
         nodeHandles = []
         
@@ -870,10 +860,10 @@ class MRT_Module(object):
                 cmds.connectAttr(splineAdjustCurveWorldPosVectorProduct+'.output', splineNodeCurveShape+'.controlPoints[%s]'% (index+1))
             
             # Constrain the curve adjust control pre-transform to spline module start and end transforms.
-            startPointConstraint = cmds.pointConstraint(startHandle['transform'], splineAdjustCurvePreTransform, maintainOffset=False,
-                                                        weight=startWeight, name=splineAdjustCurvePreTransform+'_startHandle_pointConstraint')
-            endPointConstraint = cmds.pointConstraint(endHandle['transform'], splineAdjustCurvePreTransform, maintainOffset=False,
-                                                        weight=endWeight, name=splineAdjustCurvePreTransform+'_endHandle_pointConstraint')
+            startPointConstraint = mfunc.pointConstraint(startHandle['transform'], splineAdjustCurvePreTransform, maintainOffset=False,
+                                                         weight=startWeight, namespace=self.moduleTypespace)
+            endPointConstraint = mfunc.pointConstraint(endHandle['transform'], splineAdjustCurvePreTransform, maintainOffset=False,
+                                                       weight=endWeight, namespace=self.moduleTypespace)
 
             cmds.parent(splineAdjustCurvePreTransform, self.moduleSplineAdjustCurveGrp, absolute=True)
             
@@ -922,17 +912,17 @@ class MRT_Module(object):
             pairBlend = cmds.createNode('pairBlend', name=self.nodeJoints[index]+'_pairBlend', skipSelect=True)
             pairBlend_inputDriven.append(pairBlend)
             
-            orientConstraint = cmds.orientConstraint(worldReferenceTransform, self.nodeJoints[index], maintainOffset=False,
-                                                                            name=self.nodeJoints[index]+'_orientConstraint')[0]
-                                                                            
+            orientConstraint = mfunc.orientConstraint(worldReferenceTransform, self.nodeJoints[index], 
+                                                      maintainOffset=False, namespace=self.moduleTypespace)
+
             cmds.disconnectAttr(orientConstraint+'.constraintRotateX', self.nodeJoints[index]+'.rotateX')
             cmds.disconnectAttr(orientConstraint+'.constraintRotateY', self.nodeJoints[index]+'.rotateY')
             cmds.disconnectAttr(orientConstraint+'.constraintRotateZ', self.nodeJoints[index]+'.rotateZ')
             
-            tangentConstraint = cmds.tangentConstraint(self.moduleTypespace+':splineNode_curve', self.nodeJoints[index],
+            tangentConstraint = mfunc.tangentConstraint(self.moduleTypespace+':splineNode_curve', self.nodeJoints[index],
                                                         aimVector=aimVector, upVector=upVector, worldUpType='objectrotation',
-                                                            worldUpVector=worldUpVector, worldUpObject=tangentConstraintTargetObject,
-                                                                name=self.nodeJoints[index]+'_tangentConstraint')[0]
+                                                        worldUpVector=worldUpVector, worldUpObject=tangentConstraintTargetObject,
+                                                        namespace=self.moduleTypespace)
                                                                 
             cmds.disconnectAttr(tangentConstraint+'.constraintRotateX', self.nodeJoints[index]+'.rotateX')
             cmds.disconnectAttr(tangentConstraint+'.constraintRotateY', self.nodeJoints[index]+'.rotateY')
@@ -978,8 +968,9 @@ class MRT_Module(object):
 
             for (driver, driven) in ((1, -1), (0, 1)):
                 cmds.setAttr(rawLocaAxesInfoReprTransform+'.tangent_Up_vector', driver)
-                cmds.setAttr(joint+'_tangentConstraint.upVector'+self.nodeAxes[1].upper(), driven)
-                cmds.setDrivenKeyframe(joint+'_tangentConstraint.upVector'+self.nodeAxes[1].upper(),
+                jointTangentConstraint = cmds.listConnections(joint, destination=True, source=False, type='tangentConstraint')[0]
+                cmds.setAttr(jointTangentConstraint+'.upVector'+self.nodeAxes[1].upper(), driven)
+                cmds.setDrivenKeyframe(jointTangentConstraint+'.upVector'+self.nodeAxes[1].upper(),
                                                 currentDriver=rawLocaAxesInfoReprTransform+'.tangent_Up_vector')
 
             xhandle = objects.load_xhandleShape(transform=joint, colour=2, transformOnly=True)
@@ -988,10 +979,8 @@ class MRT_Module(object):
             cmds.setAttr(xhandle['shape']+'.localScaleZ', 0.09)
             cmds.setAttr(xhandle['shape']+'.ds', 5)
 
-            cmds.pointConstraint(joint, rawLocaAxesInfoReprPreTransform, maintainOffset=False,
-                                                        name=rawLocaAxesInfoReprPreTransform+'_pointConstraint')
-            cmds.orientConstraint(joint, rawLocaAxesInfoReprPreTransform, maintainOffset=False,
-                                                        name=rawLocaAxesInfoReprPreTransform+'_orientConstraint')
+            mfunc.pointConstraint(joint, rawLocaAxesInfoReprPreTransform, maintainOffset=False, namespace=self.moduleTypespace)
+            mfunc.orientConstraint(joint, rawLocaAxesInfoReprPreTransform, maintainOffset=False, namespace=self.moduleTypespace)
 
             rawLocaAxesInfoReprTransforms.append(rawLocaAxesInfoReprTransform)
 
@@ -1256,8 +1245,8 @@ class MRT_Module(object):
         mfunc.lockHideChannelAttrs(rootHandle[0], 'r', 's', 'v', keyable=False)
         rootHandlePos = cmds.xform(self.nodeJoints[0], query=True, worldSpace=True, translation=True)
         cmds.xform(rootHandle[0], worldSpace=True, absolute=True, translation=rootHandlePos)
-        rootHandleConstraint = cmds.pointConstraint(rootHandle[0], self.nodeJoints[0], maintainOffset=False,
-                                                                    name=self.nodeJoints[0]+'_pointConstraint')
+        rootHandleConstraint = mfunc.pointConstraint(rootHandle[0], self.nodeJoints[0], maintainOffset=False, namespace=self.moduleTypespace)
+                                                                    
         cmds.parent(rootHandle[0], self.moduleIKnodesGrp, absolute=True)
 
         # Mid hinge or elbow node handle.
@@ -1265,7 +1254,7 @@ class MRT_Module(object):
         mfunc.lockHideChannelAttrs(elbowHandle[0], 'r', 's', 'v', keyable=False)
         elbowHandlePos = cmds.xform(self.nodeJoints[1], query=True, worldSpace=True, translation=True)
         cmds.xform(elbowHandle[0], worldSpace=True, absolute=True, translation=elbowHandlePos)
-        elbowHandleConstraint = cmds.poleVectorConstraint(elbowHandle[0], ikHandle, name=ikHandle+'_poleVectorConstraint')
+        elbowHandleConstraint = mfunc.poleVectorConstraint(elbowHandle[0], ikHandle)
         cmds.parent(elbowHandle[0], self.moduleIKnodesGrp, absolute=True)
 
         # End node handle.
@@ -1273,7 +1262,7 @@ class MRT_Module(object):
         mfunc.lockHideChannelAttrs(endHandle[0], 'r', 's', 'v', keyable=False)
         endHandlePos = cmds.xform(self.nodeJoints[2], query=True, worldSpace=True, translation=True)
         cmds.xform(endHandle[0], worldSpace=True, absolute=True, translation=endHandlePos)
-        endHandleConstraint = cmds.pointConstraint(endHandle[0], ikHandle, maintainOffset=False, name=ikHandle+'_pointConstraint')
+        endHandleConstraint = mfunc.pointConstraint(endHandle[0], ikHandle, maintainOffset=False, namespace=self.moduleTypespace)
         cmds.parent(endHandle[0], self.moduleIKnodesGrp, absolute=True)
             
         # Prepare the module node control handle objects for scaling.
@@ -1431,12 +1420,10 @@ class MRT_Module(object):
         cmds.parent(ikSegmentAimStartLocator, self.moduleIKsegmentMidAimGrp, absolute=True)
         
         # Attach the locator to the start-end node segment curve.
-        cmds.geometryConstraint(rootEndHandleIKsegmentCurve, ikSegmentAimStartLocator, 
-                                        name=ikSegmentAimStartLocator+'_geoConstraint')
+        mfunc.geometryConstraint(rootEndHandleIKsegmentCurve, ikSegmentAimStartLocator, namespace=self.moduleTypespace)
         
         # Additionally, constrain the locator to the hinge (mid) node control handle.
-        cmds.pointConstraint(self.nodeJoints[1]+'_control', ikSegmentAimStartLocator, 
-                                maintainOffset=False, name=ikSegmentAimStartLocator+'_pointConstraint')
+        mfunc.pointConstraint(self.nodeJoints[1]+'_control', ikSegmentAimStartLocator, maintainOffset=False, namespace=self.moduleTypespace)
         
         # Create a CPM node to get the closest point on the hinge node's control handle "rig"
         # surface with respect to the position of the start locator created above.
@@ -1463,9 +1450,9 @@ class MRT_Module(object):
         # Aim the IK segment mid position locator on the start-end segment curve (created before)
         # to the end locator.
         rootEndHandleIKsegmentMidLocatorAimConstraint = \
-            cmds.aimConstraint(self.nodeJoints[-1], rootEndHandleIKsegmentMidLocator, maintainOffset=False, 
+            mfunc.aimConstraint(self.nodeJoints[-1], rootEndHandleIKsegmentMidLocator, maintainOffset=False, 
                                aimVector=[0.0, 1.0, 0.0], upVector=[0.0, 0.0, 1.0], worldUpType='object', 
-                               worldUpObject=ikSegmentAimEndLocator, name=rootEndHandleIKsegmentMidLocator+'_aimConstraint')[0]
+                               worldUpObject=ikSegmentAimEndLocator, namespace=self.moduleTypespace)
         
         # Offset its default rotation by 45
         cmds.setAttr(rootEndHandleIKsegmentMidLocatorAimConstraint+'.offsetY', 45)
@@ -1489,14 +1476,10 @@ class MRT_Module(object):
         self.collectedNodes.append(moduleTransform['scaleFactor'])        
 
         cmds.parent(moduleTransform['preTransform'], self.moduleGrp, absolute=True)
-        cmds.parentConstraint(self.moduleTransform, self.moduleIKnodesGrp, maintainOffset=True, 
-                                                            name=self.moduleTransform+'_parentConstraint')
-        cmds.scaleConstraint(self.moduleTransform, self.moduleIKnodesGrp, maintainOffset=False, 
-                                                        name=self.moduleTransform+'_scaleConstraint')
-        cmds.scaleConstraint(self.moduleTransform, self.moduleNodesGrp, maintainOffset=False, 
-                                                    name=self.moduleTransform+'_scaleConstraint')
-        cmds.scaleConstraint(self.moduleTransform, rootEndHandleIKsegmentMidLocator, maintainOffset=False, 
-                                                name=self.moduleTransform+'_scaleConstraint')
+        mfunc.parentConstraint(self.moduleTransform, self.moduleIKnodesGrp, maintainOffset=True, namespace=self.moduleTypespace) 
+        mfunc.scaleConstraint(self.moduleTransform, self.moduleIKnodesGrp, maintainOffset=False, namespace=self.moduleTypespace) 
+        mfunc.scaleConstraint(self.moduleTransform, self.moduleNodesGrp, maintainOffset=False, namespace=self.moduleTypespace)
+        mfunc.scaleConstraint(self.moduleTransform, rootEndHandleIKsegmentMidLocator, maintainOffset=False, namespace=self.moduleTypespace)
 
         # Create the control handles for the module nodes.
         for handle in [rootHandle[0], elbowHandle[0], endHandle[0]]:
@@ -1570,10 +1553,8 @@ class MRT_Module(object):
         cmds.makeIdentity(hingeAxisRepr, scale=True, apply=True)
         hingeAxisRepr = cmds.rename(hingeAxisRepr, self.nodeJoints[1]+'_'+hingeAxisRepr)
         cmds.parent(hingeAxisRepr, self.moduleReprGrp, absolute=True)
-        cmds.parentConstraint(self.nodeJoints[1], hingeAxisRepr, maintainOffset=False, 
-                                                    name=hingeAxisRepr+'_parentConstraint')
-        cmds.scaleConstraint(self.moduleTransform, hingeAxisRepr, maintainOffset=False, 
-                                                    name=self.moduleTransform+'_scaleConstraint')
+        mfunc.parentConstraint(self.nodeJoints[1], hingeAxisRepr, maintainOffset=False, namespace=self.moduleTypespace)
+        mfunc.scaleConstraint(self.moduleTransform, hingeAxisRepr, maintainOffset=False, namespace=self.moduleTypespace) 
         
         # Create the preferred rotation representation control for the hinge node.
         # It shows the direction of rotation of the IK solver on the joint chain
@@ -1584,15 +1565,15 @@ class MRT_Module(object):
         ikPreferredRotationRepresentaton = cmds.rename(ikPreferredRotationRepresentaton, 
                                                         self.moduleTypespace+':'+ikPreferredRotationRepresentaton)
         cmds.parent(ikPreferredRotationRepresentaton, self.moduleReprGrp, absolute=True)
-        cmds.pointConstraint(self.moduleTypespace+':rootEndHandleIKsegmentMidLocator', 
-                                    ikPreferredRotationRepresentaton, maintainOffset=False, 
-                                            name=ikPreferredRotationRepresentaton+'_pointConstraint')
-        cmds.scaleConstraint(self.moduleTransform, ikPreferredRotationRepresentaton, maintainOffset=False, 
-                                name=self.moduleTransform+'_ikPreferredRotRepr_scaleConstraint')
+        mfunc.pointConstraint(self.moduleTypespace+':rootEndHandleIKsegmentMidLocator', 
+                              ikPreferredRotationRepresentaton, maintainOffset=False, namespace=self.moduleTypespace) 
+
+        mfunc.scaleConstraint(self.moduleTransform, ikPreferredRotationRepresentaton, maintainOffset=False, 
+                              namespace=self.moduleTypespace) 
         
-        cmds.aimConstraint(self.nodeJoints[-1], ikPreferredRotationRepresentaton, maintainOffset=False, 
-                                       aimVector=[0.0, 1.0, 0.0], upVector=[0.0, 0.0, 1.0], worldUpType='object', 
-                                       worldUpObject=self.nodeJoints[1], name=ikPreferredRotationRepresentaton+'_aimConstraint')
+        mfunc.aimConstraint(self.nodeJoints[-1], ikPreferredRotationRepresentaton, maintainOffset=False, 
+                            aimVector=[0.0, 1.0, 0.0], upVector=[0.0, 0.0, 1.0], worldUpType='object', 
+                            worldUpObject=self.nodeJoints[1], namespace=self.moduleTypespace)
         
         # Add hierarchy representations between the module nodes.
         for index, joint in enumerate(self.nodeJoints[:-1]):
@@ -1601,16 +1582,14 @@ class MRT_Module(object):
 
             startLocator = joint + '_segmentCurve_startLocator'
             endLocator = self.nodeJoints[index+1] + '_segmentCurve_endLocator'
-            cmds.pointConstraint(startLocator, endLocator, hierarchyRepr, maintainOffset=False,
-                                                        name=joint+'_hierarchy_repr_pointConstraint')
-            cmds.scaleConstraint(joint, hierarchyRepr, maintainOffset=False, name=joint+'_hierarchy_repr_scaleConstraint')
+            mfunc.pointConstraint(startLocator, endLocator, hierarchyRepr, maintainOffset=False, namespace=self.moduleTypespace)
+            mfunc.scaleConstraint(joint, hierarchyRepr, maintainOffset=False, namespace=self.moduleTypespace)
 
             aimVector = {'X':[1.0, 0.0, 0.0], 'Y':[0.0, 1.0, 0.0], 'Z':[0.0, 0.0, 1.0]}[self.nodeAxes[0]]
             upVector = {'X':[1.0, 0.0, 0.0], 'Y':[0.0, 1.0, 0.0], 'Z':[0.0, 0.0, 1.0]}[self.nodeAxes[1]]
-            cmds.aimConstraint(self.nodeJoints[index+1], hierarchyRepr, maintainOffset=False, aimVector=aimVector,
-                                upVector=upVector, worldUpVector=upVector, worldUpType='objectRotation', worldUpObject=joint,
-                                    name='%s:%s_hierarchy_repr_aimConstraint' % (self.moduleTypespace,
-                                                                             mfunc.stripMRTNamespace(self.nodeJoints[index+1])[1]))
+            mfunc.aimConstraint(self.nodeJoints[index+1], hierarchyRepr, maintainOffset=False, aimVector=aimVector,
+                                upVector=upVector, worldUpVector=upVector, worldUpType='objectRotation', 
+                                worldUpObject=joint, namespace=self.moduleTypespace)
 
             cmds.parent(hierarchyRepr, self.moduleHierarchyReprGrp, absolute=True)
 
@@ -2052,8 +2031,8 @@ class MRT_Module(object):
             cmds.polyColorPerVertex(alpha=0.3, rgb=[0.663, 0.561, 0.319], notUndoable=True, colorDisplayOption=True)
             
             # Attach the elbow proxy to the node joint.
-            cmds.pointConstraint(joint, proxyElbowGeoPreTransform, maintainOffset=False, name=joint+'_pointConstraint')
-            cmds.scaleConstraint(joint, proxyElbowGeoPreTransform, maintainOffset=False, name=joint+'_scaleConstraint')
+            mfunc.pointConstraint(joint, proxyElbowGeoPreTransform, maintainOffset=False, namespace=self.moduleTypespace)
+            mfunc.scaleConstraint(joint, proxyElbowGeoPreTransform, maintainOffset=False, namespace=self.moduleTypespace)
             
             # Now, drive the orientation of the elbow proxy geom based on the module type.
             
@@ -2070,25 +2049,25 @@ class MRT_Module(object):
                     
                     # If first node, aim it to the next node joint.
                     if index == 0:
-                        constraint = cmds.aimConstraint(self.nodeJoints[index+1], proxyElbowGeoPreTransform, 
-                                           maintainOffset=True, aimVector=aimVector, upVector=upVector, 
-                                           worldUpVector=upVector, worldUpType='objectRotation', worldUpObject=joint,
-                                           name=joint+'_'+proxyElbowGeoPreTransform+'_aimConstraint')[0]
+                        constraint = mfunc.aimConstraint(self.nodeJoints[index+1], proxyElbowGeoPreTransform, 
+                                                         maintainOffset=True, aimVector=aimVector, upVector=upVector, 
+                                                         worldUpVector=upVector, worldUpType='objectRotation', 
+                                                         worldUpObject=joint, namespace=self.moduleTypespace)
                     
                     # Else, aim to the previous node joint.
                     else:
-                        constraint = cmds.aimConstraint(self.nodeJoints[index-1], proxyElbowGeoPreTransform, 
-                                            maintainOffset=True, aimVector=aimVector, upVector=upVector, 
-                                            worldUpVector=upVector, worldUpType='objectRotation', worldUpObject=joint,
-                                           name=joint+'_'+proxyElbowGeoPreTransform+'_aimConstraint')[0]
+                        constraint = mfunc.aimConstraint(self.nodeJoints[index-1], proxyElbowGeoPreTransform, 
+                                                         maintainOffset=True, aimVector=aimVector, upVector=upVector, 
+                                                         worldUpVector=upVector, worldUpType='objectRotation', 
+                                                         worldUpObject=joint, namespace=self.moduleTypespace)
                     
                     aimConstraints.append(constraint)
                 
                 # If the module consists of a single node (always a JointNode module), orient constrain it to the 
                 # orientation representation control.
                 if self.numNodes == 1:
-                    cmds.orientConstraint(self.moduleTypespace+':single_orient_repr_transform', proxyElbowGeoPreTransform,
-                                                    maintainOffset=True, name=proxyElbowGeoPreTransform+'_orientConstraint')
+                    mfunc.orientConstraint(self.moduleTypespace+':single_orient_repr_transform', proxyElbowGeoPreTransform,
+                                           maintainOffset=True, namespace=self.moduleTypespace)
                 
                 # If the module type is HingeNode.
                 if self.moduleType == 'HingeNode':
@@ -2109,8 +2088,7 @@ class MRT_Module(object):
 
             # If the module type is SplineNode, simply orient constrain the proxy elbow geo to the node joint.   
             if self.moduleType == 'SplineNode':
-                cmds.orientConstraint(joint, proxyElbowGeoPreTransform, maintainOffset=True,
-                                        name=joint+'_'+proxyElbowGeoPreTransform+'_orientConstraint')
+                mfunc.orientConstraint(joint, proxyElbowGeoPreTransform, maintainOffset=True, namespace=self.moduleTypespace)
             
             # Organise the proxy geo hierarchy for the node.
             cmds.parent(proxyElbowGeoPreTransform, self.proxyGeoGrp, absolute=True)
@@ -2225,15 +2203,15 @@ class MRT_Module(object):
             
             # Attach the proxy geo with the start locator for the curve segment for the current node.
             # This start locator is on the "rig" nurbs shape for the node handle.
-            cmds.pointConstraint(joint+'_segmentCurve_startLocator', proxyBoneGeoPreTransform, maintainOffset=False,
-                                        name=self.moduleTypespace+':'+proxyBoneGeoPreTransform+'_basePointConstraint')
+            mfunc.pointConstraint(joint+'_segmentCurve_startLocator', proxyBoneGeoPreTransform, 
+                                  maintainOffset=False, namespace=self.moduleTypespace)
                                         
             aimVector = {'X':[1.0, 0.0, 0.0], 'Y':[0.0, 1.0, 0.0], 'Z':[0.0, 0.0, 1.0]}[self.nodeAxes[0]]
             upVector = {'X':[1.0, 0.0, 0.0], 'Y':[0.0, 1.0, 0.0], 'Z':[0.0, 0.0, 1.0]}[self.nodeAxes[1]]
 
-            cmds.aimConstraint(self.nodeJoints[index+1], proxyBoneGeoPreTransform, maintainOffset=False, aimVector=aimVector,
-                                upVector=upVector, worldUpVector=upVector, worldUpType='objectRotation', worldUpObject=joint,
-                                                  name=self.nodeJoints[index+1]+'_'+proxyBoneGeoPreTransform+'_aimConstraint')
+            mfunc.aimConstraint(self.nodeJoints[index+1], proxyBoneGeoPreTransform, maintainOffset=False, aimVector=aimVector,
+                                upVector=upVector, worldUpVector=upVector, worldUpType='objectRotation', 
+                                worldUpObject=joint, namespace=self.moduleTypespace)
             
             # Rename the bone proxy geo transforms for node node joint.
             cmds.rename(proxyBoneGeoPreTransform, joint.rpartition('transform')[0] + proxyBoneGeoPreTransform)
