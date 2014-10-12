@@ -2878,6 +2878,57 @@ def createModuleFromAttributes(moduleAttrsDict, createFromUI=False):
     return modules
 
 
+def applyConstraint(*args, **kwargs):
+    '''
+    Common wrapper function for maya constraints. It names the constraint node
+    by looking at the input/output connected nodes without providing a name value.
+    
+    Accepts a 'constraintType' keyword argument to specify the maya constraint type.
+    eg., point, parent, etc.
+    '''
+    if not 'constraintType' in kwargs:
+        cmds.error('No constraint type specified for applyConstraint().')
+    
+    constraintType = kwargs['constraintType']
+    kwargs.pop('constraintType')
+    
+    if len(args) < 2:
+        cmds.error('Check node inputs for applyConstraint().')
+    
+    targetNode = args[-1]
+    objectNodes = args[:-1]
+    
+    targetStringTokens = [i for i in targetNode.split('_') if i]
+    targetStringTokens = targetStringTokens[:-1] if len(targetStringTokens) > 1 else targetStringTokens
+    
+    targetString = ''.join([i.title() for i in targetStringTokens])
+    
+    objectString = ''
+    for node in objectNodes:
+        
+        objectStringTokens = [i for i in node.split('_') if i]
+        objectStringTokens = objectStringTokens[:-1] if len(objectStringTokens) > 1 else objectStringTokens        
+
+        string = ''.join([i.title() for i in objectStringTokens])
+        objectString += '_' + string if objectString else string
+        
+    kwargs['name'] = '%s_to_%s_%s' % (objectString, targetString, constraintType)
+    
+    eval('cmds.%sConstraint(*args, **kwargs)' % constraintType)
+    
+# Specify the equivalent wrapper functions below for maya constraint commands, using applyConstraint().
+def pointConstraint(*args, **kwargs): kwargs['constraintType']='point'; applyConstraint(*args, **kwargs)
+def parentConstraint(*args, **kwargs): kwargs['constraintType']='parent'; applyConstraint(*args, **kwargs)
+def orientConstraint(*args, **kwargs): kwargs['constraintType']='orient'; applyConstraint(*args, **kwargs)
+def scaleConstraint(*args, **kwargs): kwargs['constraintType']='scale'; applyConstraint(*args, **kwargs)
+def aimConstraint(*args, **kwargs): kwargs['constraintType']='aim'; applyConstraint(*args, **kwargs)
+def geometryConstraint(*args, **kwargs): kwargs['constraintType']='geometry'; applyConstraint(*args, **kwargs)
+def normalConstraint(*args, **kwargs): kwargs['constraintType']='normal'; applyConstraint(*args, **kwargs)
+def tangentConstraint(*args, **kwargs): kwargs['constraintType']='tangent'; applyConstraint(*args, **kwargs)
+def poleVectorConstraint(*args, **kwargs): kwargs['constraintType']='poleVector'; applyConstraint(*args, **kwargs)
+
+    
+
 # -------------------------------------------------------------------------------------------------------------
 #
 #   RUNTIME FUNCTIONS (Or executing runtime functions)
