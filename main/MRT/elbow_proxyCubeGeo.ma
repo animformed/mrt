@@ -95,5 +95,5 @@ select -ne :defaultHardwareRenderGlobals;
 	setAttr ".res" -type "string" "ntsc_4d 646 485 1.333";
 select -ne :ikSystem;
 	setAttr -s 4 ".sol";
-connectAttr "_proxy_elbow_geoShape.iog" ":initialShadingGroup.dsm" -na;
+connectAttr "proxy_elbow_geoShape.iog" ":initialShadingGroup.dsm" -na;
 // End of elbow_proxyCubeGeo.ma

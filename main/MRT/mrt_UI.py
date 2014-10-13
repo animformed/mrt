@@ -256,9 +256,9 @@ class MRT_UI(object):
         cmds.menuItem(label='Select and load saved module collection(s)', command=self.loadSavedModuleCollections)
         cmds.menuItem(optionBox=True, command=self.changeLoadCollectionListClearMode)
         cmds.menuItem(divider=True)
-        cmds.menuItem(label='Save selected module(s) as a collection', command=self.makeCollectionFromSceneTreeViewModulesUI)
-        cmds.menuItem(label='Save all modules as a collection', \
-                                  command=partial(self.makeCollectionFromSceneTreeViewModulesUI, allModules=True, auto=None))
+        cmds.menuItem(label='Save selected module(s) as a collection', command=lambda *args: self.makeCollectionFromSceneTreeViewModulesUI())
+        cmds.menuItem(label='Save all modules as a collection',
+                                  command=lambda *args: self.makeCollectionFromSceneTreeViewModulesUI(allModules=True, auto=None))
         cmds.menuItem(divider=True)
         cmds.menuItem(label='Load saved character template(s)', command=self.loadSavedCharTemplates)
         cmds.menuItem(optionBox=True, command=self.changeLoadSettingsForCharTemplates)
@@ -1025,7 +1025,7 @@ class MRT_UI(object):
                 proxyGrpList.append(transform)
         if proxyGrpList:
             cmds.delete(proxyGrpList, constructionHistory=True)
-            Error('MRT: History deleted on all module proxy geometries.')
+            sys.stdout.write('MRT: History deleted on all module proxy geometries.\n')
         else:
             Error('MRT: No module proxy geometry found.')
 
@@ -1071,14 +1071,14 @@ class MRT_UI(object):
 
         printString3 = '\n\n 2. When changing the \'proxy geometry draw\' attribute on a module transform for mirrored' \
             '\n modules, while using Maya 2013, I\'ve noticed the draw style sometimes doesn\'t update correctly for both' \
-            '\n the mirrored modules in the viewport (Changing an attribute on one of the modules should automatically' \
+            '\n mirrored modules in the viewport (Changing an attribute on one of the modules should automatically' \
             '\n affect its mirrored module). To fix this, simply try to set the attribute separately on the mirrored module.'
 
         printString4 = '\n\n 2. It is recommended that you put keyframes to assigned control(s) for a character hierarchy' \
             '\n while they\'re in reference only. MRT doesn\'t take into account if a control has keyframes and while' \
-            '\n removing and reassigning a control rig to a character joint hiearachy, such keyframes would be lost.' \
-            '\n Controls rigs are assigned to character hierarchies in its original scene file which is referenced and' \
-            '\n then animated.'
+            '\n removing and reassigning a control rig to a character joint hierarchy, such keyframes would be lost.' \
+            '\n Controls rigs are assigned to character hierarchies in its original scene file which is then referenced' \
+            '\n and animated.'
 
         printString5 = '\n\n 4. MRT uses script jobs which are executed when you start Maya. These script jobs are run' \
             '\n from userSetup file, and so if they fail to run, please check if the userSetup file has any error. These' \
@@ -1094,17 +1094,9 @@ class MRT_UI(object):
             '\n This is not a malfunction within Modular Rigging Tools, but the way the AE is updated within the Maya UI.' \
             '\n The module renaming will still work correctly.'
 
-        printString8 = '\n\n 7. While adjusting the weight of control rig attributes on the character root control, the' \
-            '\n weight blending doesn\'t, work correctly as expected; it snaps to its full weight at between 0.1 ~ 0.3.' \
-            '\n As far as I know, this is an issue with how the parent constraint is currently implemented, which is used' \
-            '\n to connect the driver joint layer to its main joint hierarchy.'
-
-        printString9 = '\n\n 8. At times, the Reverse IK Control might not behave correctly when applied to a leg joint' \
+        printString8 = '\n\n 7. At times, the Reverse IK Control might not behave correctly when applied to a leg joint' \
             '\n hierarchy in a character, where the joints may not transform as desired as you translate the IK control' \
             '\n handle. To fix it, simply detach and re-apply the control rig to the leg joint hierarchy.'
-
-        printString10 = '\n\n 8. All Errors are reported as warnings here, since, an error would bring up the stack trace' \
-            '\n if enabled, and it may confuse some users.'
 
         try: cmds.deleteUI('mrt_displayIssues_UI_window')
         except: pass
@@ -1122,9 +1114,8 @@ class MRT_UI(object):
                                                                             printString5+
                                                                             printString6+
                                                                             printString7+
-                                                                            printString8+
-                                                                            printString9+
-                                                                            printString10, editable=False, width=850,   \
+                                                                            printString8,
+                                                                            editable=False, width=850,
                                                                             enableBackground=True, height=400, wordWrap=False)
         cmds.showWindow(self.uiVars['displayMrtIssuesWindow'])
 
@@ -1430,7 +1421,7 @@ class MRT_UI(object):
                                                                         wordWrap=True)
 
         self.uiVars['loadedCollections_button_install'] = cmds.button(label='Install selected module collection into the scene',
-                                                            enable=False, command=self.installSelectedModuleCollectionToScene)
+                                                            enable=False, command=lambda *args: self.installSelectedModuleCollectionToScene())
 
         self.uiVars['loadedCollections_button_edit'] = cmds.button(label='Edit description for selected module collection',
                                                                    enable=False,
@@ -1479,7 +1470,7 @@ class MRT_UI(object):
         # Saving module collections --
 
         self.uiVars['moduleSaveColl_button'] = cmds.button(label='Save selected module(s) as a collection', enable=False,
-                                                                    command=self.makeCollectionFromSceneTreeViewModulesUI)
+                                                                    command=lambda *args: self.makeCollectionFromSceneTreeViewModulesUI())
 
         self.uiVars['moduleSaveCollOptions_row1'] = cmds.rowLayout(enable=False, numberOfColumns=5, columnWidth=[(1, 70),
                                                                                       (2, 67), (3, 70), (4, 70), (5, 70)],
@@ -1723,7 +1714,7 @@ class MRT_UI(object):
 
         cmds.rowLayout(numberOfColumns=1, rowAttach=(1, 'both', 2), columnAttach=(1, 'left', 12))
 
-        cmds.text(label='Note: Parent switching works only on control names with "handle" suffix.', font='smallBoldLabelFont')
+        cmds.text(label='Note: Parent switching works only on control names with "CNTL" suffix.', font='smallBoldLabelFont')
 
         cmds.setParent(self.uiVars['c_rig_prntSwitch_fLayout'])
 
@@ -2193,7 +2184,7 @@ class MRT_UI(object):
 
         # Get the current user specified name.
         userSpecifiedName = cmds.textField(self.uiVars['userSpecName_textField'], query=True, text=True)
-        userSpecifiedName = re.split('_+\d+', userSpecifiedName)[0].lower()
+        userSpecifiedName = re.split('_+\d+', userSpecifiedName)[0]
 
         # Get a list of module namespaces in the scene.
         currentNamespace = cmds.namespaceInfo(currentNamespace=True)
@@ -2316,7 +2307,6 @@ class MRT_UI(object):
                                                                     query=True, value=True)
         # Get the user specified name.
         userSpecifiedName = cmds.textField(self.uiVars['userSpecName_textField'], query=True, text=True)
-        userSpecifiedName = userSpecifiedName.lower()
         self.moduleInfo['userSpecName'] = userSpecifiedName
 
         # Construct the module namespace.
@@ -3427,7 +3417,7 @@ class MRT_UI(object):
         "allModule" specifies that all modules in the scene will be used to save a module collection.
         '''
         # NESTED_DEF_1 #
-        def saveModuleCollectionFromDescription(collectionDescription, treeViewSelection, *args):
+        def saveModuleCollectionFromDescription(collectionDescription, treeViewSelection):
             # Create a module collection from the passed-in information.
 
             # Close the windows for module description and its error prompt window.
@@ -3528,30 +3518,38 @@ class MRT_UI(object):
                 if cmds.attributeQuery('mirrorModuleNamespace', node=module+':moduleGrp', exists=True):
                     mirrorModule = cmds.getAttr(module+':moduleGrp.mirrorModuleNamespace')
                     modulesToBeCollected.append(mirrorModule)
-
-            modulesToBeUnparented = {}
+            
+            # Remove duplicates.
+            modulesToBeCollected = list(set(modulesToBeCollected))
+            
             # Collect all parent module(s) (non-included in 'modulesToBeCollected') for modules to be collected.
             # These modules to be collected will be temporarily "unparented".
             # This is done to select and export the collected module(s) without exporting unnecessary DG items.
             allModuleNamespaces = mfunc.returnMRT_Namespaces()
+            modulesToBeUnparented = {}
+            
             for module in modulesToBeCollected:
-                moduleParentNode = cmds.getAttr(module+':moduleGrp.moduleParent')
-                if moduleParentNode != 'None':
-                    parentModuleNodeAttr = moduleParentNode.split(',')
-                    moduleParent = mfunc.stripMRTNamespace(parentModuleNodeAttr[0])[0]
+                
+                moduleParentInfo = cmds.getAttr(module+':moduleGrp.moduleParent')
+                
+                if moduleParentInfo != 'None':
+                    
+                    parentModuleNode = moduleParentInfo.split(',')[0]
+                    moduleParent = mfunc.stripMRTNamespace(parentModuleNode)[0]
+                    
                     if not moduleParent in modulesToBeCollected:
 
-                        # Collect the parent module node not included in the modules to be saved as collection
-                        modulesToBeUnparented[module] = parentModuleNodeAttr[0]
+                        # Collect the parent module node not included in the modules to be saved as collection.
+                        modulesToBeUnparented[module] = moduleParentInfo
+                        
+                        # Remove the module parenting constraint connection.
+                        cmds.lockNode(module+':module_container', lock=False, lockUnpublished=False)
+                        constraint = cmds.listRelatives(module+':moduleParentReprSegment_segmentCurve_endLocator',
+                                                                                children=True, fullPath=True, type='constraint')
+                        cmds.setAttr(module+':moduleGrp.moduleParent', 'None', type='string')
+                        cmds.delete(constraint)  
+                        cmds.lockNode(module+':module_container', lock=True, lockUnpublished=True)
 
-            if modulesToBeUnparented:
-                # Go through each module.
-                for module in modulesToBeUnparented:
-                    # Remove the module parenting constraint connection.
-                    cmds.lockNode(module+':module_container', lock=False, lockUnpublished=False)
-                    constraint = cmds.listRelatives(module+':moduleParentReprSegment_segmentCurve_endLocator',
-                                                                            children=True, fullPath=True, type='constraint')
-                    cmds.delete(constraint)
 
             # Finally, for the modules to be saved as collection, save their corresponding module containers,
             # and their proxy geometry group, if it exists.
@@ -3571,15 +3569,15 @@ class MRT_UI(object):
 
             # Save the module collection description.
             mrtmc_fObject['collectionDescrp'] = collectionDescription
-
-            # Select the module containers and module proxy geometry (see above) to be included in the collection.
-            cmds.select(moduleObjectsToBeCollected, replace=True)
-
+            
             # Turn off mirroring script jobs.
             mfunc.forceToggleUtilScriptJobs(False)
 
             # Disable / remove module mirror move connections.
             mfunc.deleteMirrorMoveConnections()
+
+            # Select the module containers and module proxy geometry (see above) to be included in the collection.
+            cmds.select(moduleObjectsToBeCollected, replace=True)
 
             # Create a temporary maya scene to export module collection data.
             tempFilePath = fileReturn[0].rpartition('.mrtmc')[0]+'_temp.ma'
@@ -3615,8 +3613,13 @@ class MRT_UI(object):
 
             # Re-create the module parenting constraints, which were temporarily removed (see above).
             if modulesToBeUnparented:
+                
                 for module in modulesToBeUnparented:
-                    pointConstraint = mfunc.pointConstraint(modulesToBeUnparented[module],
+                    
+                    cmds.lockNode(module+':module_container', lock=False, lockUnpublished=False)
+                    
+                    parentModuleNode = modulesToBeUnparented[module].split(',')[0]
+                    pointConstraint = mfunc.pointConstraint(parentModuleNode,
                         module+':moduleParentReprSegment_segmentCurve_endLocator', maintainOffset=False)
                     
                     mfunc.addNodesToContainer(module+':module_container', pointConstraint)
@@ -3625,6 +3628,9 @@ class MRT_UI(object):
 
             # Turn on mirroring script jobs.
             mfunc.forceToggleUtilScriptJobs(True)
+            
+            # Clear selection when idle.
+            cmds.evalDeferred(partial(mfunc.performOnIdle), lowestPriority=True)
 
 
         # NESTED_DEF_2 #
@@ -3667,9 +3673,9 @@ class MRT_UI(object):
                     cmds.rowLayout(numberOfColumns=2, columnAttach=([1, 'left', 90], [2, 'left', 30]),
                                                                 rowAttach=([1, 'top', 8], [2, 'top', 8]))
 
-                    cmds.button(label='Continue', width=90, command=partial(saveModuleCollectionFromDescription,
-                                                                            collectionDescription,
-                                                                            treeViewSelection))
+                    cmds.button(label='Continue', width=90,
+                                command=lambda *args: self.saveModuleCollectionFromDescription(collectionDescription,
+                                                                                               treeViewSelection))
 
                     cmds.button(label='Revert', width=90, command=partial(self.closeWindow,
                                                                         self.uiVars['collectionNoDescpErrorWindow']))
@@ -3682,6 +3688,17 @@ class MRT_UI(object):
                 saveModuleCollectionFromDescription('Auto generated collection', treeViewSelection)
 
         # MAIN DEF_BEGINS #
+        
+        # Get the arguments.
+        if 'allModules' in kwargs:
+            allModules = kwargs['allModules']
+        else:
+            allModules = False
+            
+        if 'auto' in kwargs:
+            auto = kwargs['auto']
+        else:
+            auto = None
 
         # Save current namespace, set to root
         currentNamespace = cmds.namespaceInfo(currentNamespace=True)
@@ -3777,7 +3794,6 @@ class MRT_UI(object):
             newUserSpecifiedName = args[0]
         else:
             newUserSpecifiedName = cmds.textField(self.uiVars['moduleRename_textField'], query=True, text=True)
-        newUserSpecifiedName = newUserSpecifiedName.lower()
         
         # Get the last selected module.
         selectedModule = cmds.ls(selection=True)
@@ -3954,7 +3970,6 @@ class MRT_UI(object):
         moduleNamespace = mfunc.stripMRTNamespace(selection)[0]
         moduleAttrsDict = mfunc.returnModuleAttrsFromScene(moduleNamespace)
 
-
         # Create a new copy of the module using the attributes.
         mfunc.createModuleFromAttributes(moduleAttrsDict)
 
@@ -3978,7 +3993,7 @@ class MRT_UI(object):
                     cmds.lockNode(module+':module_container', lock=False, lockUnpublished=False)
 
                     # Connect the module parent representation to the parent module node.
-                    pointConstraint = \
+                    point_constraint = \
                     mfunc.pointConstraint(parentModuleNodeAttr[0],
                                          module+':moduleParentReprSegment_segmentCurve_endLocator',
                                          maintainOffset=False)
@@ -3992,7 +4007,7 @@ class MRT_UI(object):
                         cmds.setAttr(module+':moduleParentReprSegment_hierarchy_reprShape.overrideColor', 16)
 
                     # Add the new nodes to the new module container.
-                    mfunc.addNodesToContainer(module+':module_container', [pointConstraint])
+                    mfunc.addNodesToContainer(module+':module_container', point_constraint)
 
                     # Turn on the visibility for module parent representation.
                     cmds.setAttr(module+':moduleParentReprGrp.visibility', 1)
@@ -4006,7 +4021,7 @@ class MRT_UI(object):
         # To do this, delete the proxy geometry on the duplicated module first.
         if moduleAttrsDict['node_compnts'][2] == True:
 
-            for i in range(moduleAttrsDict['num_nodes']):
+            for index in range(moduleAttrsDict['num_nodes']):
                 
                 # Get the naming prefix for the joint (generated from module node).
                 if moduleAttrsDict['num_nodes'] > 1:
@@ -4025,93 +4040,96 @@ class MRT_UI(object):
                 # If the original module has bone proxy geometry.
                 if moduleAttrsDict['proxy_geo_options'][0] == True:
                     
-                    # Construct the name of the original bone proxy geometry transform to be duplicated.
-                    orig_proxy_bone_transform = moduleAttrsDict['orig_module_Namespace']+':%s_proxy_bone_geo' % namePrefix
+                    # Skip the last node for bone proxy.
+                    if index != moduleAttrsDict['num_nodes']-1:
                     
-                    # Construct the name of the original bone proxy geometry pre-transform.
-                    orig_proxy_bone_preTransform = moduleAttrsDict['orig_module_Namespace']+':%s_proxy_bone_preTransform' % namePrefix
-                    
-                    # Get the name of the duplicated module's bone proxy geometry transform.
-                    proxy_bone_transform = moduleAttrsDict['module_Namespace']+':%s_proxy_bone_geo' % namePrefix
-                    
-                    # Get the name of the duplicated module's bone proxy geometry pre-transform.
-                    proxy_bone_preTransform = moduleAttrsDict['module_Namespace']+':%s_proxy_bone_preTransform' % namePrefix                    
-
-                    # Get the name of the duplicated module's bone proxy geometry's scale transform.
-                    proxy_bone_scaleTransform = moduleAttrsDict['module_Namespace']+':%s_proxy_bone_scaleTransform' % namePrefix                    
-                    
-                    # If proxy geometry is found on the original module.
-                    if cmds.objExists(orig_proxy_bone_preTransform):
+                        # Construct the name of the original bone proxy geometry transform to be duplicated.
+                        orig_proxy_bone_transform = moduleAttrsDict['orig_module_Namespace']+':%s_proxy_bone_geo' % namePrefix
                         
-                        # Delete the new proxy geometry transform on the duplicated module; it's the default proxy geometry.
-                        cmds.delete(proxy_bone_transform)
-
-                        # Duplicate the original proxy geometry transform, rename it.
-                        cmds.duplicate(orig_proxy_bone_transform, name=proxy_bone_transform)
-
-                        # Assign it to the new duplicate module.
-                        cmds.parent(proxy_bone_transform, proxy_bone_scaleTransform, relative=True)
-                    else:
-                        # If the original module doesn't have proxy geometry.
-                        cmds.delete(proxy_bone_preTransform)
+                        # Construct the name of the original bone proxy geometry pre-transform.
+                        orig_proxy_bone_preTransform = moduleAttrsDict['orig_module_Namespace']+':%s_proxy_bone_preTransform' % namePrefix
                         
+                        # Get the name of the duplicated module's bone proxy geometry transform.
+                        proxy_bone_transform = moduleAttrsDict['module_Namespace']+':%s_proxy_bone_geo' % namePrefix
                         
-                    # If module mirroring is enabled, perform on the proxies in the mirror module.
-                    if moduleAttrsDict['mirror_options'][0] == 'On':
-                        
-                        # Construct the name of the original mirror bone proxy geometry transform to be duplicated.
-                        orig_mirror_proxy_bone_transform = moduleAttrsDict['orig_mirror_module_Namespace']+':%s_proxy_bone_geo' % namePrefix
-                        
-                        # Construct the name of the original mirror bone proxy geometry pre-transform.
-                        orig_mirror_proxy_bone_preTransform = moduleAttrsDict['orig_mirror_module_Namespace']+':%s_proxy_bone_preTransform' % namePrefix
-                        
-                        # Get the name of the duplicated mirror module's bone proxy geometry transform.
-                        mirror_proxy_bone_transform = moduleAttrsDict['mirror_module_Namespace']+':%s_proxy_bone_geo' % namePrefix
-                        
-                        # Get the name of the duplicated mirror module's bone proxy geometry pre-transform.
-                        mirror_proxy_bone_preTransform = moduleAttrsDict['mirror_module_Namespace']+':%s_proxy_bone_preTransform' % namePrefix                    
+                        # Get the name of the duplicated module's bone proxy geometry pre-transform.
+                        proxy_bone_preTransform = moduleAttrsDict['module_Namespace']+':%s_proxy_bone_preTransform' % namePrefix                    
     
-                        # Get the name of the duplicated mirror module's bone proxy geometry's scale transform.
-                        mirror_proxy_bone_scaleTransform = moduleAttrsDict['mirror_module_Namespace']+':%s_proxy_bone_scaleTransform' % namePrefix                           
+                        # Get the name of the duplicated module's bone proxy geometry's scale transform.
+                        proxy_bone_scaleTransform = moduleAttrsDict['module_Namespace']+':%s_proxy_bone_scaleTransform' % namePrefix                    
                         
-                        # If mirror instancing is turned off.
-                        if moduleAttrsDict['proxy_geo_options'][3] == 'Off':
-                        
-                            # If bone proxy geometry is found on the original mirror module.
-                            if cmds.objExists(orig_mirror_proxy_bone_preTransform):
-                                
-                                # Delete the new bone proxy geometry transform on the duplicated mirror module; it's the default proxy geometry.
-                                cmds.delete(mirror_proxy_bone_transform)
-                                
-                                # Duplicate the original mirror module's bone proxy geometry transform, rename it.
-                                cmds.duplicate(orig_mirror_proxy_bone_transform, name=mirror_proxy_bone_transform)
-                                
-                                # Assign it to the new duplicate mirror module.
-                                cmds.parent(mirror_proxy_bone_transform, mirror_proxy_bone_scaleTransform, relative=True)
-                            else:
-                                # If the original mirror module doesn't have bone proxy geometry.
-                                cmds.delete(mirror_proxy_bone_preTransform)
-                        
-                        # If mirror instancing is turned on.
-                        if moduleAttrsDict['proxy_geo_options'][3] == 'On':
+                        # If proxy geometry is found on the original module.
+                        if cmds.objExists(orig_proxy_bone_preTransform):
                             
-                            # Use the proxy geometry on the duplicated module (for the mirror pair) to create an 
-                            # instance for its mirror module.
+                            # Delete the new proxy geometry transform on the duplicated module; it's the default proxy geometry.
+                            cmds.delete(proxy_bone_transform)
+    
+                            # Duplicate the original proxy geometry transform, rename it.
+                            cmds.duplicate(orig_proxy_bone_transform, name=proxy_bone_transform)
+    
+                            # Assign it to the new duplicate module.
+                            cmds.parent(proxy_bone_transform, proxy_bone_scaleTransform, relative=True)
+                        else:
+                            # If the original module doesn't have proxy geometry.
+                            cmds.delete(proxy_bone_preTransform)
                             
-                            # Check if the bone proxy geometry exists on the duplicated module.
-                            if cmds.objExists(proxy_bone_preTransform):
+                            
+                        # If module mirroring is enabled, perform on the proxies in the mirror module.
+                        if moduleAttrsDict['mirror_options'][0] == 'On':
+                            
+                            # Construct the name of the original mirror bone proxy geometry transform to be duplicated.
+                            orig_mirror_proxy_bone_transform = moduleAttrsDict['orig_mirror_module_Namespace']+':%s_proxy_bone_geo' % namePrefix
+                            
+                            # Construct the name of the original mirror bone proxy geometry pre-transform.
+                            orig_mirror_proxy_bone_preTransform = moduleAttrsDict['orig_mirror_module_Namespace']+':%s_proxy_bone_preTransform' % namePrefix
+                            
+                            # Get the name of the duplicated mirror module's bone proxy geometry transform.
+                            mirror_proxy_bone_transform = moduleAttrsDict['mirror_module_Namespace']+':%s_proxy_bone_geo' % namePrefix
+                            
+                            # Get the name of the duplicated mirror module's bone proxy geometry pre-transform.
+                            mirror_proxy_bone_preTransform = moduleAttrsDict['mirror_module_Namespace']+':%s_proxy_bone_preTransform' % namePrefix                    
+        
+                            # Get the name of the duplicated mirror module's bone proxy geometry's scale transform.
+                            mirror_proxy_bone_scaleTransform = moduleAttrsDict['mirror_module_Namespace']+':%s_proxy_bone_scaleTransform' % namePrefix                           
+                            
+                            # If mirror instancing is turned off.
+                            if moduleAttrsDict['proxy_geo_options'][3] == 'Off':
+                            
+                                # If bone proxy geometry is found on the original mirror module.
+                                if cmds.objExists(orig_mirror_proxy_bone_preTransform):
+                                    
+                                    # Delete the new bone proxy geometry transform on the duplicated mirror module; it's the default proxy geometry.
+                                    cmds.delete(mirror_proxy_bone_transform)
+                                    
+                                    # Duplicate the original mirror module's bone proxy geometry transform, rename it.
+                                    cmds.duplicate(orig_mirror_proxy_bone_transform, name=mirror_proxy_bone_transform)
+                                    
+                                    # Assign it to the new duplicate mirror module.
+                                    cmds.parent(mirror_proxy_bone_transform, mirror_proxy_bone_scaleTransform, relative=True)
+                                else:
+                                    # If the original mirror module doesn't have bone proxy geometry.
+                                    cmds.delete(mirror_proxy_bone_preTransform)
+                            
+                            # If mirror instancing is turned on.
+                            if moduleAttrsDict['proxy_geo_options'][3] == 'On':
                                 
-                                # Delete the new bone proxy geometry transform on the duplicated mirror module; it's the default proxy geometry.
-                                cmds.delete(mirror_proxy_bone_transform)
+                                # Use the proxy geometry on the duplicated module (for the mirror pair) to create an 
+                                # instance for its mirror module.
                                 
-                                # Duplicate the original mirror module's bone proxy geometry transform, rename it.
-                                cmds.duplicate(proxy_bone_transform, instanceLeaf=True, name=mirror_proxy_bone_transform)
-                                
-                                # Assign it to the new duplicate mirror module.
-                                cmds.parent(mirror_proxy_bone_transform, mirror_proxy_bone_scaleTransform, relative=True)
-                            else:
-                                # If the original mirror module doesn't have bone proxy geometry.
-                                cmds.delete(mirror_proxy_bone_preTransform)
+                                # Check if the bone proxy geometry exists on the duplicated module.
+                                if cmds.objExists(proxy_bone_preTransform):
+                                    
+                                    # Delete the new bone proxy geometry transform on the duplicated mirror module; it's the default proxy geometry.
+                                    cmds.delete(mirror_proxy_bone_transform)
+                                    
+                                    # Duplicate the original mirror module's bone proxy geometry transform, rename it.
+                                    cmds.duplicate(proxy_bone_transform, instanceLeaf=True, name=mirror_proxy_bone_transform)
+                                    
+                                    # Assign it to the new duplicate mirror module.
+                                    cmds.parent(mirror_proxy_bone_transform, mirror_proxy_bone_scaleTransform, relative=True)
+                                else:
+                                    # If the original mirror module doesn't have bone proxy geometry.
+                                    cmds.delete(mirror_proxy_bone_preTransform)
 
 
                 # If the original module has elbow proxy geometry.
@@ -4209,9 +4227,6 @@ class MRT_UI(object):
         # Update the scene module treeView list with the new duplicated module.
         self.updateListForSceneModulesInUI()
 
-        # Turn on mirroring script jobs.
-        mfunc.forceToggleUtilScriptJobs(True)
-
         # Get the translation offset to be applied to the new duplicated module.
         offset = cmds.floatFieldGrp(self.uiVars['duplicateActionWindowFloatfieldGrp'], query=True, value=True)
 
@@ -4231,12 +4246,9 @@ class MRT_UI(object):
             else:
                 selection = moduleAttrsDict['mirror_module_Namespace']+':splineStartHandleTransform'
                 cmds.evalDeferred(partial(mfunc.moveSelectionOnIdle, selection, offset), lowestPriority=True)
-            if cmds.getAttr(moduleAttrsDict['module_Namespace']+':moduleGrp.onPlane')[0] == '+':
-                selection = moduleAttrsDict['module_Namespace']+':splineEndHandleTransform'
-                cmds.evalDeferred(partial(mfunc.moveSelectionOnIdle, selection, offset), lowestPriority=True)
-            else:
-                selection = moduleAttrsDict['mirror_module_Namespace']+':splineEndHandleTransform'
-                cmds.evalDeferred(partial(mfunc.moveSelectionOnIdle, selection, offset), lowestPriority=True)
+        
+        # Turn on mirroring script jobs.
+        mfunc.forceToggleUtilScriptJobs(True)        
 
         # Clear selection when idle.
         cmds.evalDeferred(partial(mfunc.performOnIdle), lowestPriority=True)

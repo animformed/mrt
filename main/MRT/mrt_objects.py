@@ -1098,6 +1098,7 @@ def load_xhandleShape(*args, **kwargs):
 
     cmds.setAttr(xhandle['shape']+'.overrideEnabled', 1)
     cmds.setAttr(xhandle['shape']+'.overrideColor', colour)
+    cmds.setAttr(xhandle['shape']+'.wireframeThickness', 3)
 
     lockHideChannelAttrs(xhandle['shape'], 'localScale', 'localPosition', keyable=False)
     

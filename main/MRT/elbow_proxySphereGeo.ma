@@ -160,5 +160,5 @@ select -ne :renderGlobalsList1;
 select -ne :defaultHardwareRenderGlobals;
 	setAttr ".fn" -type "string" "im";
 	setAttr ".res" -type "string" "ntsc_4d 646 485 1.333";
-connectAttr "_proxy_elbow_geoShape.iog" ":initialShadingGroup.dsm" -na;
+connectAttr "proxy_elbow_geoShape.iog" ":initialShadingGroup.dsm" -na;
 // End of elbow_proxySphereGeo.ma

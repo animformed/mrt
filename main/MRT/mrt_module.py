@@ -1993,7 +1993,7 @@ class MRT_Module(object):
             for node in extra_nodes:
                 if cmds.objExists(node):
                     cmds.delete(node)
-                    
+            
             # Get the names of the proxy geo transforms.
             proxyElbowGeoPreTransform = 'proxy_elbow_preTransform'
             proxyElbowGeoScaleTransform = 'proxy_elbow_scaleTransform'
