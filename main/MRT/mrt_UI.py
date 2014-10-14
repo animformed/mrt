@@ -22,6 +22,7 @@ from mrt_functions import runProgressWindow
 from maya.OpenMaya import MGlobal; Error = MGlobal.displayError
 
 import time, math, re, os, fnmatch, cPickle, copy, sys, random, webbrowser
+from pprint import pprint # for debug only
 from functools import partial
 
 _mrt_version = 1.2
@@ -419,6 +420,12 @@ class MRT_UI(object):
             charTemplateList_file = open(self.charTemplateList_path, 'wb')
             cPickle.dump(charTemplateList, charTemplateList_file, cPickle.HIGHEST_PROTOCOL)
             charTemplateList_file.close()
+        
+        # Flag to store the script job number for checking scene imports.
+        # The script job is used to check if a maya scene import is done by the user or MRT, when MRT UI is running.
+        self.import_op_jobNum = None
+        # Run the scene import warning script job.
+        self.warningScriptJobForDirectSceneModuleImport()
             
         # Check the scene for older module type, and warn.
         mfunc.validateSceneModules()
@@ -1630,8 +1637,17 @@ class MRT_UI(object):
         cmds.text(label='Character name (no underscore):')
 
         self.uiVars['characterName_textField'] = cmds.textField(text='')
-
+        
+        cmds.setParent(self.uiVars['characterCreation_fLayout'])
+        
+        # Additional warning for character naming.
+        cmds.columnLayout(adjustableColumn=True)
+        cmds.text(label='Please don\'t provide the name as "default". Maya doesn\'t allow it. \n' \
+                        'It will be renamed to default1.')
+        
         cmds.setParent(self.uiVars['rig_Column'])
+        
+
 
 
         # Working with character templates ---
@@ -2735,13 +2751,19 @@ class MRT_UI(object):
 
         # Remove reference to the module collection file object (for garbage collection)
         del mrtmc_fObject
+        
+        # Kill the scene import check script job.
+        self.warningScriptJobForDirectSceneModuleImport(kill=True)
 
         # Import the scene module from the temporary maya scene file
         cmds.file(tempFilePath, i=True, type="mayaAscii", prompt=False, ignoreVersion=True)
         os.remove(tempFilePath) # Delete the maya scene file after import
-
+        
+        # Run the scene import check script job.
+        self.warningScriptJobForDirectSceneModuleImport()
+        
         # Get the MRT module names in the current temporary namespace.
-        namesInTemp = mfunc.returnMRT_Namespaces()
+        namesInTemp = mfunc.returnMRT_Namespaces('MRT_temp__namespaceForImport')
 
         # Filter the module names from the temporary namespace.
         namespacesInTemp = []
@@ -2762,8 +2784,15 @@ class MRT_UI(object):
             cmds.namespace(setNamespace='MRT_temp__namespaceForImport')
             allUserSpecNames = set(userSpecNamesInTemp[1] + userSpecNamesForSceneModules)
 
+
             # If there're existing modules in the scene, check and rename module(s) in the temporary namespace
             # to resolve name conflicts.
+            
+            # To store the old and new namespace, for modifying module parent info.
+            modifiedNamespaces = {}
+            # To store an updated list of namespaces under temporary namespace, 'MRT_temp__namespaceForImport'.
+            updated_namespace_in_temp = []
+            
             for (name, userSpecName) in zip(userSpecNamesInTemp[0], userSpecNamesInTemp[1]):
                 if userSpecName in userSpecNamesForSceneModules:
                     underscore_search = '_'
@@ -2780,9 +2809,12 @@ class MRT_UI(object):
 
                     suffix = mfunc.findHighestNumSuffix(userSpecNameBase, list(allUserSpecNames))
                     newUserSpecName = '{0}{1}{2}'.format(userSpecName, underscore_search, suffix+1)
-                    namespace = '%s__%s'%(name, userSpecName)
-                    newNamespace = '%s__%s'%(name, newUserSpecName)
+                    namespace = '%s__%s' % (name, userSpecName)
+                    newNamespace = '%s__%s' % (name, newUserSpecName)
                     cmds.namespace(addNamespace=newNamespace)
+                    
+                    modifiedNamespaces[namespace] = newNamespace
+                    updated_namespace_in_temp.append(newNamespace)
 
                     # Rename the module with the temporary namespace, and remove the old namespace.
                     cmds.namespace(moveNamespace=[':MRT_temp__namespaceForImport:'+namespace,
@@ -2804,6 +2836,45 @@ class MRT_UI(object):
                                                                                             newNamespace, type='string')
                         cmds.lockNode(':MRT_temp__namespaceForImport:'+mirrorModuleNamespace+':module_container', lock=True,
                                                                                                     lockUnpublished=True)
+                else:
+                    updated_namespace_in_temp.append('%s__%s' % (name, userSpecName))
+                        
+
+            # Modify the module parent infos for modules with modified namespaces under 
+            # temporary namespace, 'MRT_temp__namespaceForImport'.
+            for namespace in updated_namespace_in_temp:
+                
+                # Get the "moduleParent" attribute value, which stores parenting info for the parent module node.
+                moduleParentAttr = ':MRT_temp__namespaceForImport:%s:moduleGrp.moduleParent' % namespace
+                moduleParentInfo = cmds.getAttr(moduleParentAttr)
+                
+                # If a parent module node exists for the current module.
+                if moduleParentInfo != 'None':
+                    
+                    # Get the module parent info, i.e, "<parent module node>,<module parent type>".
+                    moduleParentInfo = moduleParentInfo.split(',')
+                    moduleParentNode = moduleParentInfo[0]
+                    moduleParentNamespace = moduleParentNode.split(':')[0]
+                    moduleParentNodeName = moduleParentNode.split(':')[1]
+
+                    # If the namespace for the parent module node has been renamed, modify it for the 
+                    # "moduleParent" attribute value.
+                    if moduleParentNamespace in modifiedNamespaces:
+                        
+                        # Get the new modified namespace for the parent module.
+                        newModuleParentNamespace = modifiedNamespaces[moduleParentNamespace]
+                        
+                        # Create a new value for the "moduleParent" attribute.
+                        newModuleParentInfo = '%s:%s,%s' % (newModuleParentNamespace, moduleParentNodeName, moduleParentInfo[1])
+                        
+                        # Get the module container for the current module, 
+                        # and set the new "moduleParent" value.
+                        module_container = ':MRT_temp__namespaceForImport:%s:module_container' % namespace
+                        cmds.lockNode(module_container, lock=False, lockUnpublished=False)
+                        cmds.setAttr(moduleParentAttr, newModuleParentInfo, type='string')
+                        cmds.lockNode(module_container, lock=True, lockUnpublished=True)
+                
+                
         # After renaming the new module for the current scene, move them from the
         # temporary namespace into the root namespace.
         cmds.namespace(setNamespace=':')
@@ -3205,147 +3276,166 @@ class MRT_UI(object):
 
                 # To collect modules with their number of traversed parent modules as keys
                 parentTraverseForModules = {}
-
-                # Go through each module and collect their parent modules (all).
-                for namespace in MRT_namespaces:
-                    parentTraverseLength = mfunc.traverseParentModules(namespace)
-                    parentTraverseLength = parentTraverseLength[1]
-
-                    # Collect module(s) with their hierarchy levels (number of parent modules).
-                    # Store the hierarchy level as key with the module's user specified name as value.
-                    if not parentTraverseLength in parentTraverseForModules:
-                        parentTraverseForModules[parentTraverseLength] = [namespace.partition('__')[2]]
-                    else:
-                        # Append module with other modules with the same hierarchy level.
-                        parentTraverseForModules[parentTraverseLength].append(namespace.partition('__')[2])
-
-                # Start adding modules to the tree module list starting with module with the
-                # least number of parent modules.
-                for value in sorted(parentTraverseForModules):
-
-                    # Go through modules at same hierarchy level
-                    for name in sorted(parentTraverseForModules[value]):
-
-                        # Get the parent module node (which is attached to module's root node)
-                        parentModuleNode = cmds.getAttr(listNames[name][0]+':moduleGrp.moduleParent')
-
-                        # Set python callbacks for maya > 2012
-                        if _maya_version >=2013:
-
-                            # Add the module name to the treeView with its parent module, if it exists
-                            if parentModuleNode == 'None':
-                                # No parent added
-                                cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, numberOfButtons=3,
-                                              addItem=(listNames[name][0], ''),
-                                              selectionChangedCommand=moduleSelectionFromTreeViewCallback,
-                                              editLabelCommand=processItemRenameForTreeViewListCallback)
-                            else:
-                                # Get the parent module node from attribute info (stripped from parent type text info)
-                                parentModuleNode = parentModuleNode.split(',')[0]
-                                # Get its namespace
-                                parentModule = mfunc.stripMRTNamespace(parentModuleNode)[0]
-                                # Add the module name with its parent
-                                cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, numberOfButtons=3,
-                                              addItem=(listNames[name][0], parentModule),
-                                              selectionChangedCommand=moduleSelectionFromTreeViewCallback,
-                                              editLabelCommand=processItemRenameForTreeViewListCallback)
-
-                            # If proxy geometry for the module is found, enable/set the proxy geo buttons
-                            if cmds.objExists(listNames[name][0]+':proxyGeometryGrp'):
-                                cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
-                                              buttonTextIcon=([listNames[name][0], 1, 'V'],
-                                                              [listNames[name][0], 2, 'P'],
-                                                              [listNames[name][0], 3, 'R']),
-                                              buttonStyle=([listNames[name][0], 1, '2StateButton'],
-                                                           [listNames[name][0], 2, '2StateButton'],
-                                                           [listNames[name][0], 3, '2StateButton']),
-                                              buttonState=([listNames[name][0], 1, 'buttonDown'],
-                                                           [listNames[name][0], 2, 'buttonDown'],
-                                                           [listNames[name][0], 3, 'buttonDown']),
-                                              pressCommand=([1, treeViewButton_1_ActionCallback],
-                                                            [2, treeViewButton_2_ActionCallback],
-                                                            [3, treeViewButton_3_ActionCallback]),
-                                              enableButton=([listNames[name][0], 1, 1],
-                                                            [listNames[name][0], 2, 1],
-                                                            [listNames[name][0], 3, 1]),
-                                              buttonTooltip=([listNames[name][0], 1, 'Module visibility'],
-                                                             [listNames[name][0], 2, 'Proxy geometry visibility'],
-                                                             [listNames[name][0], 3, 'Reference proxy geometry']))
-                            else:
-                                # If no proxy geometry, only enable/set button for module visibility.
-                                cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
-                                              buttonTextIcon=[listNames[name][0], 1, 'V'],
-                                              buttonStyle=[listNames[name][0], 1, '2StateButton'],
-                                              buttonState=[listNames[name][0], 1, 'buttonDown'],
-                                              pressCommand=[1, treeViewButton_1_ActionCallback],
-                                              enableButton=([listNames[name][0], 1, 1],
-                                                            [listNames[name][0], 2, 0],
-                                                            [listNames[name][0], 3, 0]),
-                                              buttonTooltip=[listNames[name][0], 1, 'Module visibility'])
+                
+                try:
+                    # Go through each module and collect their parent modules (all).
+                    for namespace in MRT_namespaces:
+    
+                        parentTraversalInfo = mfunc.traverseParentModules(namespace)
+                        
+                        # If any error is returned during parent module traversal.
+                        if isinstance(parentTraversalInfo[1], TypeError):
+                            raise parentTraversalInfo[0], parentTraversalInfo[1]
+                        
+                        # Or if successful module parent traversal, continue.
+                        
+                        parentTraverseLength = parentTraversalInfo[1]
+    
+                        # Collect module(s) with their hierarchy levels (number of parent modules).
+                        # Store the hierarchy level as key with the module's user specified name as value.
+                        if not parentTraverseLength in parentTraverseForModules:
+                            parentTraverseForModules[parentTraverseLength] = [namespace.partition('__')[2]]
                         else:
-                            # For maya < 2013, set MEL UI callbacks
-
-                            # Add the module name to the treeView with its parent module, if it exists
-                            if parentModuleNode == 'None':
-                                # No parent added
-                                cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, numberOfButtons=3,
-                                              addItem=(listNames[name][0], ''),
-                                              selectionChangedCommand='moduleSelectionFromTreeViewCallback',
-                                              editLabelCommand='processItemRenameForTreeViewListCallback')
+                            # Append module with other modules with the same hierarchy level.
+                            parentTraverseForModules[parentTraverseLength].append(namespace.partition('__')[2])
+                
+                except TypeError:
+                    Error('\nMRT: Error in traversing one or more module relationship(s) in its hierarchy. \n' \
+                          'Did you directly import any module(s) into the scene? If so, this may cause \n' \
+                          'conflicts with stored module parenting info under current scene modules. \n' \
+                          'One or more module relationship(s) in the scene may be incorrect. \n' \
+                          'Always install pre-built modules into the scene using "Module collections" under MRT UI.')
+                    
+                    cmds.radioCollection(self.uiVars['sortModuleList_radioColl'], edit=True, select='Alphabetically')
+                
+                else:
+                    # Start adding modules to the tree module list starting with module with the
+                    # least number of parent modules.
+                    for value in sorted(parentTraverseForModules):
+    
+                        # Go through modules at same hierarchy level
+                        for name in sorted(parentTraverseForModules[value]):
+    
+                            # Get the parent module node (which is attached to module's root node)
+                            parentModuleNode = cmds.getAttr(listNames[name][0]+':moduleGrp.moduleParent')
+    
+                            # Set python callbacks for maya > 2012
+                            if _maya_version >=2013:
+    
+                                # Add the module name to the treeView with its parent module, if it exists
+                                if parentModuleNode == 'None':
+                                    # No parent added
+                                    cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, numberOfButtons=3,
+                                                  addItem=(listNames[name][0], ''),
+                                                  selectionChangedCommand=moduleSelectionFromTreeViewCallback,
+                                                  editLabelCommand=processItemRenameForTreeViewListCallback)
+                                else:
+                                    # Get the parent module node from attribute info (stripped from parent type text info)
+                                    parentModuleNode = parentModuleNode.split(',')[0]
+                                    # Get its namespace
+                                    parentModule = mfunc.stripMRTNamespace(parentModuleNode)[0]
+                                    # Add the module name with its parent
+                                    cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, numberOfButtons=3,
+                                                  addItem=(listNames[name][0], parentModule),
+                                                  selectionChangedCommand=moduleSelectionFromTreeViewCallback,
+                                                  editLabelCommand=processItemRenameForTreeViewListCallback)
+    
+                                # If proxy geometry for the module is found, enable/set the proxy geo buttons
+                                if cmds.objExists(listNames[name][0]+':proxyGeometryGrp'):
+                                    cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
+                                                  buttonTextIcon=([listNames[name][0], 1, 'V'],
+                                                                  [listNames[name][0], 2, 'P'],
+                                                                  [listNames[name][0], 3, 'R']),
+                                                  buttonStyle=([listNames[name][0], 1, '2StateButton'],
+                                                               [listNames[name][0], 2, '2StateButton'],
+                                                               [listNames[name][0], 3, '2StateButton']),
+                                                  buttonState=([listNames[name][0], 1, 'buttonDown'],
+                                                               [listNames[name][0], 2, 'buttonDown'],
+                                                               [listNames[name][0], 3, 'buttonDown']),
+                                                  pressCommand=([1, treeViewButton_1_ActionCallback],
+                                                                [2, treeViewButton_2_ActionCallback],
+                                                                [3, treeViewButton_3_ActionCallback]),
+                                                  enableButton=([listNames[name][0], 1, 1],
+                                                                [listNames[name][0], 2, 1],
+                                                                [listNames[name][0], 3, 1]),
+                                                  buttonTooltip=([listNames[name][0], 1, 'Module visibility'],
+                                                                 [listNames[name][0], 2, 'Proxy geometry visibility'],
+                                                                 [listNames[name][0], 3, 'Reference proxy geometry']))
+                                else:
+                                    # If no proxy geometry, only enable/set button for module visibility.
+                                    cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
+                                                  buttonTextIcon=[listNames[name][0], 1, 'V'],
+                                                  buttonStyle=[listNames[name][0], 1, '2StateButton'],
+                                                  buttonState=[listNames[name][0], 1, 'buttonDown'],
+                                                  pressCommand=[1, treeViewButton_1_ActionCallback],
+                                                  enableButton=([listNames[name][0], 1, 1],
+                                                                [listNames[name][0], 2, 0],
+                                                                [listNames[name][0], 3, 0]),
+                                                  buttonTooltip=[listNames[name][0], 1, 'Module visibility'])
                             else:
-                                # Get the parent module node from attribute info (stripped from parent type text info)
-                                parentModuleNode = parentModuleNode.split(',')[0]
-                                # Get its namespace
-                                parentModule = mfunc.stripMRTNamespace(parentModuleNode)[0]
-                                # Add the module name with its parent
-                                cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, numberOfButtons=3,
-                                              addItem=(listNames[name][0], parentModule),
-                                              selectionChangedCommand='moduleSelectionFromTreeViewCallback',
-                                              editLabelCommand='processItemRenameForTreeViewListCallback')
-
-                            # If proxy geometry for the module is found, enable/set the proxy geo buttons
-                            if cmds.objExists(listNames[name][0]+':proxyGeometryGrp'):
+                                # For maya < 2013, set MEL UI callbacks
+    
+                                # Add the module name to the treeView with its parent module, if it exists
+                                if parentModuleNode == 'None':
+                                    # No parent added
+                                    cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, numberOfButtons=3,
+                                                  addItem=(listNames[name][0], ''),
+                                                  selectionChangedCommand='moduleSelectionFromTreeViewCallback',
+                                                  editLabelCommand='processItemRenameForTreeViewListCallback')
+                                else:
+                                    # Get the parent module node from attribute info (stripped from parent type text info)
+                                    parentModuleNode = parentModuleNode.split(',')[0]
+                                    # Get its namespace
+                                    parentModule = mfunc.stripMRTNamespace(parentModuleNode)[0]
+                                    # Add the module name with its parent
+                                    cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True, numberOfButtons=3,
+                                                  addItem=(listNames[name][0], parentModule),
+                                                  selectionChangedCommand='moduleSelectionFromTreeViewCallback',
+                                                  editLabelCommand='processItemRenameForTreeViewListCallback')
+    
+                                # If proxy geometry for the module is found, enable/set the proxy geo buttons
+                                if cmds.objExists(listNames[name][0]+':proxyGeometryGrp'):
+                                    cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
+                                                  buttonTextIcon=([listNames[name][0], 1, 'V'],
+                                                                  [listNames[name][0], 2, 'P'],
+                                                                  [listNames[name][0], 3, 'R']),
+                                                  buttonStyle=([listNames[name][0], 1, '2StateButton'],
+                                                               [listNames[name][0], 2, '2StateButton'],
+                                                               [listNames[name][0], 3, '2StateButton']),
+                                                  buttonState=([listNames[name][0], 1, 'buttonDown'],
+                                                               [listNames[name][0], 2, 'buttonDown'],
+                                                               [listNames[name][0], 3, 'buttonDown']),
+                                                  pressCommand=([1, 'treeViewButton_1_ActionCallback'],
+                                                                [2, 'treeViewButton_2_ActionCallback'],
+                                                                [3, 'treeViewButton_3_ActionCallback']),
+                                                  enableButton=([listNames[name][0], 1, 1],
+                                                                [listNames[name][0], 2, 1],
+                                                                [listNames[name][0], 3, 1]),
+                                                  buttonTooltip=([listNames[name][0], 1, 'Module visibility'],
+                                                                 [listNames[name][0], 2, 'Proxy geometry visibility'],
+                                                                 [listNames[name][0], 3, 'Reference proxy geometry']))
+                                else:
+                                    # If no proxy geometry, only enable/set button for module visibility.
+                                    cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
+                                                  buttonTextIcon=[listNames[name][0], 1, 'V'],
+                                                  buttonStyle=[listNames[name][0], 1, '2StateButton'],
+                                                  buttonState=[listNames[name][0], 1, 'buttonDown'],
+                                                  pressCommand=[1, 'treeViewButton_1_ActionCallback'],
+                                                  enableButton=([listNames[name][0], 1, 1],
+                                                                [listNames[name][0], 2, 0],
+                                                                [listNames[name][0], 3, 0]),
+                                                  buttonTooltip=[listNames[name][0], 1, 'Module visibility'])
+    
+                            # Display the text label as oblique if it's a mirror module.
+                            if listNames[name][2] == None:
                                 cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
-                                              buttonTextIcon=([listNames[name][0], 1, 'V'],
-                                                              [listNames[name][0], 2, 'P'],
-                                                              [listNames[name][0], 3, 'R']),
-                                              buttonStyle=([listNames[name][0], 1, '2StateButton'],
-                                                           [listNames[name][0], 2, '2StateButton'],
-                                                           [listNames[name][0], 3, '2StateButton']),
-                                              buttonState=([listNames[name][0], 1, 'buttonDown'],
-                                                           [listNames[name][0], 2, 'buttonDown'],
-                                                           [listNames[name][0], 3, 'buttonDown']),
-                                              pressCommand=([1, 'treeViewButton_1_ActionCallback'],
-                                                            [2, 'treeViewButton_2_ActionCallback'],
-                                                            [3, 'treeViewButton_3_ActionCallback']),
-                                              enableButton=([listNames[name][0], 1, 1],
-                                                            [listNames[name][0], 2, 1],
-                                                            [listNames[name][0], 3, 1]),
-                                              buttonTooltip=([listNames[name][0], 1, 'Module visibility'],
-                                                             [listNames[name][0], 2, 'Proxy geometry visibility'],
-                                                             [listNames[name][0], 3, 'Reference proxy geometry']))
+                                              displayLabel=[listNames[name][0], name],
+                                              displayLabelSuffix=[listNames[name][0], ' (%s node module)'%listNames[name][1]])
                             else:
-                                # If no proxy geometry, only enable/set button for module visibility.
                                 cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
-                                              buttonTextIcon=[listNames[name][0], 1, 'V'],
-                                              buttonStyle=[listNames[name][0], 1, '2StateButton'],
-                                              buttonState=[listNames[name][0], 1, 'buttonDown'],
-                                              pressCommand=[1, 'treeViewButton_1_ActionCallback'],
-                                              enableButton=([listNames[name][0], 1, 1],
-                                                            [listNames[name][0], 2, 0],
-                                                            [listNames[name][0], 3, 0]),
-                                              buttonTooltip=[listNames[name][0], 1, 'Module visibility'])
-
-                        # Display the text label as oblique if it's a mirror module.
-                        if listNames[name][2] == None:
-                            cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
-                                          displayLabel=[listNames[name][0], name],
-                                          displayLabelSuffix=[listNames[name][0], ' (%s node module)'%listNames[name][1]])
-                        else:
-                            cmds.treeView(self.uiVars['sceneModuleList_treeView'], edit=True,
-                                          displayLabel=[listNames[name][0], name],
-                                          displayLabelSuffix=[listNames[name][0], ' (%s node mirror module)'%listNames[name][1]],
-                                          fontFace=[listNames[name][0], 2])
+                                              displayLabel=[listNames[name][0], name],
+                                              displayLabelSuffix=[listNames[name][0], ' (%s node mirror module)'%listNames[name][1]],
+                                              fontFace=[listNames[name][0], 2])
 
             # After creating the treeView items for scene modules,
             # set their button states / attributes, based on
@@ -4431,6 +4521,27 @@ class MRT_UI(object):
             if (c_height - 40) < treeLayoutHeight:
                 cmds.scrollLayout(self.uiVars['moduleList_Scroll'], edit=True, height=treeLayoutHeight+8)
                 cmds.frameLayout(self.uiVars['moduleList_fLayout'], edit=True, height=treeLayoutHeight)
+                
+                
+    def warningScriptJobForDirectSceneModuleImport(self, kill=False): 
+        '''
+        Utility script job to warn user against direct imports for scene modules.
+        '''
+        if kill and type(self.import_op_jobNum) == int:
+            if cmds.scriptJob(exists=self.import_op_jobNum): cmds.scriptJob(kill=self.import_op_jobNum)
+        
+        else:
+            self.import_op_jobNum = cmds.scriptJob(event=['SceneImported', 
+                                                          self.warnIfDirectImportForSceneModules], 
+                                                   parent=self.uiVars['window'])
+            
+            
+    def warnIfDirectImportForSceneModules(self):
+        '''
+        Executed during scene imports done by the user and warns for module importing.
+        '''
+        cmds.warning('MRT: Do not import any module(s) directly into the scene. If done, this may cause errors. \n' \
+                 'Always install pre-built module(s) into the scene using "Module collections" under MRT UI.')
 
 
     # ................................................ MODULE PARENTING ............................................
@@ -4818,6 +4929,18 @@ class MRT_UI(object):
         
         # With a valid character name, proceed.
         characterName = characterName.lower()
+        
+        # Apparently maya doesn't allow an object to be named as 'default'.
+        characterName = 'default1' if characterName == 'default' else characterName
+        
+        if cmds.objExists(characterName):
+            Error('MRT: An object with the character name exists.')
+            
+            # Update progress.
+            runProgressWindow(message='Error', progress=0)
+            runProgressWindow(end=True)
+            
+            return
         
         # Save current namespace, set to root.
         currentNamespace = cmds.namespaceInfo(currentNamespace=True)
@@ -5373,9 +5496,15 @@ class MRT_UI(object):
 
         # Remove reference to the character template file object (for garbage collection)
         del templateFileData
+        
+        # Kill the scene import check script job.
+        self.warningScriptJobForDirectSceneModuleImport(kill=True)        
 
         # Import the character template from the temporary maya scene file
         cmds.file(tempFilePath, i=True, type='mayaAscii', prompt=False, ignoreVersion=True)
+        
+        # Run the scene import check script job.
+        self.warningScriptJobForDirectSceneModuleImport()        
 
         # Delete the maya scene file after import
         os.remove(tempFilePath)

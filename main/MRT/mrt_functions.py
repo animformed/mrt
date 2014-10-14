@@ -373,20 +373,26 @@ def stripMRTNamespace(moduleName):
     return None
 
 
-def returnMRT_Namespaces():
+def returnMRT_Namespaces(inNamespace=''):
     '''
     Returns all current namespaces in the scene defined by MRT.
+    
+    Optional "inNamespace" argument recursively looks for module 
+    namespaces within a specified namespace beginning from root.
     '''
     # Get the current namespace, set the namespace to root.
     currentNamespace = cmds.namespaceInfo(currentNamespace=True)
     cmds.namespace(setNamespace=':')
     
-    sceneNamespaces = cmds.namespaceInfo(listOnlyNamespaces=True)
+    sceneNamespaces = cmds.namespaceInfo(listOnlyNamespaces=True, recurse=True)
     
     MRT_namespaces = []
+    
+    namespaceToMatch = '^%s:MRT_(Joint|Spline|Hinge){1}Node__\w+$' % inNamespace \
+                            if inNamespace else '^MRT_(Joint|Spline|Hinge){1}Node__\w+$'
 
     for name in sceneNamespaces:
-        if re.match('^MRT_\D+__\w+$', name):
+        if re.match(namespaceToMatch, name):
             MRT_namespaces.append(str(name))
             
     # Restore the current namespace.
@@ -1159,23 +1165,28 @@ def traverseParentModules(module_namespace):
     '''
     traverse_length = 0
     traversed_modules = []
-
-    # If the input module has a "moduleParent" attribute.
-    if cmds.attributeQuery('moduleParent', node=module_namespace+':moduleGrp', exists=True):
-
-        # Get its value to obtain its parent module
-        moduleParentNode = cmds.getAttr(module_namespace+':moduleGrp.moduleParent')
-
-        # Then, search recursively for the parent module for more parents.
-        if moduleParentNode != 'None':
-
-            moduleParentNode = moduleParentNode.split(',')[0]
-            traverse_length += 1
-            moduleParentNamespace = stripMRTNamespace(moduleParentNode)[0]
-            traversed_modules += [moduleParentNamespace]
-
-            traverse_length += traverseParentModules(moduleParentNamespace)[1]
-            traversed_modules += traverseParentModules(moduleParentNamespace)[0]
+    
+    try:
+        # If the input module has a "moduleParent" attribute.
+        if cmds.attributeQuery('moduleParent', node=module_namespace+':moduleGrp', exists=True):
+    
+            # Get its value to obtain its parent module
+            moduleParentNode = cmds.getAttr(module_namespace+':moduleGrp.moduleParent')
+    
+            # Then, search recursively for the parent module for more parents.
+            if moduleParentNode != 'None':
+    
+                moduleParentNode = moduleParentNode.split(',')[0]
+                traverse_length += 1
+                moduleParentNamespace = stripMRTNamespace(moduleParentNode)[0]
+                traversed_modules += [moduleParentNamespace]
+    
+                traverse_length += traverseParentModules(moduleParentNamespace)[1]
+                traversed_modules += traverseParentModules(moduleParentNamespace)[0]
+    
+    # If scene error during parent module traversal.
+    except TypeError, RuntimeError:
+        return sys.exc_info()[:2]
 
     return traversed_modules, traverse_length
 
