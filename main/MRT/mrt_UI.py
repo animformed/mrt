@@ -289,12 +289,12 @@ class MRT_UI(object):
         # The 'Help' menu will have general help options.
         cmds.menu(label='Help', helpMenu=True)
         cmds.menuItem(label='Documentation', \
-                      command=partial(self.openWebPage, 'http://animformed.ghoster.io/modular-rigging-tools-documentation/'))
+                      command=partial(self.openWebPage, 'http://animformed.github.io/modular-rigging-tools-documentation/'))
         cmds.menuItem(label='Tutorial/How To\'s', \
-                      command=partial(self.openWebPage, 'http://animformed.ghoster.io/using-modular-rigging-tools-for-maya/'))
+                      command=partial(self.openWebPage, 'http://animformed.github.io/using-modular-rigging-tools-for-maya/'))
         cmds.menuItem(divider=True)
         cmds.menuItem(label='Extending MRT - Writing custom control rigs', \
-                      command=partial(self.openWebPage, 'http://animformed.ghoster.io/extending-mrt/'))
+                      command=partial(self.openWebPage, 'http://animformed.github.io/extending-mrt/'))
         cmds.menuItem(divider=True)
         cmds.menuItem(label='Known Issues / Workarounds', command=self.display_mrt_issues)
         cmds.menuItem(divider=True)
