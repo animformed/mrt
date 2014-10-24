@@ -313,6 +313,9 @@ def runProgressWindow(title='', message='', progress=0, step=0, totalProgress=10
 
     # If the progress window is to be continued, update the message and the progress as necessary.
     if (init + end) == 0:
+        
+        # print 'mrt_functions.runProgressWindow() message: %s' % message       # For debug only
+        
         cmds.text('__mrt_progressWindow_status', edit=True, label=message)
         if progress:
             cmds.progressBar('__mrt_progressWindow_bar', edit=True, progress=progress)
@@ -1293,8 +1296,8 @@ def checkForJointDuplication():
         
             # If the joint "node" name occurs twice in the list, warn.
             if mrt_joints.count(joint) > 1:
-                Error('MRT: One of the character joints has been manually duplicated. \
-                              Please undo it in order to perform control rigging.')
+                Error('MRT: One of the character joints has been manually duplicated. ' \
+                      'Please undo it in order to perform control rigging.')
                 check = False
                 break
 
@@ -2334,7 +2337,9 @@ def createProxyForSkeletonFromModule(characterJointSet, moduleAttrsDict, charact
             elbow_proxy = cmds.duplicate(elbow_proxy_preTransform, returnRootsOnly=True, renameChildren=True, \
                                          name='%s_%s_proxy_elbow_preTransform' \
                                             % (moduleAttrsDict['userSpecName'], namePrefix))[0]
-            cmds.makeIdentity(elbow_proxy, scale=True, apply=True)
+            
+            try: cmds.makeIdentity(elbow_proxy, scale=True, apply=True, preserveNormals=True)
+            except: cmds.makeIdentity(elbow_proxy, scale=True, apply=True)   # For older version of maya            
             
             # Constrain it to the root joint and palce it under proxy group.
             parentConstraint(joint, elbow_proxy, maintainOffset=True)
@@ -2350,8 +2355,10 @@ def createProxyForSkeletonFromModule(characterJointSet, moduleAttrsDict, charact
                                         returnRootsOnly=True, renameChildren=True, \
                                         name='%s_%s_proxy_bone_preTransform' \
                                             % (moduleAttrsDict['userSpecName'], namePrefix))[0]
-            cmds.makeIdentity(bone_proxy, scale=True, apply=True)
             
+            try: cmds.makeIdentity(bone_proxy, scale=True, apply=True, preserveNormals=True)
+            except: cmds.makeIdentity(bone_proxy, scale=True, apply=True)   # For older version of maya
+                
             # Parent constrain the bone proxy geo to the joint.
             parentConstraint(joint, bone_proxy, maintainOffset=True)
                                       

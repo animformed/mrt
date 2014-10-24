@@ -3,10 +3,10 @@ import shutil, os, platform
 os_name = platform.system()
 
 if os_name == 'Darwin':
-    sourceRootDir = '/Users/hbhattacharya/Documents/hbgitworks/mrt/main/MRT/'
+    sourceRootDir = '/Users/hbhattacharya/Documents/github/mrt/main/MRT/'
     targetRootDir = '/Users/hbhattacharya/Library/Preferences/Autodesk/maya/2014-x64/scripts/MRT/'
 if os_name == 'Windows':
-    sourceRootDir = 'C:/Users/HBhattacharya/Documents/GitHub/mrt/main/MRT/'
+    sourceRootDir = 'C:/Users/HBhattacharya/Documents/github/mrt/main/MRT/'
     targetRootDir = 'C:/Users/HBhattacharya/Documents/maya/2014-x64/scripts/MRT/'
 
 if os.path.exists(targetRootDir+'MRTstartup.pyc'):

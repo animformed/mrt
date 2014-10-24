@@ -92,7 +92,6 @@ def treeViewButton_3_Action(item, state):
 def processItemRenameForTreeViewList(itemName, newName):
     '''
     Called when a user edits a module item's name in the scene module list treeView.
-    To be implemented.
     '''
     # Deselect the treeView item first.
     cmds.treeView('__MRT_treeView_SceneModulesUI', edit=True, clearSelection=True)
@@ -240,7 +239,7 @@ class MRT_UI(object):
         # Create a menu bar under main window, with two menu elements, 'File' and 'Help'.
         cmds.menuBarLayout()
         
-        # Create the dock control for the main window. This is done after creating the initial layout.
+        # Create the dock control for the main window. This is done after creating the first layout under the window.
         self.uiVars['dockWindow'] = cmds.dockControl('mrt_UI_dockWindow', label='Modular Rigging Tools v%s' % _mrt_version,
                                                     area='left', content=self.uiVars['window'],
                                                     allowedArea=['left', 'right'])
@@ -429,6 +428,9 @@ class MRT_UI(object):
             
         # Check the scene for older module type, and warn.
         mfunc.validateSceneModules()
+        
+        # Check for duplicated character joint(s) in the scene.
+        mfunc.checkForJointDuplication()
             
         # Re-select
         if selection:
@@ -1070,7 +1072,7 @@ class MRT_UI(object):
                        '\n ------------------------------------------------'
 
         printString2 = '\n\n 1. If \'Mirror Instancing\' option is used for proxy geometry while creating mirrored modules,' \
-            '\n it will yield mirrored geometry with opposing face normals after creating a character. Maya will issue' \
+            '\n it will yield mirrored geometry with opposing face normals after creating a character. Maya may issue' \
             '\n warning(s) while creating a character from modules, which is expected - Warning: Freeze transform with' \
             '\n negative scale will set the \'opposite\' attribute for these nodes. I haven\'t found a way around this yet,'\
             '\n but I suppose this is not a problem since this is only a display issue. You can avoid it by enabling' \
@@ -1895,6 +1897,7 @@ class MRT_UI(object):
         cmds.scriptJob(conditionFalse=['SomethingSelected', self.updateListForSceneModulesInUI], parent=mainWin)
         cmds.scriptJob(event=['SelectionChanged', self.selectModuleInTreeViewUIfromViewport], parent=mainWin)
         cmds.scriptJob(event=['SelectionChanged', self.viewControlRigOptionsOnHierarchySelection], parent=mainWin)
+        cmds.scriptJob(event=['DagObjectCreated', mfunc.checkForJointDuplication], parent=mainWin)
         self.c_jobNum = cmds.scriptJob(uiDeleted=[mainWin, partial(mfunc.cleanup_MRT_actions, self.c_jobNum)])
 
 
