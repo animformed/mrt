@@ -42,6 +42,9 @@ def prep_MRTMayaStartupActions():
     # Get the current userSetup.* file path with the extension.
     userSetup_return = find_userSetupFileStatus()
     userSetupStatus = False     # If userSetup is written or modified, set it to True. 
+    
+    # Set the error string to be used if IOError while modifying userSetup file.
+    usWriteErr_msg = 'MRT: Write error for maya userSetup file at %s for installation. Cannot proceed. Check the file permissions.'
 
     # Open the userSetup file and check if the string value exists and write if needed.
     if userSetup_return.endswith('mel'):
@@ -57,7 +60,8 @@ def prep_MRTMayaStartupActions():
                 break
         else:
             stringList.extend([startString, commandString])
-            userSetupFile = open(userSetup_return, 'w')
+            try: userSetupFile = open(userSetup_return, 'w')
+            except IOError: cmds.error(usWriteErr_msg % userSetup_return)
             userSetupFile.writelines(stringList)
             userSetupStatus = True
             userSetupFile.close()
@@ -75,7 +79,8 @@ def prep_MRTMayaStartupActions():
                 break
         else:
             stringList.extend([startString, commandString])
-            userSetupFile = open(userSetup_return, 'w')
+            try: userSetupFile = open(userSetup_return, 'w')
+            except IOError: cmds.error(usWriteErr_msg % userSetup_return)
             userSetupFile.writelines(stringList)
             userSetupStatus = True
             userSetupFile.close()
@@ -129,26 +134,32 @@ def prep_MRTMayaStartupActions():
 
     if mayaEnvStatus:
 
-        # Write the new maya env file, and rename it with the original one.
-        tempEnvPath = str(cmds.internalVar(userScriptDir=True)).rpartition('scripts/')[0] + 'temp__Maya.$env'
+        # Update the maya.env file.
+        
+        # To store the updated content for the maya.env, with old preferences.
+        envfile_content = []
+        
+        # Get the path to maya.env
         envPath = str(cmds.internalVar(userScriptDir=True)).rpartition('scripts/')[0] + 'Maya.env'
 
         if mayaEnv_return or mayaEnv_return == '':
+            
+            # Get the existing content for maya.env, appending as necessary.
+            with open(envPath, 'r') as envFileRead:
+                for line in envFileRead:
+                    if re.search('MAYA_PLUG_IN_PATH[ ]*=[ ]*', line):
+                        envfile_content.append(writeString)
+                    else:
+                        envfile_content.append(line)
+            
+            # Now update the maya.env with new MAYA_PLUG_IN_PATH preferences.
+            try:
+                with open(envPath, 'w') as envFileWrite:
+                    for line in envfile_content:
+                        envFile.write(line)
+            except IOError:
+                cmds.error('MRT: Write error for maya env file at %s for installation. Cannot proceed. Check the file permissions.' % envFile)
 
-            tempEnvFile = open(tempEnvPath, 'w')
-            envFile = open(envPath, 'r')
-
-            for line in envFile:
-                if re.search('MAYA_PLUG_IN_PATH[ ]*=[ ]*', line):
-                    tempEnvFile.write(writeString)
-                else:
-                    tempEnvFile.write(line)
-
-            tempEnvFile.close()
-            envFile.close()
-
-            os.remove(envPath)
-            os.rename(tempEnvPath, envPath) 
 
         # If maya.env doesn't exist, create one and write to it.
         if mayaEnv_return == None:
