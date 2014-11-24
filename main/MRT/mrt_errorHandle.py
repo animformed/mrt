@@ -1,7 +1,7 @@
 # *************************************************************************************************************
 #
 #    mrt_errorHandle - Source for modifying the default or current exception handling
-#                      in GUI module for Maya.
+#                      in GUI mode for Maya for MRT.
 #
 #    Can be modified or copied for your own purpose.
 #
@@ -16,7 +16,7 @@ import maya.cmds as cmds
 import traceback, platform
 from pprint import pprint
 
-_mrt_version = 1.2
+_mrt_version = 1.22
 
 def printTopExceptionForDebug(error_stack_frames):
     '''

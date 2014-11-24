@@ -27,7 +27,7 @@ import time, math, re, os, fnmatch, cPickle, copy, sys, random, webbrowser
 from pprint import pprint # for debug only
 from functools import partial
 
-_mrt_version = 1.2
+_mrt_version = 1.22
 _maya_version = mfunc.returnMayaVersion()
 
 # Define callbacks for "treeView" UI commands. For maya versions < 2013, the callbacks
@@ -165,8 +165,6 @@ class MRT_UI(object):
         
         # Store the instance.
         self.__class__.INSTANCE = self
-        
-        raise
     
         # Save the current selection
         selection = cmds.ls(selection=True)
