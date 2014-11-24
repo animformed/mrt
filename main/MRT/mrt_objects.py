@@ -10,6 +10,8 @@
 #
 # *************************************************************************************************************
 
+__moduleName__ = 'mrt_objects'
+
 import maya.cmds as cmds
 import maya.mel as mel
 import os

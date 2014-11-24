@@ -1,6 +1,6 @@
 # *************************************************************************************************************
 #
-#    MRTstartup.py - Init function for Modular rigging tools for Maya. 
+#    MRTstartup.py - Init functions for Modular rigging tools for Maya. 
 #                    Runs startup checks to see MRT is correctly installed and supported.
 #
 #    This file should be placed under the maya scripts directory.
@@ -11,9 +11,10 @@
 #
 # *************************************************************************************************************
 
+__moduleName__ = 'mrt_startup'
+
 import os, sys
 import maya.cmds as cmds
-
 
 def runMRTstartup(__debug = 0):
     """
@@ -39,7 +40,7 @@ def runMRTstartup(__debug = 0):
         cmds.rowLayout(numberOfColumns=2, columnWidth=[(1, 150), (2, 100)])
         
         cmds.separator(style='none')
-        cmds.button(label='OK', command=('cmds.deleteUI(\"'+dialogWin+'\")'), width=100, align='center')
+        cmds.button(label='OK', command=('import maya.cmds; maya.cmds.deleteUI(\"'+dialogWin+'\")'), width=100, align='center')
         
         cmds.setParent(mainCol)
         cmds.separator(style='none')
@@ -59,7 +60,10 @@ def runMRTstartup(__debug = 0):
     if os.path.exists(workingDir):
         if not workingDir in sys.path:
             sys.path.append(workingDir)
-
+        
+        # Run the MRT error handler.
+        import mrt_errorHandle
+        
         # Get the startup functions
         import mrt_functions
 
@@ -82,6 +86,7 @@ def runMRTstartup(__debug = 0):
 
         # If MRT is configured to run, load the UI.
         if firstLoadStatus[0] == False and firstLoadStatus[1] == False:
+            
             import mrt_UI
             mrt_UI.MRT_UI()
         else:

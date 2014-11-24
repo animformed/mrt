@@ -9,6 +9,8 @@
 #
 # *************************************************************************************************************
 
+__moduleName__ = 'mrt_functions'
+
 import maya.cmds as cmds
 import maya.mel as mel
 from pymel.core import melGlobals
@@ -308,6 +310,7 @@ def find_userSetupFileStatus():
 #   UTILITY FUNCTIONS
 #
 # -------------------------------------------------------------------------------------------------------------
+
 
 def runProgressWindow(title='', message='', progress=0, step=0, totalProgress=100, init=False, end=False):
     '''

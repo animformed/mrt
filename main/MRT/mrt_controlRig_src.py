@@ -9,6 +9,8 @@
 #
 # *************************************************************************************************************
 
+__moduleName__ = 'mrt_controlRig'
+
 import maya.cmds as cmds
 import maya.mel as mel
 import re, math, os, math

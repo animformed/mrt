@@ -10,6 +10,8 @@
 #
 # *************************************************************************************************************
 
+__moduleName__ = 'mrt_UI'
+
 import maya.cmds as cmds
 import maya.mel as mel
 
@@ -164,6 +166,8 @@ class MRT_UI(object):
         # Store the instance.
         self.__class__.INSTANCE = self
         
+        raise
+    
         # Save the current selection
         selection = cmds.ls(selection=True)
 
