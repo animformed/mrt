@@ -14,9 +14,9 @@ __moduleName__ = 'mrt_errorHandle'
 import maya.utils as utils
 import maya.cmds as cmds
 import traceback, platform
-from pprint import pprint
 
 _mrt_version = 1.22
+
 
 def printTopExceptionForDebug(error_stack_frames):
     '''
@@ -49,8 +49,7 @@ def printTopExceptionForDebug(error_stack_frames):
         debugInfoTxt += '\n'
         
     return debugInfoTxt
-    
-    
+
 
 def getTopExceptionForDebug(excType, excValue, tb_info, detail=2):
     '''
